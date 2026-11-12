@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社区居家养老智慧服务平台 · 演示</title>
+<style>
+  :root {
+    --primary:#2c6e63; --primary-light:#e8f2f0; --danger:#c0392b;
+    --border:#e2e8e6; --text:#263238; --muted:#78909c; --bg:#f4f7f6;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:"Microsoft YaHei","PingFang SC",sans-serif; background:var(--bg); color:var(--text); font-size:14px; }
+  header { background:var(--primary); color:#fff; padding:18px 32px; }
+  header h1 { font-size:20px; font-weight:600; }
+  header p { font-size:12px; opacity:.85; margin-top:4px; }
+  nav { display:flex; gap:4px; background:#fff; border-bottom:1px solid var(--border); padding:0 24px; }
+  nav button { border:none; background:none; padding:14px 18px; font-size:14px; color:var(--muted);
+    cursor:pointer; border-bottom:2.5px solid transparent; }
+  nav button.active { color:var(--primary); border-bottom-color:var(--primary); font-weight:600; }
+  main { max-width:1200px; margin:20px auto; padding:0 24px; }
+  .card { background:#fff; border:1px solid var(--border); border-radius:10px; padding:18px; margin-bottom:16px; }
+  .card h3 { font-size:15px; margin-bottom:12px; color:var(--primary); }
+  .stats { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+  .stat { background:#fff; border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center; }
+  .stat .num { font-size:26px; font-weight:700; color:var(--primary); }
+  .stat.danger .num { color:var(--danger); }
+  .stat .label { font-size:12px; color:var(--muted); margin-top:4px; }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-size:12px; color:var(--muted); padding:8px 10px; border-bottom:2px solid var(--border); white-space:nowrap; }
+  td { padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  tr:hover td { background:var(--primary-light); }
+  .badge { display:inline-block; padding:2px 9px; border-radius:10px; font-size:12px; white-space:nowrap; }
+  .b-wait{background:#fdf0e0;color:#b96a00}.b-disp{background:#e3edfa;color:#2563a8}
+  .b-serv{background:#efe6f8;color:#7442b3}.b-done{background:#e2f2e6;color:#2e7d32}
+  .b-canc{background:#eceff1;color:#90a4ae}.b-red{background:#fdecea;color:var(--danger)}
+  .tag { display:inline-block; background:var(--primary-light); color:var(--primary);
+    border-radius:4px; padding:1px 6px; font-size:12px; margin:1px; }
+  button.btn { background:var(--primary); color:#fff; border:none; border-radius:6px;
+    padding:7px 14px; font-size:13px; cursor:pointer; }
+  button.btn:hover { opacity:.88; }
+  button.btn.small { padding:4px 10px; font-size:12px; }
+  button.btn.ghost { background:#fff; color:var(--primary); border:1px solid var(--primary); }
+  button.btn.warn { background:var(--danger); }
+  form.inline { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field label { font-size:12px; color:var(--muted); }
+  select, input, textarea { border:1px solid var(--border); border-radius:6px; padding:7px 9px;
+    font-size:13px; font-family:inherit; background:#fff; min-width:120px; }
+  textarea { width:100%; min-height:56px; resize:vertical; }
+  #toast { position:fixed; top:18px; left:50%; transform:translateX(-50%); z-index:99;
+    background:#263238; color:#fff; padding:10px 22px; border-radius:8px; font-size:13px;
+    display:none; max-width:80%; }
+  #toast.err { background:var(--danger); }
+  #action-panel { display:none; }
+  #action-panel .row { display:flex; gap:10px; align-items:flex-start; }
+  .muted { color:var(--muted); font-size:12px; }
+  .right { text-align:right; }
+  .hide { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>社区居家养老智慧服务平台</h1>
+  <p>数据库系统课程设计演示 · 建档 — 评估 — 下单 — 派单 — 服务 — 补贴 全链路</p>
+</header>
+
+<nav>
+  <button data-tab="dashboard" class="active">总览</button>
+  <button data-tab="elders">老人档案</button>
+  <button data-tab="orders">订单与派单</button>
+  <button data-tab="subsidy">补贴申报</button>
+  <button data-tab="ops">运维工具</button>
+</nav>
+
+<main>
+  <!-- ============ 总览 ============ -->
+  <section id="tab-dashboard">
+    <div class="stats" id="stat-cards"></div>
+    <div class="card" style="margin-top:16px">
+      <h3>待派单订单（视图 v_pending_dispatch_orders，含超时标志）</h3>
+      <table id="pending-table"><thead><tr>
+        <th>订单号</th><th>老人</th><th>社区</th><th>服务项目</th><th>预约时间</th>
+        <th>等待(分钟)</th><th>超时标志</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <!-- ============ 老人档案 ============ -->
+  <section id="tab-elders" class="hide">
+    <div class="card">
+      <h3>老人档案 · 能力评估 · 照护计划（视图 v_elder_assessment_plan，身份证已脱敏）</h3>
+      <table id="elder-table"><thead><tr>
+        <th>编号</th><th>姓名</th><th>年龄</th><th>社区</th><th>身份证(脱敏)</th>
+        <th>特殊标签</th><th>能力等级</th><th>评估到期</th><th>状态</th><th>生效计划</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <!-- ============ 订单与派单 ============ -->
+  <section id="tab-orders" class="hide">
+    <div class="card">
+      <h3>下单（后端校验：档案状态正常 + 能力评估在有效期内）</h3>
+      <form class="inline" id="order-form">
+        <div class="field"><label>老人</label><select id="f-elder"></select></div>
+        <div class="field"><label>服务项目</label><select id="f-item"></select></div>
+        <div class="field"><label>预约时间</label><input type="datetime-local" id="f-time"></div>
+        <div class="field"><label>渠道</label>
+          <select id="f-channel"><option>家属端</option><option>电话</option><option>社区代下单</option></select></div>
+        <button class="btn" type="submit">提交订单</button>
+      </form>
+    </div>
+
+    <div class="card" id="action-panel">
+      <h3 id="action-title">操作</h3>
+      <div id="action-body"></div>
+    </div>
+
+    <div class="card">
+      <h3>服务订单（点单行右侧按钮走派单 → 完成 → 补贴 全流程）</h3>
+      <table id="order-table"><thead><tr>
+        <th>订单号</th><th>老人</th><th>项目</th><th>预约时间</th><th>渠道</th>
+        <th>金额</th><th>状态</th><th>当前护工</th><th>操作</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <!-- ============ 补贴申报 ============ -->
+  <section id="tab-subsidy" class="hide">
+    <div class="card">
+      <h3>发起补贴申报（校验：对象类别匹配 + 账期内已完成订单 + 唯一约束防重复）</h3>
+      <form class="inline" id="claim-form">
+        <div class="field"><label>老人</label><select id="c-elder"></select></div>
+        <div class="field"><label>补贴政策</label><select id="c-policy"></select></div>
+        <div class="field"><label>账期(YYYY-MM)</label><input id="c-period" placeholder="2026-10"></div>
+        <button class="btn" type="submit">生成申报</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3>申报与拨付进度（视图 v_claim_progress）</h3>
+      <table id="claim-table"><thead><tr>
+        <th>申报号</th><th>老人</th><th>区县</th><th>对象类别</th><th>补贴项目</th>
+        <th>账期</th><th>金额</th><th>状态</th><th>审核人</th><th>操作</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <!-- ============ 运维 ============ -->
+  <section id="tab-ops" class="hide">
+    <div class="card">
+      <h3>存储过程 sp_pause_expired_plans：评估到期 → 照护计划自动暂停</h3>
+      <p class="muted" style="margin-bottom:10px">
+        下表为将被暂停的「生效」计划（老人最新一次评估已过期）。点击执行后由数据库存储过程统一暂停。</p>
+      <table id="expired-table"><thead><tr>
+        <th>计划号</th><th>老人</th><th>服务包</th><th>当前状态</th><th>评估到期日</th></tr></thead><tbody></tbody></table>
+      <p style="margin-top:12px"><button class="btn warn" id="btn-pause">执行存储过程：暂停过期计划</button></p>
+    </div>
+    <div class="card">
+      <h3>护工未来 7 天排班余量（视图 v_schedule_capacity）</h3>
+      <table id="sched-table"><thead><tr>
+        <th>护工</th><th>证书类型</th><th>证书到期</th><th>日期</th><th>班次</th>
+        <th>已接/可接</th><th>余量</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const API = (url, opts) => fetch(url, {
+  headers: {'Content-Type':'application/json'}, ...opts,
+  body: opts && opts.body ? JSON.stringify(opts.body) : undefined
+}).then(r => r.json());
+
+function toast(msg, err=false) {
+  const t = $('#toast');
+  t.textContent = msg; t.className = err ? 'err' : ''; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 3500);
+}
+function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- Tab 切换 ---------- */
+document.querySelectorAll('nav button').forEach(btn => btn.onclick = () => {
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('main > section').forEach(s => s.classList.add('hide'));
+  btn.classList.add('active');
+  $('#tab-' + btn.dataset.tab).classList.remove('hide');
+});
+
+/* ---------- 总览 ---------- */
+async function loadStats() {
+  const r = await API('/api/stats');
+  const d = r.data, cards = [
+    ['elders_normal','在册正常老人'],
+    ['orders_active','进行中订单'],
+    ['orders_timeout','超时未派单','danger'],
+    ['plans_to_pause','待暂停计划','danger'],
+    ['claims_in_progress','审核中申报'],
+  ];
+  $('#stat-cards').innerHTML = cards.map(([k,l,c]) =>
+    `<div class="stat ${c||''}"><div class="num">${d[k]}</div><div class="label">${l}</div></div>`).join('');
+  const p = await API('/api/pending-orders');
+  $('#pending-table tbody').innerHTML = p.data.map(o => `<tr>
+    <td>${o.order_id}</td><td>${esc(o.elder_name)}</td><td>${esc(o.community)}</td>
+    <td>${esc(o.item_name)}</td><td>${o.appoint_time}</td>
+    <td>${o.waited_min}</td>
+    <td>${o.timeout_flag==='超时'?'<span class="badge b-red">超时</span>':o.timeout_flag==='临近超时'?'<span class="badge b-wait">临近超时</span>':'<span class="badge b-done">正常</span>'}</td></tr>`).join('')
+    || '<tr><td colspan="7" class="muted">暂无待派单订单</td></tr>';
+}
+
+/* ---------- 老人档案 ---------- */
+async function loadElders() {
+  const r = await API('/api/elders');
+  $('#elder-table tbody').innerHTML = r.data.map(e => `<tr>
+    <td>${e.elder_id}</td><td>${esc(e.name)}</td><td>${e.age}</td><td>${esc(e.community)}</td>
+    <td>${esc(e.id_masked)}</td>
+    <td>${(e.special_tag||'').split(',').filter(Boolean).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</td>
+    <td>${esc(e.ability_level)||'<span class="muted">未评估</span>'}</td>
+    <td>${e.assess_expire||''} ${e.assess_expired?'<span class="badge b-red">已过期</span>':''}</td>
+    <td>${e.elder_status==='正常'?'<span class="badge b-done">正常</span>':`<span class="badge b-canc">${esc(e.elder_status)}</span>`}</td>
+    <td>${esc(e.package_name)||'<span class="muted">无</span>'}${e.plan_status==='暂停'?' <span class="badge b-red">暂停</span>':''}</td></tr>`).join('');
+  return r.data;
+}
+
+/* ---------- 订单与派单 ---------- */
+let items = [], elderList = [];
+async function loadOrders() {
+  const r = await API('/api/orders');
+  $('#order-table tbody').innerHTML = r.data.map(o => {
+    let act = '';
+    if (o.status === '待派单') act = `<button class="btn small" onclick="openRecommend(${o.order_id})">推荐护工</button>`;
+    if (o.status === '已派单' && o.dispatch_id)
+      act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">完成确认</button>
+             <button class="btn small ghost" onclick="openReassign(${o.dispatch_id})">改派</button>`;
+    if (o.status === '服务中' && o.dispatch_id)
+      act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">完成确认</button>`;
+    const badge = {'待派单':'b-wait','已派单':'b-disp','服务中':'b-serv','已完成':'b-done','已取消':'b-canc'}[o.status];
+    return `<tr><td>${o.order_id}</td><td>${esc(o.elder_name)}</td><td>${esc(o.item_name)}</td>
+      <td>${o.appoint_time}</td><td>${esc(o.channel)}</td><td>￥${o.amount.toFixed(2)}</td>
+      <td><span class="badge ${badge}">${o.status}</span></td>
+      <td>${esc(o.caregiver_name)||'—'}</td><td>${act||'—'}</td></tr>`;
+  }).join('');
+}
+
+async function initOrderForm() {
+  elderList = await loadElders();
+  $('#f-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
+    .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}${e.assess_expired?'，评估已过期':''}）</option>`).join('');
+  const t = new Date(Date.now() + 26*3600e3);
+  $('#f-time').value = t.toISOString().slice(0,16);
+}
+
+$('#order-form').onsubmit = async ev => {
+  ev.preventDefault();
+  const r = await API('/api/orders', {method:'POST', body:{
+    elder_id:+$('#f-elder').value, item_id:+$('#f-item').value,
+    appoint_time: $('#f-time').value.replace('T',' '), channel:$('#f-channel').value }});
+  r.ok ? toast(`下单成功：订单 ${r.data.order_id}，金额 ￥${r.data.amount}`) : toast(r.msg, true);
+  loadOrders(); loadStats();
+};
+
+/* --- 推荐护工面板 --- */
+async function openRecommend(orderId) {
+  const r = await API(`/api/orders/${orderId}/recommend`);
+  $('#action-panel').style.display = 'block';
+  $('#action-title').textContent = `订单 ${orderId} · 推荐护工（在岗 + 证书有效 + 区域匹配 + 班次有余量）`;
+  $('#action-body').innerHTML = r.ok && r.data.length ? '<table><thead><tr><th>护工</th><th>机构</th><th>证书</th><th>评分</th><th>班次余量</th><th>操作</th></tr></thead><tbody>'
+    + r.data.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.agency)}</td><td>${esc(c.cert_type)}</td>
+      <td>${c.rating}</td><td>${c.booked}/${c.capacity}</td>
+      <td><button class="btn small" onclick="doDispatch(${orderId},${c.caregiver_id})">派单</button></td></tr>`).join('')
+    + '</tbody></table>'
+    : '<p class="muted">没有符合条件的护工（可试试改约其他日期，或到运维页看排班余量）。</p>';
+  $('#action-panel').scrollIntoView({behavior:'smooth'});
+}
+async function doDispatch(orderId, caregiverId) {
+  const r = await API(`/api/orders/${orderId}/dispatch`, {method:'POST', body:{caregiver_id:caregiverId}});
+  r.ok ? toast(`派单成功（派单号 ${r.data.dispatch_id}），排班已接单量已由触发器自动 +1`)
+       : toast('派单被数据库拒绝：' + r.msg, true);
+  $('#action-panel').style.display = 'none';
+  loadOrders(); loadStats(); loadSchedules();
+}
+
+/* --- 完成确认面板 --- */
+function openComplete(dispatchId, orderId) {
+  $('#action-panel').style.display = 'block';
+  $('#action-title').textContent = `订单 ${orderId} · 服务完成确认（家属确认后触发器自动回写订单状态）`;
+  $('#action-body').innerHTML = `<div class="row"><div style="flex:1">
+    <textarea id="note" placeholder="服务记录：例如 助餐送达，老人用餐正常，家属已签字确认"></textarea></div>
+    <button class="btn" onclick="doComplete(${dispatchId})">确认完成</button></div>`;
+  $('#action-panel').scrollIntoView({behavior:'smooth'});
+}
+async function doComplete(dispatchId) {
+  const r = await API(`/api/dispatches/${dispatchId}/complete`, {method:'POST',
+    body:{service_note: $('#note').value || '服务完成'}});
+  r.ok ? toast('已完成：订单状态已由触发器自动置为「已完成」，可用于补贴申报') : toast(r.msg, true);
+  $('#action-panel').style.display = 'none';
+  loadOrders(); loadStats();
+}
+
+/* --- 改派面板 --- */
+function openReassign(dispatchId) {
+  $('#action-panel').style.display = 'block';
+  $('#action-title').textContent = `派单 ${dispatchId} · 改派（保留原记录与原因，订单回到待派单）`;
+  $('#action-body').innerHTML = `<div class="row"><div style="flex:1">
+    <input id="reason" style="width:100%" placeholder="改派原因：例如 护工临时请假"></div>
+    <button class="btn warn" onclick="doReassign(${dispatchId})">确认改派</button></div>`;
+  $('#action-panel').scrollIntoView({behavior:'smooth'});
+}
+async function doReassign(dispatchId) {
+  const r = await API(`/api/dispatches/${dispatchId}/reassign`, {method:'POST',
+    body:{reason: $('#reason').value}});
+  r.ok ? toast('已改派，订单回到待派单，可重新推荐护工') : toast(r.msg, true);
+  $('#action-panel').style.display = 'none';
+  loadOrders(); loadStats(); loadSchedules();
+}
+
+/* ---------- 补贴 ---------- */
+async function loadSubsidy() {
+  const [pol, clm] = await Promise.all([API('/api/subsidy/policies'), API('/api/subsidy/claims')]);
+  $('#c-policy').innerHTML = pol.data.map(p =>
+    `<option value="${p.policy_id}">${p.district} · ${p.target_type} · ${esc(p.item_name)}（￥${p.standard}/次）</option>`).join('');
+  $('#c-elder').innerHTML = elderList.map(e => `<option value="${e.elder_id}">${esc(e.name)}</option>`).join('');
+  const lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth()-1);
+  $('#c-period').value = lastMonth.toISOString().slice(0,7);
+  $('#claim-table tbody').innerHTML = clm.data.map(c => {
+    let act = '';
+    if (c.status === '待审核') act = `<button class="btn small" onclick="audit(${c.claim_id},'approve')">街道审核</button>
+      <button class="btn small warn" onclick="audit(${c.claim_id},'reject')">驳回</button>`;
+    if (c.status === '街道已审') act = `<button class="btn small" onclick="audit(${c.claim_id},'pay')">确认拨付</button>
+      <button class="btn small warn" onclick="audit(${c.claim_id},'reject')">驳回</button>`;
+    const badge = {'待审核':'b-wait','街道已审':'b-disp','已拨付':'b-done','已驳回':'b-canc'}[c.status];
+    return `<tr><td>${c.claim_id}</td><td>${esc(c.elder_name)}</td><td>${esc(c.district)}</td>
+      <td><span class="tag">${esc(c.target_type)}</span></td><td>${esc(c.item_name)}</td>
+      <td>${c.claim_period}</td><td>￥${c.amount.toFixed(2)}</td>
+      <td><span class="badge ${badge}">${c.status}</span></td><td>${esc(c.reviewer)||'—'}</td><td>${act||'—'}</td></tr>`;
+  }).join('');
+}
+$('#claim-form').onsubmit = async ev => {
+  ev.preventDefault();
+  const r = await API('/api/subsidy/claims', {method:'POST', body:{
+    elder_id:+$('#c-elder').value, policy_id:+$('#c-policy').value, claim_period:$('#c-period').value}});
+  r.ok ? toast(`申报成功（申报号 ${r.data.claim_id}）：${r.data.order_ids.length} 笔订单，金额 ￥${r.data.amount}`)
+       : toast('申报被拒绝：' + r.msg, true);
+  loadSubsidy(); loadStats();
+};
+async function audit(id, action) {
+  const r = await API(`/api/subsidy/claims/${id}/audit`, {method:'POST', body:{action}});
+  r.ok ? toast(`申报 ${id} 已流转为「${r.data.status}」`) : toast(r.msg, true);
+  loadSubsidy(); loadStats();
+}
+
+/* ---------- 运维 ---------- */
+async function loadOps() {
+  const r = await API('/api/maintenance/expired-preview');
+  $('#expired-table tbody').innerHTML = r.data.length ? r.data.map(x => `<tr>
+    <td>${x.plan_id}</td><td>${esc(x.elder_name)}</td><td>${esc(x.package_name)}</td>
+    <td>${esc(x.status)}</td><td>${x.expire_date} <span class="badge b-red">已过期</span></td></tr>`).join('')
+    : '<tr><td colspan="5" class="muted">没有需要暂停的计划</td></tr>';
+  loadSchedules();
+}
+async function loadSchedules() {
+  if ($('#sched-table').closest('section').classList.contains('hide')) return;
+  const r = await API('/api/schedules');
+  $('#sched-table tbody').innerHTML = r.data.map(s => `<tr>
+    <td>${esc(s.caregiver_name)}</td><td>${esc(s.cert_type)}</td>
+    <td>${s.cert_expire} ${s.cert_valid?'':'<span class="badge b-red">已过期</span>'}</td>
+    <td>${s.work_date}</td><td>${s.shift}</td><td>${s.booked}/${s.capacity}</td><td>${s.remaining}</td></tr>`).join('');
+}
+$('#btn-pause').onclick = async () => {
+  const r = await API('/api/maintenance/pause-expired-plans', {method:'POST'});
+  r.ok ? toast(`存储过程执行成功：暂停了 ${r.data.paused_plans} 份照护计划`) : toast(r.msg, true);
+  loadOps(); loadElders(); loadStats();
+};
+
+/* ---------- 启动 ---------- */
+(async function init() {
+  // 服务项目下拉
+  const it = await API('/api/items');
+  items = it.data;
+  $('#f-item').innerHTML = items.map(i =>
+    `<option value="${i.item_id}">${esc(i.name)}（￥${i.guide_price}/${i.unit}${i.subsidizable?'，可补贴':''}）</option>`).join('');
+  await initOrderForm();
+  loadStats(); loadOrders(); loadSubsidy(); loadOps();
+})();
+</script>
+</body>
+</html>

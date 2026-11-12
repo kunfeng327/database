@@ -17,6 +17,45 @@
 
 后续目录约定：`sql/`（DDL、查询、视图、存储过程与触发器）、`src/`（持久层代码）、`文档/`（E-R 图、数据字典等）。
 
+## 演示系统（前后端 Demo）
+
+技术栈：**MySQL 9.x + Flask + PyMySQL + 原生 HTML/JS**（无外部 CDN 依赖，离线可跑）。
+
+```
+sql/
+  01_schema.sql          # 建库建表（11 张表，含外键/CHECK/唯一约束/索引）
+  02_seed.sql            # 测试数据（日期相对 CURDATE() 生成，随时可重置）
+  03_views.sql           # 4 个视图：档案-评估-计划 / 待派单超时 / 申报进度 / 排班余量
+  04_procs_triggers.sql  # 存储过程 sp_pause_expired_plans + 3 个触发器
+src/backend/  app.py db.py          # REST API（事务 / 触发器错误拦截）
+src/frontend/ index.html            # 单页前端（总览/档案/订单派单/补贴/运维）
+启动演示.bat                          # 一键初始化数据库并启动（队友用这个）
+```
+
+### 运行方式
+
+- **一键**：双击 `启动演示.bat`，输入 MySQL root 密码即可（可选是否重置演示数据）。
+- **手动**：
+  ```bash
+  # 1. 导入数据库（按序执行 4 个脚本）
+  mysql -h127.0.0.1 -uroot -p --default-character-set=utf8mb4 < sql/01_schema.sql
+  #    …… 02_seed / 03_views / 04_procs_triggers 同理
+  # 2. 配置密码：复制 src/backend/config_example.py 为 config_local.py（已被 .gitignore 排除）
+  # 3. 启动
+  cd src/backend && pip install flask pymysql && python app.py
+  ```
+  打开 http://127.0.0.1:5000
+
+### 答辩演示走查顺序（约 5 分钟）
+
+1. **总览**：超时未派单、待暂停计划等指标来自视图；
+2. **下单被拒**：给"高崇礼"下单 → 提示能力评估已过期（应用层校验）；
+3. **派单被拒**：给订单推荐护工后，选证书已过期的"周德海" → 数据库触发器 SIGNAL 拒绝；
+4. **正常闭环**：下单 → 推荐护工 → 派单（排班 booked 由触发器自动 +1）→ 完成确认（订单状态由触发器回写"已完成"）；
+5. **改派**：保留原派单记录与原因，订单回到待派单；
+6. **补贴**：申报自动汇总账期内已完成订单、计算金额；重复申报被唯一约束拦截；审核流转 待审核→街道已审→已拨付；
+7. **运维**：执行存储过程，评估到期的照护计划自动暂停。
+
 ## 队员与分工（待填）
 
 | 姓名 | 学号 | GitHub 用户名 | 分工 | 分支 |

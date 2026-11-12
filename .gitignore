@@ -14,3 +14,9 @@ venv/
 # IDE
 .idea/
 .vscode/
+
+# 本机数据库密码配置（不提交）
+src/backend/config_local.py
+
+# Python 运行产物
+*.log
