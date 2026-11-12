@@ -3,211 +3,369 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>社区居家养老智慧服务平台 · 演示</title>
+<title>社区居家养老智慧服务平台</title>
 <style>
-  :root {
-    --primary:#2c6e63; --primary-light:#e8f2f0; --danger:#c0392b;
-    --border:#e2e8e6; --text:#263238; --muted:#78909c; --bg:#f4f7f6;
-  }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:"Microsoft YaHei","PingFang SC",sans-serif; background:var(--bg); color:var(--text); font-size:14px; }
-  header { background:var(--primary); color:#fff; padding:18px 32px; }
-  header h1 { font-size:20px; font-weight:600; }
-  header p { font-size:12px; opacity:.85; margin-top:4px; }
-  nav { display:flex; gap:4px; background:#fff; border-bottom:1px solid var(--border); padding:0 24px; }
-  nav button { border:none; background:none; padding:14px 18px; font-size:14px; color:var(--muted);
-    cursor:pointer; border-bottom:2.5px solid transparent; }
-  nav button.active { color:var(--primary); border-bottom-color:var(--primary); font-weight:600; }
-  main { max-width:1200px; margin:20px auto; padding:0 24px; }
-  .card { background:#fff; border:1px solid var(--border); border-radius:10px; padding:18px; margin-bottom:16px; }
-  .card h3 { font-size:15px; margin-bottom:12px; color:var(--primary); }
-  .stats { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
-  .stat { background:#fff; border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center; }
-  .stat .num { font-size:26px; font-weight:700; color:var(--primary); }
-  .stat.danger .num { color:var(--danger); }
-  .stat .label { font-size:12px; color:var(--muted); margin-top:4px; }
-  table { width:100%; border-collapse:collapse; }
-  th { text-align:left; font-size:12px; color:var(--muted); padding:8px 10px; border-bottom:2px solid var(--border); white-space:nowrap; }
-  td { padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
-  tr:hover td { background:var(--primary-light); }
-  .badge { display:inline-block; padding:2px 9px; border-radius:10px; font-size:12px; white-space:nowrap; }
-  .b-wait{background:#fdf0e0;color:#b96a00}.b-disp{background:#e3edfa;color:#2563a8}
-  .b-serv{background:#efe6f8;color:#7442b3}.b-done{background:#e2f2e6;color:#2e7d32}
-  .b-canc{background:#eceff1;color:#90a4ae}.b-red{background:#fdecea;color:var(--danger)}
-  .tag { display:inline-block; background:var(--primary-light); color:var(--primary);
-    border-radius:4px; padding:1px 6px; font-size:12px; margin:1px; }
-  button.btn { background:var(--primary); color:#fff; border:none; border-radius:6px;
-    padding:7px 14px; font-size:13px; cursor:pointer; }
-  button.btn:hover { opacity:.88; }
-  button.btn.small { padding:4px 10px; font-size:12px; }
-  button.btn.ghost { background:#fff; color:var(--primary); border:1px solid var(--primary); }
-  button.btn.warn { background:var(--danger); }
-  form.inline { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
-  .field { display:flex; flex-direction:column; gap:4px; }
-  .field label { font-size:12px; color:var(--muted); }
-  select, input, textarea { border:1px solid var(--border); border-radius:6px; padding:7px 9px;
-    font-size:13px; font-family:inherit; background:#fff; min-width:120px; }
-  textarea { width:100%; min-height:56px; resize:vertical; }
-  #toast { position:fixed; top:18px; left:50%; transform:translateX(-50%); z-index:99;
-    background:#263238; color:#fff; padding:10px 22px; border-radius:8px; font-size:13px;
-    display:none; max-width:80%; }
-  #toast.err { background:var(--danger); }
-  #action-panel { display:none; }
-  #action-panel .row { display:flex; gap:10px; align-items:flex-start; }
-  .muted { color:var(--muted); font-size:12px; }
-  .right { text-align:right; }
-  .hide { display:none; }
+/* 设计基调借鉴 gentelella（MIT）：深色侧栏 + 青绿主色 + 浅灰底 */
+:root {
+  --sidebar-bg:#1a2332; --sidebar-text:#7b8fa3; --sidebar-text-active:#fff;
+  --sidebar-active:rgba(26,187,156,.12); --sidebar-hover:rgba(255,255,255,.05);
+  --primary:#1ABB9C; --primary-dk:#169f85; --primary-lt:rgba(26,187,156,.08);
+  --bg:#f5f7fb; --surface:#fff; --border:#e6e7eb;
+  --text:#1e2633; --text-2:#626d7d; --muted:#7e8896;
+  --blue:#066fd1; --azure:#4299e1; --green:#2fb344; --yellow:#f59f00;
+  --orange:#f76707; --red:#d63939; --purple:#ae3ec9;
+  --green-lt:rgba(47,179,68,.1); --red-lt:rgba(214,57,57,.08);
+  --yellow-lt:rgba(245,159,0,.12); --blue-lt:rgba(6,111,209,.08);
+  --purple-lt:rgba(174,62,201,.08); --orange-lt:rgba(247,103,7,.1);
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:var(--bg);
+  color:var(--text); font-size:14px; }
+
+/* ---------------- 登录页 ---------------- */
+#login-view { min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,#1a2332 0%,#17303c 60%,#1ABB9C 160%); }
+.login-card { background:#fff; border-radius:12px; padding:36px 40px; width:400px;
+  box-shadow:0 18px 50px rgba(0,0,0,.35); }
+.login-card h1 { font-size:19px; margin-bottom:4px; }
+.login-card .sub { color:var(--muted); font-size:12px; margin-bottom:22px; }
+.login-card label { font-size:12px; color:var(--text-2); display:block; margin:12px 0 5px; }
+.login-card input { width:100%; padding:10px 12px; border:1px solid var(--border);
+  border-radius:6px; font-size:14px; }
+.login-card input:focus { outline:2px solid var(--primary-lt); border-color:var(--primary); }
+.btn-login { width:100%; margin-top:20px; padding:11px; background:var(--primary); color:#fff;
+  border:none; border-radius:6px; font-size:15px; cursor:pointer; }
+.btn-login:hover { background:var(--primary-dk); }
+.demo-accounts { margin-top:18px; border-top:1px dashed var(--border); padding-top:14px; }
+.demo-accounts p { font-size:12px; color:var(--muted); margin-bottom:8px; }
+.demo-accounts .chip { display:inline-block; margin:2px 3px; padding:4px 10px; font-size:12px;
+  background:var(--bg); border:1px solid var(--border); border-radius:14px; cursor:pointer; }
+.demo-accounts .chip:hover { border-color:var(--primary); color:var(--primary); }
+
+/* ---------------- 应用外壳 ---------------- */
+#app-view { display:none; }
+.sidebar { position:fixed; left:0; top:0; bottom:0; width:222px; background:var(--sidebar-bg);
+  color:var(--sidebar-text); display:flex; flex-direction:column; z-index:10; }
+.brand { padding:20px 20px 16px; border-bottom:1px solid rgba(255,255,255,.06); }
+.brand b { color:#fff; font-size:15px; display:block; }
+.brand span { font-size:11px; color:var(--sidebar-text); }
+.nav { flex:1; padding:10px 0; overflow-y:auto; }
+.nav button { display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+  background:none; border:none; color:var(--sidebar-text); padding:11px 20px; font-size:13.5px;
+  cursor:pointer; border-left:3px solid transparent; }
+.nav button:hover { background:var(--sidebar-hover); color:#c5d0dc; }
+.nav button.active { background:var(--sidebar-active); color:var(--sidebar-text-active);
+  border-left-color:var(--primary); }
+.nav .ico { width:18px; text-align:center; font-size:15px; }
+.side-user { padding:14px 20px; border-top:1px solid rgba(255,255,255,.06); font-size:12px; }
+.side-user b { color:#fff; display:block; margin-bottom:2px; }
+.side-user button { margin-top:8px; width:100%; padding:7px; background:transparent;
+  color:var(--sidebar-text); border:1px solid rgba(255,255,255,.15); border-radius:6px;
+  cursor:pointer; font-size:12px; }
+.side-user button:hover { color:#fff; border-color:var(--primary); }
+
+.main { margin-left:222px; min-height:100vh; }
+.topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:16px 28px;
+  display:flex; justify-content:space-between; align-items:center; }
+.topbar .pre { font-size:11px; color:var(--muted); letter-spacing:.05em; }
+.topbar h2 { font-size:18px; font-weight:600; }
+.role-badge { font-size:12px; padding:4px 12px; border-radius:14px; background:var(--primary-lt);
+  color:var(--primary-dk); font-weight:600; }
+.content { padding:24px 28px; max-width:1250px; }
+
+/* ---------------- 通用组件 ---------------- */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:18px 20px; margin-bottom:18px; }
+.card h3 { font-size:14px; margin-bottom:14px; color:var(--text); font-weight:600; }
+.card h3 small { font-weight:400; color:var(--muted); margin-left:8px; }
+.stats { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:18px; }
+.stat { background:var(--surface); border:1px solid var(--border); border-radius:8px;
+  padding:16px; display:flex; gap:12px; align-items:flex-start; }
+.stat .icon { width:38px; height:38px; border-radius:8px; display:flex; align-items:center;
+  justify-content:center; font-size:17px; flex:none; }
+.stat .num { font-size:24px; font-weight:700; line-height:1.1; }
+.stat .label { font-size:12px; color:var(--muted); margin-top:3px; }
+.i-teal{background:var(--primary-lt);color:var(--primary-dk)} .i-blue{background:var(--blue-lt);color:var(--blue)}
+.i-yellow{background:var(--yellow-lt);color:var(--yellow)} .i-red{background:var(--red-lt);color:var(--red)}
+.i-purple{background:var(--purple-lt);color:var(--purple)}
+table { width:100%; border-collapse:collapse; }
+th { text-align:left; font-size:11.5px; color:var(--muted); padding:9px 10px;
+  border-bottom:2px solid var(--border); white-space:nowrap; font-weight:600; }
+td { padding:10px; border-bottom:1px solid #eff0f3; vertical-align:middle; font-size:13px; }
+tr:hover td { background:var(--primary-lt); }
+.badge { display:inline-block; padding:2.5px 10px; border-radius:12px; font-size:12px; white-space:nowrap; }
+.b-wait{background:var(--yellow-lt);color:#b96a00}.b-disp{background:var(--blue-lt);color:var(--blue)}
+.b-serv{background:var(--purple-lt);color:var(--purple)}.b-done{background:var(--green-lt);color:#2e7d32}
+.b-canc{background:#eceff1;color:#78909c}.b-red{background:var(--red-lt);color:var(--red)}
+.tag { display:inline-block; background:var(--bg); color:var(--text-2); border:1px solid var(--border);
+  border-radius:4px; padding:1px 7px; font-size:11.5px; margin:1px; }
+button.btn { background:var(--primary); color:#fff; border:none; border-radius:6px;
+  padding:8px 16px; font-size:13px; cursor:pointer; }
+button.btn:hover { background:var(--primary-dk); }
+button.btn.small { padding:4px 11px; font-size:12px; }
+button.btn.ghost { background:#fff; color:var(--primary-dk); border:1px solid var(--primary); }
+button.btn.warn { background:var(--red); }
+form.inline { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+.field { display:flex; flex-direction:column; gap:4px; }
+.field label { font-size:12px; color:var(--muted); }
+select, input, textarea { border:1px solid var(--border); border-radius:6px; padding:8px 10px;
+  font-size:13px; font-family:inherit; background:#fff; min-width:130px; }
+input:focus,select:focus,textarea:focus { outline:2px solid var(--primary-lt); border-color:var(--primary); }
+textarea { width:100%; min-height:56px; resize:vertical; }
+#toast { position:fixed; top:18px; left:50%; transform:translateX(-50%); z-index:99;
+  background:#1e2633; color:#fff; padding:10px 24px; border-radius:8px; font-size:13px;
+  display:none; max-width:80%; box-shadow:0 8px 30px rgba(0,0,0,.25); }
+#toast.err { background:var(--red); }
+#action-panel { display:none; border-left:3px solid var(--primary); }
+#action-panel .row { display:flex; gap:10px; align-items:flex-start; }
+.muted { color:var(--muted); font-size:12px; }
+.hide { display:none; }
 </style>
 </head>
 <body>
-<header>
-  <h1>社区居家养老智慧服务平台</h1>
-  <p>数据库系统课程设计演示 · 建档 — 评估 — 下单 — 派单 — 服务 — 补贴 全链路</p>
-</header>
 
-<nav>
-  <button data-tab="dashboard" class="active">总览</button>
-  <button data-tab="elders">老人档案</button>
-  <button data-tab="orders">订单与派单</button>
-  <button data-tab="subsidy">补贴申报</button>
-  <button data-tab="ops">运维工具</button>
-</nav>
+<!-- ================= 登录页 ================= -->
+<div id="login-view">
+  <div class="login-card">
+    <h1>社区居家养老智慧服务平台</h1>
+    <div class="sub">数据库系统课程设计演示 · 按角色登录（RBAC）</div>
+    <label>账号</label><input id="lg-user" placeholder="请输入账号">
+    <label>密码</label><input id="lg-pass" type="password" placeholder="请输入密码">
+    <button class="btn-login" onclick="doLogin()">登 录</button>
+    <div class="demo-accounts">
+      <p>演示账号（密码均为 123456，点击自动填充）：</p>
+      <span class="chip" onclick="fillLogin('shequ')">社区管理员</span>
+      <span class="chip" onclick="fillLogin('jiashu')">家属·陈桂香家</span>
+      <span class="chip" onclick="fillLogin('jiashu2')">家属·李淑珍家</span>
+      <span class="chip" onclick="fillLogin('hugong')">护工·王秀兰</span>
+      <span class="chip" onclick="fillLogin('jigou')">机构负责人</span>
+      <span class="chip" onclick="fillLogin('jianguan')">监管人员</span>
+    </div>
+  </div>
+</div>
 
-<main>
-  <!-- ============ 总览 ============ -->
-  <section id="tab-dashboard">
-    <div class="stats" id="stat-cards"></div>
-    <div class="card" style="margin-top:16px">
-      <h3>待派单订单（视图 v_pending_dispatch_orders，含超时标志）</h3>
-      <table id="pending-table"><thead><tr>
-        <th>订单号</th><th>老人</th><th>社区</th><th>服务项目</th><th>预约时间</th>
-        <th>等待(分钟)</th><th>超时标志</th></tr></thead><tbody></tbody></table>
+<!-- ================= 应用 ================= -->
+<div id="app-view">
+  <aside class="sidebar">
+    <div class="brand"><b>智慧养老平台</b><span>elder care platform</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-user">
+      <b id="u-name"></b><span id="u-role"></span>
+      <button onclick="doLogout()">退出登录</button>
     </div>
-  </section>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div><div class="pre">ELDER CARE PLATFORM</div><h2 id="page-title">总览</h2></div>
+      <span class="role-badge" id="role-badge"></span>
+    </div>
+    <div class="content">
 
-  <!-- ============ 老人档案 ============ -->
-  <section id="tab-elders" class="hide">
-    <div class="card">
-      <h3>老人档案 · 能力评估 · 照护计划（视图 v_elder_assessment_plan，身份证已脱敏）</h3>
-      <table id="elder-table"><thead><tr>
-        <th>编号</th><th>姓名</th><th>年龄</th><th>社区</th><th>身份证(脱敏)</th>
-        <th>特殊标签</th><th>能力等级</th><th>评估到期</th><th>状态</th><th>生效计划</th></tr></thead><tbody></tbody></table>
-    </div>
-  </section>
+      <section id="tab-dashboard" class="hide">
+        <div class="stats" id="stat-cards"></div>
+        <div class="card">
+          <h3>待派单订单<small>视图 v_pending_dispatch_orders，30 分钟未接单标记超时</small></h3>
+          <table id="pending-table"><thead><tr>
+            <th>订单号</th><th>老人</th><th>社区</th><th>服务项目</th><th>预约时间</th>
+            <th>等待(分钟)</th><th>超时标志</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
 
-  <!-- ============ 订单与派单 ============ -->
-  <section id="tab-orders" class="hide">
-    <div class="card">
-      <h3>下单（后端校验：档案状态正常 + 能力评估在有效期内）</h3>
-      <form class="inline" id="order-form">
-        <div class="field"><label>老人</label><select id="f-elder"></select></div>
-        <div class="field"><label>服务项目</label><select id="f-item"></select></div>
-        <div class="field"><label>预约时间</label><input type="datetime-local" id="f-time"></div>
-        <div class="field"><label>渠道</label>
-          <select id="f-channel"><option>家属端</option><option>电话</option><option>社区代下单</option></select></div>
-        <button class="btn" type="submit">提交订单</button>
-      </form>
-    </div>
+      <section id="tab-elders" class="hide">
+        <div class="card">
+          <h3>老人档案 · 能力评估 · 照护计划<small>视图 v_elder_assessment_plan，身份证脱敏</small></h3>
+          <table id="elder-table"><thead><tr>
+            <th>编号</th><th>姓名</th><th>年龄</th><th>社区</th><th>身份证(脱敏)</th>
+            <th>特殊标签</th><th>能力等级</th><th>评估到期</th><th>状态</th><th>生效计划</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
 
-    <div class="card" id="action-panel">
-      <h3 id="action-title">操作</h3>
-      <div id="action-body"></div>
-    </div>
+      <section id="tab-orders" class="hide">
+        <div class="card" id="order-form-card">
+          <h3 id="order-form-title">下单<small>应用层校验：档案正常 + 评估在有效期内</small></h3>
+          <form class="inline" id="order-form">
+            <div class="field" id="f-elder-field"><label>老人</label><select id="f-elder"></select></div>
+            <div class="field"><label>服务项目</label><select id="f-item"></select></div>
+            <div class="field"><label>预约时间</label><input type="datetime-local" id="f-time"></div>
+            <div class="field" id="f-channel-field"><label>渠道</label>
+              <select id="f-channel"><option>家属端</option><option>电话</option><option>社区代下单</option></select></div>
+            <button class="btn" type="submit">提交订单</button>
+          </form>
+        </div>
+        <div class="card" id="action-panel">
+          <h3 id="action-title">操作</h3>
+          <div id="action-body"></div>
+        </div>
+        <div class="card">
+          <h3 id="orders-title">服务订单</h3>
+          <table id="order-table"><thead><tr>
+            <th>订单号</th><th>老人</th><th>项目</th><th>预约时间</th><th>渠道</th>
+            <th>金额</th><th>状态</th><th>护工</th><th>操作</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
 
-    <div class="card">
-      <h3>服务订单（点单行右侧按钮走派单 → 完成 → 补贴 全流程）</h3>
-      <table id="order-table"><thead><tr>
-        <th>订单号</th><th>老人</th><th>项目</th><th>预约时间</th><th>渠道</th>
-        <th>金额</th><th>状态</th><th>当前护工</th><th>操作</th></tr></thead><tbody></tbody></table>
-    </div>
-  </section>
+      <section id="tab-subsidy" class="hide">
+        <div class="card" id="claim-form-card">
+          <h3>发起补贴申报<small>校验：区县+对象类别匹配、账期内已完成订单、唯一约束防重复</small></h3>
+          <form class="inline" id="claim-form">
+            <div class="field"><label>老人</label><select id="c-elder"></select></div>
+            <div class="field"><label>补贴政策</label><select id="c-policy"></select></div>
+            <div class="field"><label>账期(YYYY-MM)</label><input id="c-period" placeholder="2026-10"></div>
+            <button class="btn" type="submit">生成申报</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>申报与拨付进度<small>视图 v_claim_progress</small></h3>
+          <table id="claim-table"><thead><tr>
+            <th>申报号</th><th>老人</th><th>区县</th><th>对象类别</th><th>补贴项目</th>
+            <th>账期</th><th>金额</th><th>状态</th><th>审核人</th><th id="claim-act-th">操作</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
 
-  <!-- ============ 补贴申报 ============ -->
-  <section id="tab-subsidy" class="hide">
-    <div class="card">
-      <h3>发起补贴申报（校验：对象类别匹配 + 账期内已完成订单 + 唯一约束防重复）</h3>
-      <form class="inline" id="claim-form">
-        <div class="field"><label>老人</label><select id="c-elder"></select></div>
-        <div class="field"><label>补贴政策</label><select id="c-policy"></select></div>
-        <div class="field"><label>账期(YYYY-MM)</label><input id="c-period" placeholder="2026-10"></div>
-        <button class="btn" type="submit">生成申报</button>
-      </form>
-    </div>
-    <div class="card">
-      <h3>申报与拨付进度（视图 v_claim_progress）</h3>
-      <table id="claim-table"><thead><tr>
-        <th>申报号</th><th>老人</th><th>区县</th><th>对象类别</th><th>补贴项目</th>
-        <th>账期</th><th>金额</th><th>状态</th><th>审核人</th><th>操作</th></tr></thead><tbody></tbody></table>
-    </div>
-  </section>
+      <section id="tab-ops" class="hide">
+        <div class="card">
+          <h3>存储过程 sp_pause_expired_plans<small>评估到期 → 照护计划自动暂停</small></h3>
+          <p class="muted" style="margin-bottom:10px">下表为将被暂停的「生效」计划（老人最新评估已过期）：</p>
+          <table id="expired-table"><thead><tr>
+            <th>计划号</th><th>老人</th><th>服务包</th><th>当前状态</th><th>评估到期日</th></tr></thead><tbody></tbody></table>
+          <p style="margin-top:12px"><button class="btn warn" id="btn-pause">执行存储过程：暂停过期计划</button></p>
+        </div>
+      </section>
 
-  <!-- ============ 运维 ============ -->
-  <section id="tab-ops" class="hide">
-    <div class="card">
-      <h3>存储过程 sp_pause_expired_plans：评估到期 → 照护计划自动暂停</h3>
-      <p class="muted" style="margin-bottom:10px">
-        下表为将被暂停的「生效」计划（老人最新一次评估已过期）。点击执行后由数据库存储过程统一暂停。</p>
-      <table id="expired-table"><thead><tr>
-        <th>计划号</th><th>老人</th><th>服务包</th><th>当前状态</th><th>评估到期日</th></tr></thead><tbody></tbody></table>
-      <p style="margin-top:12px"><button class="btn warn" id="btn-pause">执行存储过程：暂停过期计划</button></p>
+      <section id="tab-schedules" class="hide">
+        <div class="card">
+          <h3>护工排班与接单余量<small>视图 v_schedule_capacity（排班不重叠，已接单量 ≤ 可接单量）</small></h3>
+          <table id="sched-table"><thead><tr>
+            <th>护工</th><th>证书类型</th><th>证书到期</th><th>日期</th><th>班次</th>
+            <th>已接/可接</th><th>余量</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+
     </div>
-    <div class="card">
-      <h3>护工未来 7 天排班余量（视图 v_schedule_capacity）</h3>
-      <table id="sched-table"><thead><tr>
-        <th>护工</th><th>证书类型</th><th>证书到期</th><th>日期</th><th>班次</th>
-        <th>已接/可接</th><th>余量</th></tr></thead><tbody></tbody></table>
-    </div>
-  </section>
-</main>
+  </div>
+</div>
 
 <div id="toast"></div>
 
 <script>
 const $ = s => document.querySelector(s);
-const API = (url, opts) => fetch(url, {
-  headers: {'Content-Type':'application/json'}, ...opts,
-  body: opts && opts.body ? JSON.stringify(opts.body) : undefined
-}).then(r => r.json());
+let ME = null;                 // 当前登录用户 {name, role, elder_id, caregiver_id}
+let elderList = [];
 
+async function API(url, opts) {
+  const r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...opts,
+    body: opts && opts.body ? JSON.stringify(opts.body) : undefined });
+  const j = await r.json().catch(() => ({ok:false, msg:'网络错误'}));
+  if (r.status === 401) { showLogin(); throw new Error(j.msg || '请先登录'); }
+  return j;
+}
 function toast(msg, err=false) {
   const t = $('#toast');
   t.textContent = msg; t.className = err ? 'err' : ''; t.style.display = 'block';
   clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 3500);
 }
 function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+const fmtYuan = n => '￥' + Number(n).toFixed(2);
 
-/* ---------- Tab 切换 ---------- */
-document.querySelectorAll('nav button').forEach(btn => btn.onclick = () => {
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('main > section').forEach(s => s.classList.add('hide'));
-  btn.classList.add('active');
-  $('#tab-' + btn.dataset.tab).classList.remove('hide');
-});
+/* ================= 登录 / 登出 ================= */
+function fillLogin(u){ $('#lg-user').value = u; $('#lg-pass').value = '123456'; }
+function showLogin(){ $('#app-view').style.display='none'; $('#login-view').style.display='flex'; }
+async function doLogin(){
+  const r = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({username:$('#lg-user').value, password:$('#lg-pass').value}) }).then(x=>x.json());
+  if (r.ok) { toast(`欢迎，${r.data.real_name}（${r.data.role}）`); boot(); }
+  else toast(r.msg, true);
+}
+async function doLogout(){
+  await fetch('/api/logout', {method:'POST'});
+  ME = null; showLogin(); toast('已退出登录');
+}
+document.getElementById('lg-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
-/* ---------- 总览 ---------- */
-async function loadStats() {
+/* ================= 各角色导航 ================= */
+const ROLE_TABS = {
+  '社区管理员': [['dashboard','总览','📊'],['orders','订单与派单','📋'],['elders','老人档案','👴'],
+                 ['subsidy','补贴申报','💰'],['ops','运维工具','🛠']],
+  '家属':       [['orders','服务订单','📋'],['elders','家庭档案','🏠']],
+  '护工':       [['orders','我的派单','🧑‍⚕️'],['schedules','我的排班','📅']],
+  '机构负责人': [['schedules','排班总览','📅']],
+  '监管人员':   [['dashboard','总览','📊'],['subsidy','补贴监管','🔍'],['elders','老人档案','👴']],
+};
+
+async function boot(){
+  let me;
+  try { me = await API('/api/me'); } catch(e) { return; }
+  if (!me.ok) { showLogin(); return; }
+  ME = me.data;
+  $('#login-view').style.display = 'none';
+  $('#app-view').style.display = 'block';
+  $('#u-name').textContent = ME.name;
+  $('#u-role').textContent = ME.role + (ME.role==='家属' ? ' · 绑定老人档案' : '');
+  $('#role-badge').textContent = ME.role;
+  buildNav();
+  await loadItems();
+  await Promise.all([loadElders(), loadOrders(), loadSchedules()]);
+  loadStats(); loadPending(); loadSubsidy(); loadOps();
+}
+
+function buildNav(){
+  const tabs = ROLE_TABS[ME.role] || [];
+  $('#nav').innerHTML = tabs.map(([id,label,ico],i) =>
+    `<button data-tab="${id}" class="${i===0?'active':''}"><span class="ico">${ico}</span>${label}</button>`).join('');
+  document.querySelectorAll('#nav button').forEach(btn => btn.onclick = () => {
+    document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.content > section').forEach(s => s.classList.add('hide'));
+    btn.classList.add('active');
+    $('#tab-' + btn.dataset.tab).classList.remove('hide');
+    $('#page-title').textContent = btn.textContent.trim().replace(/^[^\u4e00-\u9fa5]+/,'');
+    loadSchedules(); // 切到排班页时刷新
+  });
+  document.querySelectorAll('.content > section').forEach(s => s.classList.add('hide'));
+  $('#tab-' + tabs[0][0]).classList.remove('hide');
+  $('#page-title').textContent = tabs[0][1];
+  // 按角色显隐控件
+  const isAdmin = ME.role === '社区管理员', isFamily = ME.role === '家属', isReg = ME.role === '监管人员';
+  $('#order-form-card').classList.toggle('hide', !(isAdmin || isFamily));
+  $('#action-panel').style.display = 'none';
+  $('#f-elder-field').classList.toggle('hide', isFamily);   // 家属自动绑定老人
+  $('#f-channel-field').classList.toggle('hide', isFamily);
+  $('#claim-form-card').classList.toggle('hide', !isAdmin);
+  $('#claim-act-th').classList.toggle('hide', !isReg);
+  $('#orders-title').textContent = ME.role==='护工' ? '我的派单记录' :
+      isFamily ? '家庭服务订单' : '服务订单';
+  $('#order-form-title').innerHTML = isFamily
+      ? '为老人下单<small>应用层校验：档案正常 + 评估在有效期内</small>'
+      : '下单<small>应用层校验：档案正常 + 评估在有效期内</small>';
+}
+
+/* ================= 数据加载 ================= */
+async function loadItems(){
+  const r = await API('/api/items');
+  $('#f-item').innerHTML = r.data.map(i =>
+    `<option value="${i.item_id}">${esc(i.name)}（￥${i.guide_price}/${i.unit}${i.subsidizable?'，可补贴':''}）</option>`).join('');
+}
+async function loadStats(){
+  if (!['社区管理员','监管人员','机构负责人'].includes(ME.role)) { $('#stat-cards').innerHTML=''; return; }
   const r = await API('/api/stats');
   const d = r.data, cards = [
-    ['elders_normal','在册正常老人'],
-    ['orders_active','进行中订单'],
-    ['orders_timeout','超时未派单','danger'],
-    ['plans_to_pause','待暂停计划','danger'],
-    ['claims_in_progress','审核中申报'],
-  ];
-  $('#stat-cards').innerHTML = cards.map(([k,l,c]) =>
-    `<div class="stat ${c||''}"><div class="num">${d[k]}</div><div class="label">${l}</div></div>`).join('');
+    ['elders_normal','在册正常老人','👴','i-teal'],['orders_active','进行中订单','📋','i-blue'],
+    ['orders_timeout','超时未派单','⏰','i-red'],['plans_to_pause','待暂停计划','⚠️','i-yellow'],
+    ['claims_in_progress','审核中申报','💰','i-purple']];
+  $('#stat-cards').innerHTML = cards.map(([k,l,i,c]) =>
+    `<div class="stat"><div class="icon ${c}">${i}</div><div><div class="num">${d[k]}</div><div class="label">${l}</div></div></div>`).join('');
+}
+async function loadPending(){
+  if (ME.role !== '社区管理员') return;
   const p = await API('/api/pending-orders');
   $('#pending-table tbody').innerHTML = p.data.map(o => `<tr>
     <td>${o.order_id}</td><td>${esc(o.elder_name)}</td><td>${esc(o.community)}</td>
-    <td>${esc(o.item_name)}</td><td>${o.appoint_time}</td>
-    <td>${o.waited_min}</td>
+    <td>${esc(o.item_name)}</td><td>${o.appoint_time}</td><td>${o.waited_min}</td>
     <td>${o.timeout_flag==='超时'?'<span class="badge b-red">超时</span>':o.timeout_flag==='临近超时'?'<span class="badge b-wait">临近超时</span>':'<span class="badge b-done">正常</span>'}</td></tr>`).join('')
     || '<tr><td colspan="7" class="muted">暂无待派单订单</td></tr>';
 }
-
-/* ---------- 老人档案 ---------- */
-async function loadElders() {
+async function loadElders(){
   const r = await API('/api/elders');
+  elderList = r.data;
   $('#elder-table tbody').innerHTML = r.data.map(e => `<tr>
     <td>${e.elder_id}</td><td>${esc(e.name)}</td><td>${e.age}</td><td>${esc(e.community)}</td>
     <td>${esc(e.id_masked)}</td>
@@ -216,86 +374,77 @@ async function loadElders() {
     <td>${e.assess_expire||''} ${e.assess_expired?'<span class="badge b-red">已过期</span>':''}</td>
     <td>${e.elder_status==='正常'?'<span class="badge b-done">正常</span>':`<span class="badge b-canc">${esc(e.elder_status)}</span>`}</td>
     <td>${esc(e.package_name)||'<span class="muted">无</span>'}${e.plan_status==='暂停'?' <span class="badge b-red">暂停</span>':''}</td></tr>`).join('');
-  return r.data;
-}
-
-/* ---------- 订单与派单 ---------- */
-let items = [], elderList = [];
-async function loadOrders() {
-  const r = await API('/api/orders');
-  $('#order-table tbody').innerHTML = r.data.map(o => {
-    let act = '';
-    if (o.status === '待派单') act = `<button class="btn small" onclick="openRecommend(${o.order_id})">推荐护工</button>`;
-    if (o.status === '已派单' && o.dispatch_id)
-      act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">完成确认</button>
-             <button class="btn small ghost" onclick="openReassign(${o.dispatch_id})">改派</button>`;
-    if (o.status === '服务中' && o.dispatch_id)
-      act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">完成确认</button>`;
-    const badge = {'待派单':'b-wait','已派单':'b-disp','服务中':'b-serv','已完成':'b-done','已取消':'b-canc'}[o.status];
-    return `<tr><td>${o.order_id}</td><td>${esc(o.elder_name)}</td><td>${esc(o.item_name)}</td>
-      <td>${o.appoint_time}</td><td>${esc(o.channel)}</td><td>￥${o.amount.toFixed(2)}</td>
-      <td><span class="badge ${badge}">${o.status}</span></td>
-      <td>${esc(o.caregiver_name)||'—'}</td><td>${act||'—'}</td></tr>`;
-  }).join('');
-}
-
-async function initOrderForm() {
-  elderList = await loadElders();
   $('#f-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
     .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}${e.assess_expired?'，评估已过期':''}）</option>`).join('');
   const t = new Date(Date.now() + 26*3600e3);
   $('#f-time').value = t.toISOString().slice(0,16);
 }
+async function loadOrders(){
+  const r = await API('/api/orders');
+  const isAdmin = ME.role === '社区管理员', isWorker = ME.role === '护工';
+  $('#order-table tbody').innerHTML = r.data.map(o => {
+    let act = '—';
+    if (isAdmin) {
+      if (o.status === '待派单') act = `<button class="btn small" onclick="openRecommend(${o.order_id})">推荐护工</button>`;
+      else if (o.status === '已派单' && o.dispatch_id) act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">完成确认</button> <button class="btn small ghost" onclick="openReassign(${o.dispatch_id})">改派</button>`;
+      else if (o.status === '服务中' && o.dispatch_id) act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">完成确认</button>`;
+    } else if (isWorker && o.dispatch_id && o.status === '已派单') {
+      act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">上门服务 · 完成确认</button>`;
+    }
+    const badge = {'待派单':'b-wait','已派单':'b-disp','服务中':'b-serv','已完成':'b-done','已取消':'b-canc'}[o.status];
+    const note = o.service_note ? `<div class="muted" style="margin-top:3px">${esc(o.service_note)}</div>` : '';
+    return `<tr><td>${o.order_id}</td><td>${esc(o.elder_name)}</td><td>${esc(o.item_name)}${note}</td>
+      <td>${o.appoint_time}</td><td>${esc(o.channel)}</td><td>${fmtYuan(o.amount)}</td>
+      <td><span class="badge ${badge}">${o.status}</span></td>
+      <td>${esc(o.caregiver_name)||'—'}</td><td>${act}</td></tr>`;
+  }).join('') || '<tr><td colspan="9" class="muted">暂无订单</td></tr>';
+}
 
 $('#order-form').onsubmit = async ev => {
   ev.preventDefault();
-  const r = await API('/api/orders', {method:'POST', body:{
-    elder_id:+$('#f-elder').value, item_id:+$('#f-item').value,
-    appoint_time: $('#f-time').value.replace('T',' '), channel:$('#f-channel').value }});
-  r.ok ? toast(`下单成功：订单 ${r.data.order_id}，金额 ￥${r.data.amount}`) : toast(r.msg, true);
-  loadOrders(); loadStats();
+  const body = { item_id:+$('#f-item').value,
+    appoint_time: $('#f-time').value.replace('T',' '), channel:$('#f-channel').value };
+  if (ME.role === '社区管理员') body.elder_id = +$('#f-elder').value;
+  const r = await API('/api/orders', {method:'POST', body});
+  r.ok ? toast(`下单成功：订单 ${r.data.order_id}，金额 ${fmtYuan(r.data.amount)}`) : toast(r.msg, true);
+  loadOrders(); loadPending(); loadStats();
 };
 
-/* --- 推荐护工面板 --- */
-async function openRecommend(orderId) {
+/* --- 派单操作面板（仅社区管理员） --- */
+async function openRecommend(orderId){
   const r = await API(`/api/orders/${orderId}/recommend`);
   $('#action-panel').style.display = 'block';
-  $('#action-title').textContent = `订单 ${orderId} · 推荐护工（在岗 + 证书有效 + 区域匹配 + 班次有余量）`;
+  $('#action-title').textContent = `订单 ${orderId} · 推荐护工（在岗+证书有效+区域匹配+班次有余量）`;
   $('#action-body').innerHTML = r.ok && r.data.length ? '<table><thead><tr><th>护工</th><th>机构</th><th>证书</th><th>评分</th><th>班次余量</th><th>操作</th></tr></thead><tbody>'
     + r.data.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.agency)}</td><td>${esc(c.cert_type)}</td>
       <td>${c.rating}</td><td>${c.booked}/${c.capacity}</td>
       <td><button class="btn small" onclick="doDispatch(${orderId},${c.caregiver_id})">派单</button></td></tr>`).join('')
-    + '</tbody></table>'
-    : '<p class="muted">没有符合条件的护工（可试试改约其他日期，或到运维页看排班余量）。</p>';
+    + '</tbody></table>' : '<p class="muted">没有符合条件的护工（可改约日期，或到运维页看排班余量）。</p>';
   $('#action-panel').scrollIntoView({behavior:'smooth'});
 }
-async function doDispatch(orderId, caregiverId) {
+async function doDispatch(orderId, caregiverId){
   const r = await API(`/api/orders/${orderId}/dispatch`, {method:'POST', body:{caregiver_id:caregiverId}});
-  r.ok ? toast(`派单成功（派单号 ${r.data.dispatch_id}），排班已接单量已由触发器自动 +1`)
+  r.ok ? toast(`派单成功，排班已接单量已由触发器自动 +1`)
        : toast('派单被数据库拒绝：' + r.msg, true);
   $('#action-panel').style.display = 'none';
-  loadOrders(); loadStats(); loadSchedules();
+  loadOrders(); loadPending(); loadStats(); loadSchedules();
 }
-
-/* --- 完成确认面板 --- */
-function openComplete(dispatchId, orderId) {
+function openComplete(dispatchId, orderId){
   $('#action-panel').style.display = 'block';
-  $('#action-title').textContent = `订单 ${orderId} · 服务完成确认（家属确认后触发器自动回写订单状态）`;
+  $('#action-title').textContent = `订单 ${orderId} · 服务完成（家属确认后触发器回写订单状态）`;
   $('#action-body').innerHTML = `<div class="row"><div style="flex:1">
     <textarea id="note" placeholder="服务记录：例如 助餐送达，老人用餐正常，家属已签字确认"></textarea></div>
     <button class="btn" onclick="doComplete(${dispatchId})">确认完成</button></div>`;
   $('#action-panel').scrollIntoView({behavior:'smooth'});
 }
-async function doComplete(dispatchId) {
+async function doComplete(dispatchId){
   const r = await API(`/api/dispatches/${dispatchId}/complete`, {method:'POST',
     body:{service_note: $('#note').value || '服务完成'}});
   r.ok ? toast('已完成：订单状态已由触发器自动置为「已完成」，可用于补贴申报') : toast(r.msg, true);
   $('#action-panel').style.display = 'none';
   loadOrders(); loadStats();
 }
-
-/* --- 改派面板 --- */
-function openReassign(dispatchId) {
+function openReassign(dispatchId){
   $('#action-panel').style.display = 'block';
   $('#action-title').textContent = `派单 ${dispatchId} · 改派（保留原记录与原因，订单回到待派单）`;
   $('#action-body').innerHTML = `<div class="row"><div style="flex:1">
@@ -303,7 +452,7 @@ function openReassign(dispatchId) {
     <button class="btn warn" onclick="doReassign(${dispatchId})">确认改派</button></div>`;
   $('#action-panel').scrollIntoView({behavior:'smooth'});
 }
-async function doReassign(dispatchId) {
+async function doReassign(dispatchId){
   const r = await API(`/api/dispatches/${dispatchId}/reassign`, {method:'POST',
     body:{reason: $('#reason').value}});
   r.ok ? toast('已改派，订单回到待派单，可重新推荐护工') : toast(r.msg, true);
@@ -311,74 +460,70 @@ async function doReassign(dispatchId) {
   loadOrders(); loadStats(); loadSchedules();
 }
 
-/* ---------- 补贴 ---------- */
-async function loadSubsidy() {
+/* ================= 补贴 ================= */
+async function loadSubsidy(){
+  if (!['家属','社区管理员','监管人员'].includes(ME.role)) return;
   const [pol, clm] = await Promise.all([API('/api/subsidy/policies'), API('/api/subsidy/claims')]);
-  $('#c-policy').innerHTML = pol.data.map(p =>
-    `<option value="${p.policy_id}">${p.district} · ${p.target_type} · ${esc(p.item_name)}（￥${p.standard}/次）</option>`).join('');
+  $('#c-policy').innerHTML = pol.ok ? pol.data.map(p =>
+    `<option value="${p.policy_id}">${p.district} · ${p.target_type} · ${esc(p.item_name)}（￥${p.standard}/次）</option>`).join('') : '';
   $('#c-elder').innerHTML = elderList.map(e => `<option value="${e.elder_id}">${esc(e.name)}</option>`).join('');
   const lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth()-1);
   $('#c-period').value = lastMonth.toISOString().slice(0,7);
-  $('#claim-table tbody').innerHTML = clm.data.map(c => {
-    let act = '';
-    if (c.status === '待审核') act = `<button class="btn small" onclick="audit(${c.claim_id},'approve')">街道审核</button>
-      <button class="btn small warn" onclick="audit(${c.claim_id},'reject')">驳回</button>`;
-    if (c.status === '街道已审') act = `<button class="btn small" onclick="audit(${c.claim_id},'pay')">确认拨付</button>
-      <button class="btn small warn" onclick="audit(${c.claim_id},'reject')">驳回</button>`;
+  const isReg = ME.role === '监管人员';
+  $('#claim-table tbody').innerHTML = clm.ok ? clm.data.map(c => {
+    let act = '—';
+    if (isReg) {
+      if (c.status === '待审核') act = `<button class="btn small" onclick="audit(${c.claim_id},'approve')">街道审核</button> <button class="btn small warn" onclick="audit(${c.claim_id},'reject')">驳回</button>`;
+      if (c.status === '街道已审') act = `<button class="btn small" onclick="audit(${c.claim_id},'pay')">确认拨付</button> <button class="btn small warn" onclick="audit(${c.claim_id},'reject')">驳回</button>`;
+    }
     const badge = {'待审核':'b-wait','街道已审':'b-disp','已拨付':'b-done','已驳回':'b-canc'}[c.status];
     return `<tr><td>${c.claim_id}</td><td>${esc(c.elder_name)}</td><td>${esc(c.district)}</td>
       <td><span class="tag">${esc(c.target_type)}</span></td><td>${esc(c.item_name)}</td>
-      <td>${c.claim_period}</td><td>￥${c.amount.toFixed(2)}</td>
-      <td><span class="badge ${badge}">${c.status}</span></td><td>${esc(c.reviewer)||'—'}</td><td>${act||'—'}</td></tr>`;
-  }).join('');
+      <td>${c.claim_period}</td><td>${fmtYuan(c.amount)}</td>
+      <td><span class="badge ${badge}">${c.status}</span></td><td>${esc(c.reviewer)||'—'}</td>
+      <td class="${isReg?'':'hide'}">${act}</td></tr>`;
+  }).join('') : '';
 }
 $('#claim-form').onsubmit = async ev => {
   ev.preventDefault();
   const r = await API('/api/subsidy/claims', {method:'POST', body:{
     elder_id:+$('#c-elder').value, policy_id:+$('#c-policy').value, claim_period:$('#c-period').value}});
-  r.ok ? toast(`申报成功（申报号 ${r.data.claim_id}）：${r.data.order_ids.length} 笔订单，金额 ￥${r.data.amount}`)
+  r.ok ? toast(`申报成功：${r.data.order_ids.length} 笔订单，金额 ${fmtYuan(r.data.amount)}`)
        : toast('申报被拒绝：' + r.msg, true);
   loadSubsidy(); loadStats();
 };
-async function audit(id, action) {
+async function audit(id, action){
   const r = await API(`/api/subsidy/claims/${id}/audit`, {method:'POST', body:{action}});
   r.ok ? toast(`申报 ${id} 已流转为「${r.data.status}」`) : toast(r.msg, true);
   loadSubsidy(); loadStats();
 }
 
-/* ---------- 运维 ---------- */
-async function loadOps() {
+/* ================= 运维 / 排班 ================= */
+async function loadOps(){
+  if (ME.role !== '社区管理员') return;
   const r = await API('/api/maintenance/expired-preview');
   $('#expired-table tbody').innerHTML = r.data.length ? r.data.map(x => `<tr>
     <td>${x.plan_id}</td><td>${esc(x.elder_name)}</td><td>${esc(x.package_name)}</td>
     <td>${esc(x.status)}</td><td>${x.expire_date} <span class="badge b-red">已过期</span></td></tr>`).join('')
     : '<tr><td colspan="5" class="muted">没有需要暂停的计划</td></tr>';
-  loadSchedules();
-}
-async function loadSchedules() {
-  if ($('#sched-table').closest('section').classList.contains('hide')) return;
-  const r = await API('/api/schedules');
-  $('#sched-table tbody').innerHTML = r.data.map(s => `<tr>
-    <td>${esc(s.caregiver_name)}</td><td>${esc(s.cert_type)}</td>
-    <td>${s.cert_expire} ${s.cert_valid?'':'<span class="badge b-red">已过期</span>'}</td>
-    <td>${s.work_date}</td><td>${s.shift}</td><td>${s.booked}/${s.capacity}</td><td>${s.remaining}</td></tr>`).join('');
 }
 $('#btn-pause').onclick = async () => {
   const r = await API('/api/maintenance/pause-expired-plans', {method:'POST'});
   r.ok ? toast(`存储过程执行成功：暂停了 ${r.data.paused_plans} 份照护计划`) : toast(r.msg, true);
   loadOps(); loadElders(); loadStats();
 };
+async function loadSchedules(){
+  if (!['社区管理员','机构负责人','护工','监管人员'].includes(ME.role)) return;
+  if ($('#tab-schedules').classList.contains('hide')) return;
+  const r = await API('/api/schedules');
+  $('#sched-table tbody').innerHTML = r.ok ? r.data.map(s => `<tr>
+    <td>${esc(s.caregiver_name)}</td><td>${esc(s.cert_type)}</td>
+    <td>${s.cert_expire} ${s.cert_valid?'':'<span class="badge b-red">已过期</span>'}</td>
+    <td>${s.work_date}</td><td>${s.shift}</td><td>${s.booked}/${s.capacity}</td><td>${s.remaining}</td></tr>`).join('')
+    : '';
+}
 
-/* ---------- 启动 ---------- */
-(async function init() {
-  // 服务项目下拉
-  const it = await API('/api/items');
-  items = it.data;
-  $('#f-item').innerHTML = items.map(i =>
-    `<option value="${i.item_id}">${esc(i.name)}（￥${i.guide_price}/${i.unit}${i.subsidizable?'，可补贴':''}）</option>`).join('');
-  await initOrderForm();
-  loadStats(); loadOrders(); loadSubsidy(); loadOps();
-})();
+boot();
 </script>
 </body>
 </html>

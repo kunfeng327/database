@@ -11,7 +11,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE subsidy_claim; TRUNCATE subsidy_policy; TRUNCATE schedule;
 TRUNCATE dispatch;     TRUNCATE service_order;  TRUNCATE service_item;
 TRUNCATE care_plan;    TRUNCATE assessment;     TRUNCATE elder;
-TRUNCATE caregiver;    TRUNCATE community;
+TRUNCATE caregiver;    TRUNCATE community;      TRUNCATE sys_user;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 社区
@@ -169,3 +169,12 @@ SET s.booked = LEAST(s.capacity,
       AND d.is_current = 1
       AND o.status IN ('已派单','服务中')
       AND DATE(o.appoint_time) = s.work_date));
+
+-- 系统用户（演示账号，密码全部为 123456；哈希=SHA256(盐+密码)，由 MySQL 现场计算）
+INSERT INTO sys_user (username, password_hash, salt, real_name, role, elder_id, caregiver_id) VALUES
+('shequ',   SHA2(CONCAT('s@lt!shequ',   '123456'),256), 's@lt!shequ',   '社区李干事', '社区管理员', NULL, NULL),
+('jiashu',  SHA2(CONCAT('s@lt!jiashu',  '123456'),256), 's@lt!jiashu',  '陈明(陈桂香之子)', '家属', 1, NULL),
+('jiashu2', SHA2(CONCAT('s@lt!jiashu2', '123456'),256), 's@lt!jiashu2', '李强(李淑珍之子)', '家属', 3, NULL),
+('hugong',  SHA2(CONCAT('s@lt!hugong',  '123456'),256), 's@lt!hugong',  '王秀兰', '护工', NULL, 1),
+('jigou',   SHA2(CONCAT('s@lt!jigou',   '123456'),256), 's@lt!jigou',   '安康护理负责人', '机构负责人', NULL, NULL),
+('jianguan',SHA2(CONCAT('s@lt!jianguan','123456'),256), 's@lt!jianguan','街道张监管', '监管人员', NULL, NULL);

@@ -1,19 +1,32 @@
 # -*- coding: utf-8 -*-
 """社区居家养老智慧服务平台 · 演示后端（Flask + PyMySQL）
 
+安全机制（对应任务书 3.4）：
+  - 密码加盐哈希存储（SHA256(盐+密码)，生产环境应换 bcrypt）
+  - 连续失败 5 次锁定 10 分钟
+  - 会话 30 分钟超时（服务端 session）
+  - RBAC：每个接口声明允许的角色，数据按角色过滤（家属只见自家、护工只见自己派单）
+
 启动：python app.py  →  http://127.0.0.1:5000
-数据库：elder_care（由 sql/ 目录脚本初始化）
+演示账号（密码均为 123456）：shequ=社区管理员  jiashu/jiashu2=家属
+                            hugong=护工  jigou=机构负责人  jianguan=监管人员
 """
 import datetime as dt
 import decimal
+import hashlib
+import os
+from functools import wraps
 from pathlib import Path
 
 import pymysql
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, session
 
 from db import DB_CONFIG
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("APP_SECRET_KEY", "elder-care-demo-key-2026")
+app.config["PERMANENT_SESSION_LIFETIME"] = dt.timedelta(minutes=30)  # 会话超时
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
 
 
@@ -63,8 +76,7 @@ def run_in_transaction(fn):
         return result
     except pymysql.err.OperationalError as e:
         conn.rollback()
-        # MySQL SIGNAL SQLSTATE '45000' → errno 1644，消息来自触发器
-        if e.args and e.args[0] == 1644:
+        if e.args and e.args[0] == 1644:  # 触发器 SIGNAL
             raise BizError(e.args[1])
         raise
     except Exception:
@@ -86,6 +98,73 @@ def handle_500(e):
     return jsonify({"ok": False, "msg": f"服务器错误：{e}"}), 500
 
 
+# ------------------------------------------------------------------ 认证与 RBAC
+def hash_password(salt, password):
+    return hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
+
+
+def login_required(roles=None):
+    """接口级权限控制：必须已登录；声明 roles 时校验角色。"""
+    def deco(fn):
+        @wraps(fn)
+        def wrapper(*a, **kw):
+            if not session.get("uid"):
+                return jsonify({"ok": False, "msg": "请先登录"}), 401
+            if roles and session.get("role") not in roles:
+                return jsonify({"ok": False, "msg":
+                                f"无权限：该操作需要「{'、'.join(roles)}」，当前角色为「{session.get('role')}」"}), 403
+            return fn(*a, **kw)
+        return wrapper
+    return deco
+
+
+@app.post("/api/login")
+def login():
+    body = request.get_json(force=True)
+    username, password = body.get("username", ""), body.get("password", "")
+
+    def fn(cur):
+        cur.execute("SELECT * FROM sys_user WHERE username=%s", username)
+        u = cur.fetchone()
+        generic_err = BizError("账号或密码错误")
+        if not u or u["status"] != "启用":
+            raise generic_err
+        if u["locked_until"] and u["locked_until"] > dt.datetime.now():
+            remain = int((u["locked_until"] - dt.datetime.now()).total_seconds() // 60) + 1
+            raise BizError(f"连续失败次数过多，账号已锁定，请约 {remain} 分钟后再试")
+        if hash_password(u["salt"], password) != u["password_hash"]:
+            fails = u["failed_attempts"] + 1
+            if fails >= 5:
+                cur.execute("""UPDATE sys_user SET failed_attempts=0,
+                               locked_until=NOW()+INTERVAL 10 MINUTE WHERE user_id=%s""", u["user_id"])
+                raise BizError("密码连续错误 5 次，账号锁定 10 分钟")
+            cur.execute("UPDATE sys_user SET failed_attempts=%s WHERE user_id=%s", (fails, u["user_id"]))
+            raise generic_err
+        cur.execute("""UPDATE sys_user SET failed_attempts=0, locked_until=NULL,
+                       last_login=NOW() WHERE user_id=%s""", u["user_id"])
+        session.permanent = True
+        session.update({"uid": u["user_id"], "role": u["role"], "name": u["real_name"],
+                        "elder_id": u["elder_id"], "caregiver_id": u["caregiver_id"]})
+        return {"real_name": u["real_name"], "role": u["role"]}
+
+    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+
+@app.post("/api/logout")
+def logout():
+    session.clear()
+    return jsonify({"ok": True, "data": "已退出"})
+
+
+@app.get("/api/me")
+def me():
+    if not session.get("uid"):
+        return jsonify({"ok": False, "msg": "未登录"}), 401
+    return jsonify({"ok": True, "data": {
+        "name": session["name"], "role": session["role"],
+        "elder_id": session.get("elder_id"), "caregiver_id": session.get("caregiver_id")}})
+
+
 # ------------------------------------------------------------------ 页面
 @app.get("/")
 def index():
@@ -94,18 +173,26 @@ def index():
 
 # ------------------------------------------------------------------ 基础数据
 @app.get("/api/items")
+@login_required()
 def items():
     return jsonify({"ok": True, "data": query_all(
         "SELECT * FROM service_item ORDER BY item_id")})
 
 
 @app.get("/api/schedules")
+@login_required(roles=("社区管理员", "机构负责人", "护工", "监管人员"))
 def schedules():
-    return jsonify({"ok": True, "data": query_all(
-        "SELECT * FROM v_schedule_capacity ORDER BY work_date, shift, caregiver_name")})
+    """护工只能看自己的排班；社区/机构/监管看全部。"""
+    sql = "SELECT * FROM v_schedule_capacity"
+    args = ()
+    if session["role"] == "护工":
+        sql += " WHERE caregiver_id=%s"
+        args = (session["caregiver_id"],)
+    return jsonify({"ok": True, "data": query_all(sql + " ORDER BY work_date, shift, caregiver_name", args)})
 
 
 @app.get("/api/pending-orders")
+@login_required(roles=("社区管理员",))
 def pending_orders():
     return jsonify({"ok": True, "data": query_all(
         "SELECT * FROM v_pending_dispatch_orders ORDER BY waited_min DESC")})
@@ -113,6 +200,7 @@ def pending_orders():
 
 # ------------------------------------------------------------------ 总览
 @app.get("/api/stats")
+@login_required(roles=("社区管理员", "监管人员", "机构负责人"))
 def stats():
     rows = query_all("""
         SELECT
@@ -127,36 +215,59 @@ def stats():
     return jsonify({"ok": True, "data": rows[0]})
 
 
-# ------------------------------------------------------------------ 老人档案（视图 v_elder_assessment_plan）
+# ------------------------------------------------------------------ 老人档案（家属只见自家）
 @app.get("/api/elders")
+@login_required()
 def elders():
-    return jsonify({"ok": True, "data": query_all(
-        "SELECT * FROM v_elder_assessment_plan ORDER BY elder_id")})
+    sql = "SELECT * FROM v_elder_assessment_plan"
+    args = ()
+    if session["role"] == "家属":
+        sql += " WHERE elder_id=%s"
+        args = (session["elder_id"],)
+    return jsonify({"ok": True, "data": query_all(sql + " ORDER BY elder_id", args)})
 
 
 # ------------------------------------------------------------------ 订单
 @app.get("/api/orders")
+@login_required()
 def orders():
-    return jsonify({"ok": True, "data": query_all("""
+    """家属只见自家老人订单；护工只见派给自己的订单；其余角色看全部。"""
+    sql = """
         SELECT o.order_id, e.name AS elder_name, c.name AS community,
                si.name AS item_name, si.type AS item_type, si.subsidizable,
                o.appoint_time, o.channel, o.amount, o.status, o.created_at,
-               d.dispatch_id, d.confirmed, cg.name AS caregiver_name
+               d.dispatch_id, d.confirmed, cg.name AS caregiver_name,
+               d.arrive_time, d.leave_time, d.service_note
         FROM service_order o
         JOIN elder e ON e.elder_id = o.elder_id
         JOIN community c ON c.community_id = e.community_id
         JOIN service_item si ON si.item_id = o.item_id
         LEFT JOIN dispatch d ON d.order_id = o.order_id AND d.is_current = 1
-        LEFT JOIN caregiver cg ON cg.caregiver_id = d.caregiver_id
-        ORDER BY o.order_id DESC""")})
+        LEFT JOIN caregiver cg ON cg.caregiver_id = d.caregiver_id"""
+    args = ()
+    if session["role"] == "家属":
+        sql += " WHERE o.elder_id=%s"
+        args = (session["elder_id"],)
+    elif session["role"] == "护工":
+        sql += " WHERE d.caregiver_id=%s"
+        args = (session["caregiver_id"],)
+    return jsonify({"ok": True, "data": query_all(sql + " ORDER BY o.order_id DESC", args)})
 
 
 @app.post("/api/orders")
+@login_required(roles=("家属", "社区管理员"))
 def create_order():
-    """下单：校验档案状态 + 评估有效期（评估过期不允许下单），金额按项目计价。"""
+    """下单：校验档案状态 + 评估有效期（评估过期不允许下单），金额按项目计价。
+    家属只能为绑定的老人下单。"""
     body = request.get_json(force=True)
-    elder_id, item_id = body["elder_id"], body["item_id"]
+    if session["role"] == "家属":
+        elder_id = session["elder_id"]
+    else:
+        elder_id = body["elder_id"]
+    item_id = body["item_id"]
     appoint_time, channel = body["appoint_time"], body.get("channel", "社区代下单")
+    if session["role"] == "家属" and channel not in ("家属端",):
+        channel = "家属端"
     try:
         dt.datetime.strptime(appoint_time, "%Y-%m-%d %H:%M")
     except ValueError:
@@ -196,6 +307,7 @@ def create_order():
 
 # ------------------------------------------------------------------ 派单
 @app.get("/api/orders/<int:order_id>/recommend")
+@login_required(roles=("社区管理员",))
 def recommend(order_id):
     """推荐护工：在岗 + 证书有效 + 服务区域覆盖老人社区 + 当天该班次有余量。"""
     return jsonify({"ok": True, "data": query_all("""
@@ -216,6 +328,7 @@ def recommend(order_id):
 
 
 @app.post("/api/orders/<int:order_id>/dispatch")
+@login_required(roles=("社区管理员",))
 def dispatch_order(order_id):
     """派单：事务内锁定订单 → 插入派单记录（触发器做容量/资质兜底校验）→ 回写订单状态。"""
     caregiver_id = request.get_json(force=True)["caregiver_id"]
@@ -238,11 +351,18 @@ def dispatch_order(order_id):
 
 
 @app.post("/api/dispatches/<int:dispatch_id>/complete")
+@login_required(roles=("护工", "社区管理员"))
 def complete_dispatch(dispatch_id):
     """服务完成：回填时间与服务记录、家属确认 → 触发器自动把订单置为已完成。"""
     note = request.get_json(force=True).get("service_note", "")
 
     def fn(cur):
+        cur.execute("SELECT caregiver_id FROM dispatch WHERE dispatch_id=%s", dispatch_id)
+        d = cur.fetchone()
+        if not d:
+            raise BizError("派单不存在")
+        if session["role"] == "护工" and d["caregiver_id"] != session["caregiver_id"]:
+            raise BizError("无权限：该派单不属于当前护工")
         cur.execute("""UPDATE dispatch
                           SET arrive_time = COALESCE(arrive_time, NOW() - INTERVAL 90 MINUTE),
                               leave_time  = NOW(),
@@ -257,6 +377,7 @@ def complete_dispatch(dispatch_id):
 
 
 @app.post("/api/dispatches/<int:dispatch_id>/reassign")
+@login_required(roles=("社区管理员",))
 def reassign(dispatch_id):
     """改派：保留原派单记录与原因，订单回到待派单，排班余量释放。"""
     reason = request.get_json(force=True).get("reason", "")
@@ -286,6 +407,7 @@ def reassign(dispatch_id):
 
 # ------------------------------------------------------------------ 补贴
 @app.get("/api/subsidy/policies")
+@login_required(roles=("家属", "社区管理员", "监管人员"))
 def policies():
     return jsonify({"ok": True, "data": query_all("""
         SELECT p.policy_id, p.district, p.target_type, si.name AS item_name,
@@ -296,12 +418,18 @@ def policies():
 
 
 @app.get("/api/subsidy/claims")
+@login_required(roles=("家属", "社区管理员", "监管人员"))
 def claims():
-    return jsonify({"ok": True, "data": query_all(
-        "SELECT * FROM v_claim_progress ORDER BY claim_id DESC")})
+    sql = "SELECT * FROM v_claim_progress"
+    args = ()
+    if session["role"] == "家属":
+        sql += " WHERE elder_id=%s"
+        args = (session["elder_id"],)
+    return jsonify({"ok": True, "data": query_all(sql + " ORDER BY claim_id DESC", args)})
 
 
 @app.post("/api/subsidy/claims")
+@login_required(roles=("社区管理员",))
 def create_claim():
     """补贴申报：对象类别匹配 + 只统计账期内已完成订单 + 唯一约束防重复申报。"""
     body = request.get_json(force=True)
@@ -343,8 +471,9 @@ def create_claim():
 
 
 @app.post("/api/subsidy/claims/<int:claim_id>/audit")
+@login_required(roles=("监管人员",))
 def audit_claim(claim_id):
-    """审核流转：待审核→街道已审→已拨付，或任意状态→已驳回。"""
+    """审核流转（街道/民政视角）：待审核→街道已审→已拨付，或任意状态→已驳回。"""
     action = request.get_json(force=True)["action"]
     flow = {"approve": ("待审核", "街道已审"), "pay": ("街道已审", "已拨付"),
             "reject": (None, "已驳回")}
@@ -360,7 +489,7 @@ def audit_claim(claim_id):
         if frm and row["status"] != frm:
             raise BizError(f"当前状态「{row['status']}」，不能执行 {action}（应从「{frm}」流转）")
         cur.execute("""UPDATE subsidy_claim SET status=%s, reviewer=%s
-                        WHERE claim_id=%s""", (to, "街道审核员(演示)", claim_id))
+                        WHERE claim_id=%s""", (to, session["name"], claim_id))
         return {"claim_id": claim_id, "status": to}
 
     return jsonify({"ok": True, "data": run_in_transaction(fn)})
@@ -368,6 +497,7 @@ def audit_claim(claim_id):
 
 # ------------------------------------------------------------------ 运维（存储过程）
 @app.get("/api/maintenance/expired-preview")
+@login_required(roles=("社区管理员",))
 def expired_preview():
     return jsonify({"ok": True, "data": query_all("""
         SELECT p.plan_id, e.name AS elder_name, p.package_name, p.status, a.expire_date
@@ -380,6 +510,7 @@ def expired_preview():
 
 
 @app.post("/api/maintenance/pause-expired-plans")
+@login_required(roles=("社区管理员",))
 def pause_expired_plans():
     """调用存储过程 sp_pause_expired_plans：评估到期的照护计划自动暂停。"""
     conn = get_conn()
@@ -395,4 +526,5 @@ def pause_expired_plans():
 
 if __name__ == "__main__":
     print("养老服务平台演示后端已启动 → http://127.0.0.1:5000")
+    print("演示账号（密码均为 123456）：shequ / jiashu / jiashu2 / hugong / jigou / jianguan")
     app.run(host="127.0.0.1", port=5000, debug=False)

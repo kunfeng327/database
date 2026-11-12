@@ -46,6 +46,7 @@ WHERE o.status = '待派单';
 -- 视图3 补贴业务线：申报与拨付进度视图
 CREATE OR REPLACE VIEW v_claim_progress AS
 SELECT cl.claim_id,
+       cl.elder_id,
        e.name  AS elder_name,
        c.district,
        sp.target_type,
@@ -66,6 +67,7 @@ JOIN service_item si  ON si.item_id = sp.item_id;
 -- 视图4 排班业务线：护工未来 7 天接单余量视图
 CREATE OR REPLACE VIEW v_schedule_capacity AS
 SELECT s.schedule_id,
+       cg.caregiver_id,
        cg.name AS caregiver_name,
        cg.cert_type,
        cg.cert_expire,

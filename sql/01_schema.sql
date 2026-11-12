@@ -175,3 +175,28 @@ CREATE TABLE subsidy_claim (
   CONSTRAINT uk_claim_no_dup UNIQUE (elder_id, policy_id, claim_period) COMMENT '同一老人同期同项目不得重复申报',
   INDEX idx_claim_status (status)
 );
+
+-- ------------------------- 12 系统用户（登录与RBAC） -------------------------
+CREATE TABLE sys_user (
+  user_id        INT PRIMARY KEY AUTO_INCREMENT,
+  username       VARCHAR(30) NOT NULL UNIQUE COMMENT '登录名',
+  password_hash  CHAR(64) NOT NULL COMMENT 'SHA256(盐+密码) 十六进制',
+  salt           CHAR(16) NOT NULL COMMENT '随机盐',
+  real_name      VARCHAR(30) NOT NULL COMMENT '姓名',
+  role           ENUM('家属','护工','社区管理员','机构负责人','监管人员') NOT NULL,
+  elder_id       INT NULL COMMENT '家属绑定的老人档案',
+  caregiver_id   INT NULL COMMENT '护工账号绑定的护工档案',
+  failed_attempts INT NOT NULL DEFAULT 0 COMMENT '连续登录失败次数',
+  locked_until   DATETIME NULL COMMENT '锁定截止时间(失败5次锁10分钟)',
+  status         ENUM('启用','停用') NOT NULL DEFAULT '启用',
+  last_login     DATETIME NULL,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_user_elder FOREIGN KEY (elder_id) REFERENCES elder(elder_id),
+  CONSTRAINT fk_user_caregiver FOREIGN KEY (caregiver_id) REFERENCES caregiver(caregiver_id),
+  CONSTRAINT chk_role_bind CHECK (
+    (role = '家属' AND elder_id IS NOT NULL)
+    OR (role = '护工' AND caregiver_id IS NOT NULL)
+    OR role IN ('社区管理员','机构负责人','监管人员')
+  ),
+  INDEX idx_user_role (role, status)
+);
