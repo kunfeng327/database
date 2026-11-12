@@ -1,0 +1,16 @@
+# Word 临时锁文件
+~$*
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
