@@ -1,37 +1,43 @@
 @echo off
-chcp 65001 >nul
+rem ±¾ÎÄ¼ş±ØĞë±£³Ö GBK(ANSI) ±àÂë + CRLF »»ĞĞ£¬ÖĞÎÄ cmd ²ÅÄÜÕıÈ·½âÎö
 cd /d %~dp0
 echo ================================================
-echo   ç¤¾åŒºå±…å®¶å…»è€æ™ºæ…§æœåŠ¡å¹³å° Â· æ¼”ç¤ºä¸€é”®å¯åŠ¨
+echo   ÉçÇø¾Ó¼ÒÑøÀÏÖÇ»Û·şÎñÆ½Ì¨ - ÑİÊ¾Ò»¼üÆô¶¯
 echo ================================================
 echo.
 
-where mysql >nul 2>nul || (echo [é”™è¯¯] æ‰¾ä¸åˆ° mysql å‘½ä»¤ï¼Œè¯·ç¡®è®¤å·²å®‰è£… MySQL å¹¶åŠ å…¥ PATH & pause & exit /b 1)
-where python >nul 2>nul || (echo [é”™è¯¯] æ‰¾ä¸åˆ° python å‘½ä»¤ & pause & exit /b 1)
-
-python -c "import flask, pymysql" 2>nul || (
-  echo [æç¤º] ç¼ºå°‘ä¾èµ–ï¼Œæ­£åœ¨å®‰è£… flask pymysql ...
-  pip install flask pymysql || (echo [é”™è¯¯] ä¾èµ–å®‰è£…å¤±è´¥ & pause & exit /b 1)
+where mysql >nul 2>nul
+if errorlevel 1 (
+  echo [´íÎó] ÕÒ²»µ½ mysql ÃüÁî£¬ÇëÈ·ÈÏÒÑ°²×° MySQL ²¢¼ÓÈë PATH
+  pause & exit /b 1
+)
+where python >nul 2>nul
+if errorlevel 1 (
+  echo [´íÎó] ÕÒ²»µ½ python ÃüÁî
+  pause & exit /b 1
 )
 
-set /p MP=è¯·è¾“å…¥ MySQL root å¯†ç :
->  src\backend\config_local.py echo HOST = "127.0.0.1"
->> src\backend\config_local.py echo PORT = 3306
->> src\backend\config_local.py echo USER = "root"
->> src\backend\config_local.py echo PASSWORD = "%MP%"
->> src\backend\config_local.py echo DATABASE = "elder_care"
+python -c "import flask, pymysql" >nul 2>nul
+if errorlevel 1 (
+  echo [ÌáÊ¾] È±ÉÙÒÀÀµ£¬ÕıÔÚ°²×° flask pymysql ...
+  pip install flask pymysql
+  if errorlevel 1 ( echo [´íÎó] ÒÀÀµ°²×°Ê§°Ü & pause & exit /b 1 )
+)
 
-set MYSQL_PWD=%MP%
-set /p RESET=æ˜¯å¦é‡ç½®æ¼”ç¤ºæ•°æ®åº“ï¼Ÿä¼šæ¸…ç©ºé‡å»º elder_care åº“ (y/N):
+set /p MP=ÇëÊäÈë MySQL root ÃÜÂë:
+set "MYSQL_PWD=%MP%"
+
+set /p RESET=ÊÇ·ñÖØÖÃÑİÊ¾Êı¾İ¿â£¿»áÇå¿ÕÖØ½¨ elder_care ¿â (y/N):
 if /i "%RESET%"=="y" (
-  echo æ­£åœ¨å¯¼å…¥æ•°æ®åº“è„šæœ¬...
+  echo ÕıÔÚµ¼ÈëÊı¾İ¿â½Å±¾...
   for %%f in (sql\01_schema.sql sql\02_seed.sql sql\03_views.sql sql\04_procs_triggers.sql) do (
-    mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4 < %%f || (echo [é”™è¯¯] %%f å¯¼å…¥å¤±è´¥ï¼Œè¯·æ£€æŸ¥å¯†ç  & pause & exit /b 1)
+    mysql -h127.0.0.1 -uroot --default-character-set=utf8mb4 < "%%f"
+    if errorlevel 1 ( echo [´íÎó] %%f µ¼ÈëÊ§°Ü£¬Çë¼ì²éÃÜÂë & pause & exit /b 1 )
   )
-  echo æ•°æ®åº“åˆå§‹åŒ–å®Œæˆã€‚
+  echo Êı¾İ¿â³õÊ¼»¯Íê³É¡£
 )
 
-echo æ­£åœ¨å¯åŠ¨åç«¯ï¼Œæµè§ˆå™¨å°†è‡ªåŠ¨æ‰“å¼€ http://127.0.0.1:5000 ...
-start "" http://127.0.0.1:5000
+echo ÕıÔÚÆô¶¯ºó¶Ë£¬ä¯ÀÀÆ÷½«×Ô¶¯´ò¿ª http://127.0.0.1:5000 ...
+start "" cmd /c "timeout /t 2 /nobreak >nul & start "" http://127.0.0.1:5000"
 cd src\backend
 python app.py

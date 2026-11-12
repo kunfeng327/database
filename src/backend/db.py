@@ -26,3 +26,15 @@ if os.path.exists(_local_path):
     for _k in ("host", "port", "user", "password", "database"):
         if _k.upper() in _ns:
             DB_CONFIG[_k] = _ns[_k.upper()]
+
+# 环境变量优先（启动演示.bat 用 MYSQL_PWD 同时喂给 mysql 客户端和后端，最不容易出错）
+if os.environ.get("MYSQL_HOST"):
+    DB_CONFIG["host"] = os.environ["MYSQL_HOST"]
+if os.environ.get("MYSQL_PORT"):
+    DB_CONFIG["port"] = int(os.environ["MYSQL_PORT"])
+if os.environ.get("MYSQL_USER"):
+    DB_CONFIG["user"] = os.environ["MYSQL_USER"]
+if os.environ.get("MYSQL_PWD"):
+    DB_CONFIG["password"] = os.environ["MYSQL_PWD"]
+if os.environ.get("MYSQL_DB"):
+    DB_CONFIG["database"] = os.environ["MYSQL_DB"]

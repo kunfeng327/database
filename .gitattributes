@@ -1,0 +1,2 @@
+# bat 文件必须保持 CRLF 换行（GBK 编码），与各人 autocrlf 设置无关
+*.bat text eol=crlf
