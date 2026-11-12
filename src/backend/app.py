@@ -227,6 +227,54 @@ def elders():
     return jsonify({"ok": True, "data": query_all(sql + " ORDER BY elder_id", args)})
 
 
+# ------------------------------------------------------------------ 能力评估
+@app.get("/api/elders/<int:elder_id>/assessments")
+@login_required()
+def elder_assessments(elder_id):
+    """评估历史：家属只能查自家老人；含过期标志与剩余天数（复评提醒）。"""
+    if session["role"] == "家属" and elder_id != session["elder_id"]:
+        return jsonify({"ok": False, "msg": "无权限：只能查看自家老人的评估记录"}), 403
+    return jsonify({"ok": True, "data": query_all("""
+        SELECT a.scale, a.score, a.ability_level, a.assessor, a.assess_date, a.expire_date,
+               (a.expire_date < CURDATE()) AS expired,
+               DATEDIFF(a.expire_date, CURDATE()) AS days_left
+        FROM assessment a WHERE a.elder_id=%s ORDER BY a.assessment_id DESC""", elder_id)})
+
+
+@app.post("/api/elders/<int:elder_id>/assessments")
+@login_required(roles=("社区管理员",))
+def create_assessment(elder_id):
+    """社区录入能力评估：等级按得分自动核定（演示口径，与种子数据一致：
+    ≥85 能力完好 / 75-84 轻度 / 50-74 中度 / <50 重度），结果一年有效；
+    该老人此前因评估过期被暂停的照护计划随复评自动恢复。"""
+    body = request.get_json(force=True)
+    scale, score = body.get("scale", "ADL"), body["score"]
+    if not isinstance(score, int) or not 0 <= score <= 100:
+        raise BizError("得分应为 0-100 的整数")
+
+    def level_of(s):
+        return ("能力完好" if s >= 85 else "轻度失能" if s >= 75
+                else "中度失能" if s >= 50 else "重度失能")
+
+    def fn(cur):
+        cur.execute("SELECT elder_id FROM elder WHERE elder_id=%s AND status='正常'", elder_id)
+        if not cur.fetchone():
+            raise BizError("老人档案不存在或已暂停服务")
+        cur.execute("""INSERT INTO assessment (elder_id, scale, score, ability_level, assessor,
+                       assess_date, expire_date)
+                       VALUES (%s,%s,%s,%s,%s,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 1 YEAR))""",
+                    (elder_id, scale, score, level_of(score), session["name"]))
+        assessment_id = cur.lastrowid  # 须在 INSERT 后立即取，后续语句会覆盖该值
+        # 恢复暂停计划（演示口径：该老人的暂停计划默认因评估过期，见 sp_pause_expired_plans）
+        cur.execute("UPDATE care_plan SET status='生效' WHERE elder_id=%s AND status='暂停'", elder_id)
+        resumed = cur.rowcount
+        return {"assessment_id": assessment_id, "ability_level": level_of(score),
+                "expire_date": (dt.date.today() + dt.timedelta(days=365)).strftime("%Y-%m-%d"),
+                "resumed_plans": resumed}
+
+    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+
 # ------------------------------------------------------------------ 订单
 @app.get("/api/orders")
 @login_required()
