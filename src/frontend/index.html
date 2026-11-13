@@ -138,8 +138,8 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
 .dialog-content { padding:18px; }
 .dialog-content .card { min-width:0; }
 #elder-dialog-loading { padding:8px 12px; margin-bottom:12px; color:var(--primary-dk); }
-.reminder-result { max-width:280px; margin-top:6px; font-size:12px; line-height:1.5; }
-.reminder-result.success { color:var(--primary-dk); }
+/* 各发送状态保持相同尺寸，避免表格列宽和卡片高度跳动。 */
+.reminder-send { width:7em; white-space:nowrap; }
 #elder-dialog-error { padding:12px; margin-bottom:12px; background:var(--red-lt); color:var(--red); }
 #elder-detail p { margin:8px 0; }
 #elder-status-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
@@ -746,17 +746,13 @@ function reminderAction(id){
   if(ME.role!=='社区管理员')return '仅社区管理员可发送';
   if(!Number.isSafeInteger(id)||id<=0)return '<span class="muted">缺少档案编号，请刷新页面</span>';
   const result=reminderResults.get(id),pending=pendingReminders.get(id)===ME;
-  return `<button type="button" class="btn small ghost" data-remind="${id}" onclick="sendReminder(${id})" ${pending?'disabled':''}>${pending?'发送中…':result?.state==='success'?'今日已提醒':result?.state==='error'?'重试发送':'发送提醒'}</button>
-    <p class="reminder-result ${result?.state==='error'||!result?'hide':result.state}" data-reminder-result="${id}" role="status">${esc(result?.state==='error'?'':result?.message||'')}</p>`;
+  return `<button type="button" class="btn small ghost reminder-send" data-remind="${id}" onclick="sendReminder(${id})" aria-busy="${pending}" ${pending?'disabled':''}>${pending?'发送中…':result?.state==='success'?'今日已提醒':result?.state==='error'?'重试发送':'发送提醒'}</button>`;
 }
-function reminderFeedback(id,state,message){
-  reminderResults.set(id,{state,message});
-  document.querySelectorAll(`[data-reminder-result="${id}"]`).forEach(el=>{
-    el.className='reminder-result '+(state==='error'?'hide':state);
-    el.textContent=state==='error'?'':message;
-  });
+function reminderFeedback(id,state){
+  reminderResults.set(id,{state});
   document.querySelectorAll(`[data-remind="${id}"]`).forEach(button=>{
     button.disabled=pendingReminders.get(id)===ME;
+    button.setAttribute('aria-busy',String(button.disabled));
     button.textContent=button.disabled?'发送中…':state==='success'?'今日已提醒':'重试发送';
   });
 }
@@ -764,7 +760,7 @@ async function sendReminder(id){
   if(!Number.isSafeInteger(id)||id<=0){toast('缺少有效的老人档案编号，请刷新页面',true);return;}
   if(pendingReminders.get(id)===ME)return;
   const user=ME;
-  pendingReminders.set(id,user);reminderFeedback(id,'','正在发送，请稍候…');
+  pendingReminders.set(id,user);reminderFeedback(id,'pending');
   let state='error',message='发送失败，请重试';
   try {
     const r=await elderRequest(`/api/elders/${id}/reminders`,{method:'POST',suppressErrorBanner:true});
@@ -773,7 +769,7 @@ async function sendReminder(id){
   } catch(e) {message=e.message;}
   finally {
     if(pendingReminders.get(id)===user)pendingReminders.delete(id);
-    if(user===ME){reminderFeedback(id,state,message);toast(message,state==='error');}
+    if(user===ME){reminderFeedback(id,state);toast(message,state==='error');}
   }
 }
 const abilityLevels=['能力完好','轻度失能','中度失能','重度失能','未评估'];
