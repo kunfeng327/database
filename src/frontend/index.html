@@ -22,6 +22,10 @@
 body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:var(--bg);
   color:var(--text); font-size:14px; }
 
+.data-load-alert { position:sticky; top:0; z-index:20; background:#fff2d6; color:#663c00;
+  padding:12px 20px; border-bottom:1px solid #e5c77a; }
+.data-load-alert button { margin-left:12px; padding:5px 12px; cursor:pointer; }
+
 /* ---------------- 登录页 ---------------- */
 #login-view { min-height:100vh; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(135deg,#1a2332 0%,#17303c 60%,#1ABB9C 160%); }
@@ -123,6 +127,9 @@ textarea { width:100%; min-height:56px; resize:vertical; }
 </style>
 </head>
 <body>
+<div id="data-load-alert" class="data-load-alert hide" role="alert">
+  <span id="data-load-message"></span><button type="button" onclick="boot()">重新加载</button>
+</div>
 
 <!-- ================= 登录页 ================= -->
 <div id="login-view">
@@ -322,11 +329,29 @@ const $ = s => document.querySelector(s);
 let ME = null;                 // 当前登录用户 {name, role, elder_id, caregiver_id}
 let elderList = [];
 
+function showDataError(message){
+  $('#data-load-message').textContent = message;
+  $('#data-load-alert').classList.remove('hide');
+}
 async function API(url, opts) {
-  const r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...opts,
-    body: opts && opts.body ? JSON.stringify(opts.body) : undefined });
-  const j = await r.json().catch(() => ({ok:false, msg:'网络错误'}));
+  let r, j;
+  try {
+    r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...opts,
+      body: opts && opts.body ? JSON.stringify(opts.body) : undefined });
+  } catch(e) {
+    const msg = '无法连接服务，请运行启动演示.bat并保持后端窗口开启，然后访问 http://127.0.0.1:5000。';
+    showDataError(msg);
+    return {ok:false, msg};
+  }
+  try { j = await r.json(); } catch(e) {
+    j = {ok:false, msg:'服务返回了非预期内容，请确认通过启动演示.bat打开的地址访问。'};
+  }
+  if (!j || typeof j.ok !== 'boolean') j = {ok:false, msg:'服务响应格式不正确，请确认前后端使用同一版本。'};
   if (r.status === 401) { showLogin(); throw new Error(j.msg || '请先登录'); }
+  if (!r.ok || !j.ok) {
+    j.ok = false;
+    if (!opts?.method || r.status >= 500) showDataError(j.msg || '数据加载失败，请稍后重试。');
+  }
   return j;
 }
 function toast(msg, err=false) {
@@ -341,8 +366,8 @@ const fmtYuan = n => '￥' + Number(n).toFixed(2);
 function fillLogin(u){ $('#lg-user').value = u; $('#lg-pass').value = '123456'; }
 function showLogin(){ $('#app-view').style.display='none'; $('#login-view').style.display='flex'; }
 async function doLogin(){
-  const r = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({username:$('#lg-user').value, password:$('#lg-pass').value}) }).then(x=>x.json());
+  const r = await API('/api/login', {method:'POST',
+    body:{username:$('#lg-user').value, password:$('#lg-pass').value}});
   if (r.ok) { toast(`欢迎，${r.data.real_name}（${r.data.role}）`); boot(); }
   else toast(r.msg, true);
 }
@@ -363,6 +388,7 @@ const ROLE_TABS = {
 };
 
 async function boot(){
+  $('#data-load-alert').classList.add('hide');
   let me;
   try { me = await API('/api/me'); } catch(e) { return; }
   if (!me.ok) { showLogin(); return; }
@@ -373,9 +399,12 @@ async function boot(){
   $('#u-role').textContent = ME.role + (ME.role==='家属' ? ' · 绑定老人档案' : '');
   $('#role-badge').textContent = ME.role;
   buildNav();
-  await loadItems();
-  await Promise.all([loadElders(), loadOrders(), loadSchedules()]);
-  loadStats(); loadPending(); loadSubsidy(); loadOps();
+  // 单个模块出错不能阻断总览、订单等独立模块；错误保持可见，支持重试。
+  const initial = await Promise.allSettled([loadItems(), loadElders(), loadOrders(), loadSchedules()]);
+  for (const result of initial) if (result.status === 'rejected') showDataError(result.reason.message || '部分数据加载失败');
+  if ($('#app-view').style.display === 'none') return;
+  const remaining = await Promise.allSettled([loadStats(), loadPending(), loadSubsidy(), loadOps()]);
+  for (const result of remaining) if (result.status === 'rejected') showDataError(result.reason.message || '部分数据加载失败');
 }
 
 function buildNav(){
@@ -422,12 +451,14 @@ function buildNav(){
 /* ================= 数据加载 ================= */
 async function loadItems(){
   const r = await API('/api/items');
+  if (!r.ok) return;
   $('#f-item').innerHTML = r.data.map(i =>
     `<option value="${i.item_id}">${esc(i.name)}（￥${i.guide_price}/${i.unit}${i.subsidizable?'，可补贴':''}）</option>`).join('');
 }
 async function loadStats(){
   if (!['社区管理员','监管人员','机构负责人'].includes(ME.role)) { $('#stat-cards').innerHTML=''; return; }
   const r = await API('/api/stats');
+  if (!r.ok) return;
   const d = r.data, cards = [
     ['elders_normal','在册正常老人','👴','i-teal'],['orders_active','进行中订单','📋','i-blue'],
     ['orders_timeout','超时未派单','⏰','i-red'],['plans_to_pause','待暂停计划','⚠️','i-yellow'],
@@ -438,6 +469,7 @@ async function loadStats(){
 async function loadPending(){
   if (ME.role !== '社区管理员') return;
   const p = await API('/api/pending-orders');
+  if (!p.ok) return;
   $('#pending-table tbody').innerHTML = p.data.map(o => `<tr>
     <td>${o.order_id}</td><td>${esc(o.elder_name)}</td><td>${esc(o.community)}</td>
     <td>${esc(o.item_name)}</td><td>${o.appoint_time}</td><td>${o.waited_min}</td>
@@ -637,6 +669,7 @@ $('#assess-form-card').onsubmit = async ev => {
 };
 async function loadOrders(){
   const r = await API('/api/orders');
+  if (!r.ok) return;
   const isAdmin = ME.role === '社区管理员', isWorker = ME.role === '护工';
   $('#order-table tbody').innerHTML = r.data.map(o => {
     let act = '—';
@@ -758,6 +791,7 @@ async function audit(id, action){
 async function loadOps(){
   if (ME.role !== '社区管理员') return;
   const r = await API('/api/maintenance/expired-preview');
+  if (!r.ok) return;
   $('#expired-table tbody').innerHTML = r.data.length ? r.data.map(x => `<tr>
     <td>${x.plan_id}</td><td>${esc(x.elder_name)}</td><td>${esc(x.package_name)}</td>
     <td>${esc(x.status)}</td><td>${x.expire_date} <span class="badge b-red">已过期</span></td></tr>`).join('')

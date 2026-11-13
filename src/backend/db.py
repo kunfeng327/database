@@ -34,7 +34,7 @@ if os.environ.get("MYSQL_PORT"):
     DB_CONFIG["port"] = int(os.environ["MYSQL_PORT"])
 if os.environ.get("MYSQL_USER"):
     DB_CONFIG["user"] = os.environ["MYSQL_USER"]
-if os.environ.get("MYSQL_PWD"):
+if "MYSQL_PWD" in os.environ:
     DB_CONFIG["password"] = os.environ["MYSQL_PWD"]
 if os.environ.get("MYSQL_DB"):
     DB_CONFIG["database"] = os.environ["MYSQL_DB"]

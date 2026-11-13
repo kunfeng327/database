@@ -23,6 +23,7 @@ from flask import Flask, jsonify, request, send_file, session
 
 from db import DB_CONFIG
 from errors import BizError
+from db_diagnostics import database_error_message
 from elder_dao import ElderDAO
 from werkzeug.exceptions import HTTPException
 
@@ -99,6 +100,10 @@ def handle_500(e):
         return jsonify({"ok": False, "msg": "记录重复（身份证号、申报或排班已存在）"}), 409
     if isinstance(e, pymysql.err.OperationalError) and e.args[0] == 1644:
         return jsonify({"ok": False, "msg": e.args[1]}), 400
+    if isinstance(e, pymysql.err.MySQLError):
+        message = database_error_message(e.args[0] if e.args else None)
+        if message:
+            return jsonify({"ok": False, "msg": message}), 503
     # 不向客户端输出 SQL、身份证号、数据库配置等异常细节。
     app.logger.error("数据库或请求处理异常：%s", type(e).__name__)
     return jsonify({"ok": False, "msg": "服务器暂时无法处理请求，请稍后重试"}), 500

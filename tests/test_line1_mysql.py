@@ -125,6 +125,39 @@ class MySQLTests(unittest.TestCase):
         data.update(changes)
         return data
 
+    def test_startup_upgrades_legacy_schema_and_preserves_archives(self):
+        from prepare_database import prepare_database
+
+        before = self.sql("SELECT elder_id,name,id_card FROM elder ORDER BY elder_id")
+        self.sql("DROP TABLE care_plan_item")
+        self.sql(
+            "ALTER TABLE care_plan DROP CHECK chk_pause_reason, DROP COLUMN pause_reason"
+        )
+        self.sql(
+            "ALTER TABLE care_plan DROP INDEX idx_plan_elder, ADD INDEX idx_plan_elder (elder_id,status)"
+        )
+        self.sql("ALTER TABLE assessment DROP INDEX idx_assess_latest")
+        self.sql("DROP VIEW v_latest_assessment")
+        self.sql("DROP PROCEDURE sp_pause_expired_plans_worker")
+        conn = self.connect()
+        try:
+            self.assertTrue(prepare_database(conn)["upgraded"])
+            self.assertFalse(prepare_database(conn)["upgraded"])
+        finally:
+            conn.close()
+        self.assertEqual(
+            self.sql("SELECT elder_id,name,id_card FROM elder ORDER BY elder_id"),
+            before,
+        )
+        self.assertEqual(self.sql("SELECT DATABASE() AS db")[0]["db"], self.database)
+        self.assertEqual(len(self.dao.list_elders()), 24)
+        self.assertEqual(
+            self.sql("SELECT pause_reason FROM care_plan WHERE plan_id=6")[0][
+                "pause_reason"
+            ],
+            "手动暂停",
+        )
+
     def test_seed_counts_and_nonduplicated_views(self):
         for table in ["elder", "assessment", "care_plan", "care_plan_item"]:
             self.assertGreaterEqual(

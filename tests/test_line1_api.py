@@ -143,6 +143,22 @@ class APITests(unittest.TestCase):
             self.assertEqual(response.status_code, 400)
             self.assertEqual(self.client.get("/api/me").status_code, 401)
 
+    def test_missing_database_objects_return_actionable_service_error(self):
+        self.login_as("社区管理员")
+        for code, expected in [
+            (1146, "升级"),
+            (1054, "升级"),
+            (1049, "初始化"),
+            (2003, "MySQL"),
+        ]:
+            self.dao.list_elders.side_effect = backend.pymysql.err.OperationalError(
+                code, "private SQL and credentials"
+            )
+            response = self.client.get("/api/elders")
+            self.assertEqual(response.status_code, 503)
+            self.assertIn(expected, response.get_json()["msg"])
+            self.assertNotIn("private", response.get_data(as_text=True))
+
     def test_database_error_does_not_expose_identity(self):
         self.login_as("社区管理员")
         self.dao.create_elders.side_effect = RuntimeError(
