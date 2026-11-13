@@ -5,6 +5,7 @@
 """
 
 import datetime as dt
+import hashlib
 import os
 import sys
 import threading
@@ -19,6 +20,7 @@ from db import DB_CONFIG
 from elder_dao import ElderDAO
 from notification_dao import NotificationDAO
 from errors import BizError
+from demo_family_accounts import create_missing_family_accounts
 
 
 def run_script(conn, path):
@@ -112,6 +114,38 @@ class MySQLTests(unittest.TestCase):
             return rows
         finally:
             conn.close()
+
+    def test_missing_family_accounts_can_receive_reminders(self):
+        existing = self.sql("SELECT * FROM sys_user ORDER BY user_id")
+        conn = self.connect()
+        try:
+            self.assertEqual(len(create_missing_family_accounts(conn)), 22)
+            self.assertEqual(create_missing_family_accounts(conn), [])
+        finally:
+            conn.close()
+        self.assertEqual(self.sql("SELECT * FROM sys_user WHERE user_id<=6 ORDER BY user_id"), existing)
+        account = self.sql("SELECT * FROM sys_user WHERE username='样例老人9'")[0]
+        self.assertEqual(account["elder_id"], 23)
+        self.assertEqual(account["password_hash"], hashlib.sha256((account["salt"] + "123456").encode()).hexdigest())
+        notifications = NotificationDAO(self.connect)
+        self.assertEqual(notifications.send_reminder(23, 1)["created_count"], 1)
+        self.assertEqual(self.sql("SELECT recipient_id FROM family_notification WHERE elder_id=23"),
+                         [{"recipient_id": account["user_id"]}])
+
+    def test_concurrent_family_account_completion_does_not_duplicate(self):
+        barrier = threading.Barrier(2)
+
+        def complete():
+            conn = self.connect()
+            try:
+                barrier.wait(timeout=10)
+                return len(create_missing_family_accounts(conn))
+            finally:
+                conn.close()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            self.assertEqual(sorted(pool.map(lambda _: complete(), range(2))), [0, 22])
+        self.assertEqual(self.sql("SELECT COUNT(*) n FROM sys_user WHERE role='家属'"), [{"n": 24}])
 
     def plan(self, **changes):
         today = dt.date.today()

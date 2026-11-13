@@ -1,4 +1,6 @@
-"""一键启动前检查并升级已有演示库。不会创建/清空业务库或导入种子数据。
+"""一键启动前检查并升级已有演示库，补齐缺失的家属演示账号。
+
+不会创建/清空业务库或重新导入种子数据，已有账号保持不变。
 
 可重复运行；MySQL DDL隐式提交，失败后修正权限等问题再重试。
 仅缺失结构时执行升级，正常启动不重复重建视图/触发器。
@@ -8,6 +10,7 @@ from pathlib import Path
 import re
 
 from db_diagnostics import database_error_message
+from demo_family_accounts import create_missing_family_accounts
 
 SQL_DIR = Path(__file__).resolve().parents[2] / "sql"
 BASE_TABLES = {
@@ -211,6 +214,11 @@ def main():
                 "[错误] 数据库没有登录账号。请先备份，再按README初始化演示数据或由管理员配置账号。"
             )
             return 1
+        accounts = create_missing_family_accounts(conn)
+        if accounts:
+            print(f"[完成] 已补齐 {len(accounts)} 个家属账号，密码均为123456；已有账号保持不变。")
+            for account in accounts:
+                print(f"  {account['elder_name']}（档案{account['elder_id']}）→ 账号：{account['username']}")
         print(f"[就绪] 数据库中有 {result['elders']} 份老人档案。")
         if not result["elders"]:
             print(
