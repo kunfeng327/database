@@ -8,6 +8,7 @@ DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
 SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE quality_inspection;
 TRUNCATE subsidy_claim; TRUNCATE subsidy_policy; TRUNCATE schedule;
 TRUNCATE dispatch;     TRUNCATE service_order;  TRUNCATE service_item;
 TRUNCATE care_plan;    TRUNCATE assessment;     TRUNCATE elder;
@@ -153,12 +154,56 @@ INSERT INTO subsidy_policy (policy_id, district, target_type, item_id, standard,
 (5,'西城区','高龄',1,10.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
 (6,'海淀区','高龄',4,100.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR));
 
--- 补贴申报（4 条历史申报）
-INSERT INTO subsidy_claim (claim_id, elder_id, policy_id, claim_period, order_ids, amount, status, reviewer) VALUES
-(1,3,2, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'1,2',90.00,'已拨付','街道小李'),
-(2,4,1, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'3,4',40.00,'已拨付','街道小李'),
-(3,7,1, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'5',30.00,'街道已审','街道小王'),
-(4,1,6, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'7',100.00,'待审核',NULL);
+-- 补贴申报（20 条，覆盖 3 个历史账期；审核状态与拨付状态分离）
+INSERT INTO subsidy_claim
+(claim_id, elder_id, policy_id, claim_period, order_ids, amount,
+ audit_status, pay_status, reviewer, audited_at, paid_at) VALUES
+(1, 3,2, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'1,2',80.00,'通过','已拨付','街道小李',DATE_SUB(NOW(), INTERVAL 33 DAY),DATE_SUB(NOW(), INTERVAL 31 DAY)),
+(2, 4,1, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'3,4',30.00,'通过','已拨付','街道小李',DATE_SUB(NOW(), INTERVAL 33 DAY),DATE_SUB(NOW(), INTERVAL 31 DAY)),
+(3, 7,5, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'5',10.00,'街道已审','未拨付','街道小王',DATE_SUB(NOW(), INTERVAL 32 DAY),NULL),
+(4, 1,6, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'7',100.00,'待审核','未拨付',NULL,NULL,NULL),
+(5, 6,4, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'6',30.00,'通过','已拨付','街道小李',DATE_SUB(NOW(), INTERVAL 34 DAY),DATE_SUB(NOW(), INTERVAL 30 DAY)),
+(6, 2,6, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'1,3',200.00,'通过','已拨付','街道小王',DATE_SUB(NOW(), INTERVAL 33 DAY),DATE_SUB(NOW(), INTERVAL 29 DAY)),
+(7, 8,6, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'7',100.00,'街道已审','未拨付','街道小王',DATE_SUB(NOW(), INTERVAL 31 DAY),NULL),
+(8,13,6, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 35 DAY),'%Y-%m'),'3,4',200.00,'驳回','未拨付','街道小李',DATE_SUB(NOW(), INTERVAL 30 DAY),NULL),
+(9, 3,2, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 65 DAY),'%Y-%m'),'1,2',80.00,'通过','已拨付','街道小李',DATE_SUB(NOW(), INTERVAL 63 DAY),DATE_SUB(NOW(), INTERVAL 61 DAY)),
+(10,4,1, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 65 DAY),'%Y-%m'),'3,4',30.00,'通过','已拨付','街道小李',DATE_SUB(NOW(), INTERVAL 63 DAY),DATE_SUB(NOW(), INTERVAL 61 DAY)),
+(11,7,5, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 65 DAY),'%Y-%m'),'5',10.00,'通过','已拨付','街道小王',DATE_SUB(NOW(), INTERVAL 62 DAY),DATE_SUB(NOW(), INTERVAL 60 DAY)),
+(12,1,6, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 65 DAY),'%Y-%m'),'7',100.00,'驳回','未拨付','街道小王',DATE_SUB(NOW(), INTERVAL 61 DAY),NULL),
+(13,6,4, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 65 DAY),'%Y-%m'),'6',30.00,'通过','已拨付','街道小李',DATE_SUB(NOW(), INTERVAL 64 DAY),DATE_SUB(NOW(), INTERVAL 60 DAY)),
+(14,2,6, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 65 DAY),'%Y-%m'),'1,3',200.00,'街道已审','未拨付','街道小王',DATE_SUB(NOW(), INTERVAL 62 DAY),NULL),
+(15,8,6, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 65 DAY),'%Y-%m'),'7',100.00,'待审核','未拨付',NULL,NULL,NULL),
+(16,13,6, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 65 DAY),'%Y-%m'),'3,4',200.00,'通过','已拨付','街道小李',DATE_SUB(NOW(), INTERVAL 63 DAY),DATE_SUB(NOW(), INTERVAL 59 DAY)),
+(17,3,2, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 95 DAY),'%Y-%m'),'1,2',80.00,'通过','已拨付','街道小李',DATE_SUB(NOW(), INTERVAL 93 DAY),DATE_SUB(NOW(), INTERVAL 91 DAY)),
+(18,4,1, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 95 DAY),'%Y-%m'),'3,4',30.00,'通过','已拨付','街道小王',DATE_SUB(NOW(), INTERVAL 93 DAY),DATE_SUB(NOW(), INTERVAL 90 DAY)),
+(19,7,5, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 95 DAY),'%Y-%m'),'5',10.00,'驳回','未拨付','街道小王',DATE_SUB(NOW(), INTERVAL 92 DAY),NULL),
+(20,1,6, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 95 DAY),'%Y-%m'),'7',100.00,'通过','已拨付','街道小李',DATE_SUB(NOW(), INTERVAL 94 DAY),DATE_SUB(NOW(), INTERVAL 90 DAY));
+
+-- 质量抽查（20 条：7 条订单抽查 + 13 条护工抽查；含 1 条待抽查、1 条待整改）
+INSERT INTO quality_inspection
+(inspection_id, order_id, caregiver_id, inspection_method, score, issue_tags,
+ rectification_requirement, rectification_result, inspection_status,
+ rectification_status, inspector, inspected_at, rectified_at) VALUES
+(1,1,4,'电话回访',95,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 24 DAY),NULL),
+(2,2,4,'上门核查',88,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 22 DAY),NULL),
+(3,3,1,'电话回访',92,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 21 DAY),NULL),
+(4,4,1,'上门核查',76,'送餐迟到','补齐迟到说明并连续两次回访合格','已补交说明，后续回访正常','已抽查','已完成','街道张监管',DATE_SUB(NOW(), INTERVAL 18 DAY),DATE_SUB(NOW(), INTERVAL 12 DAY)),
+(5,5,2,'电话回访',85,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 16 DAY),NULL),
+(6,6,4,'上门核查',70,'服务时长不足','补做陪诊记录并提交机构复核','机构已复核，补齐服务记录','已抽查','已完成','街道张监管',DATE_SUB(NOW(), INTERVAL 15 DAY),DATE_SUB(NOW(), INTERVAL 9 DAY)),
+(7,7,3,'电话回访',90,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 14 DAY),NULL),
+(8,NULL,1,'电话回访',82,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 13 DAY),NULL),
+(9,NULL,1,'上门核查',78,'沟通态度','参加服务沟通复训并提交培训证明','已提交复训证明，等待复查','已抽查','待整改','街道张监管',DATE_SUB(NOW(), INTERVAL 8 DAY),NULL),
+(10,NULL,2,'电话回访',86,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 11 DAY),NULL),
+(11,NULL,2,'上门核查',60,'服务记录缺失','补齐服务记录并由机构负责人签字','记录已补齐','已抽查','已完成','街道张监管',DATE_SUB(NOW(), INTERVAL 20 DAY),DATE_SUB(NOW(), INTERVAL 10 DAY)),
+(12,NULL,3,'电话回访',88,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 9 DAY),NULL),
+(13,NULL,3,'电话回访',91,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 7 DAY),NULL),
+(14,NULL,4,'电话回访',89,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 6 DAY),NULL),
+(15,NULL,4,'上门核查',62,'护理流程不规范','按标准流程复训并提交整改照片','已完成复训并上传照片','已抽查','已完成','街道张监管',DATE_SUB(NOW(), INTERVAL 17 DAY),DATE_SUB(NOW(), INTERVAL 5 DAY)),
+(16,NULL,5,'电话回访',87,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 4 DAY),NULL),
+(17,NULL,5,'电话回访',95,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 3 DAY),NULL),
+(18,NULL,6,'上门核查',80,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 2 DAY),NULL),
+(19,NULL,7,'电话回访',84,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 1 DAY),NULL),
+(20,7,3,'电话回访',NULL,NULL,NULL,NULL,'待抽查',NULL,'街道张监管',NOW(),NULL);
 
 -- 同步排班已接单量与种子派单数据一致（触发器建好后新派单会自动维护 booked）
 UPDATE schedule s
