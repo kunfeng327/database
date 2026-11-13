@@ -4,7 +4,7 @@
 安全机制（对应任务书 3.4）：
   - 密码加盐哈希存储（SHA256(盐+密码)，生产环境应换 bcrypt）
   - 连续失败 5 次锁定 10 分钟
-  - 会话 30 分钟超时（服务端 session）
+  - 会话 30 分钟超时（签名 Cookie 会话）
   - RBAC：每个接口声明允许的角色，数据按角色过滤（家属只见自家、护工只见自己派单）
 
 启动：python app.py  →  http://127.0.0.1:5000
@@ -22,11 +22,17 @@ import pymysql
 from flask import Flask, jsonify, request, send_file, session
 
 from db import DB_CONFIG
+from errors import BizError
+from db_diagnostics import database_error_message
+from elder_dao import ElderDAO
+from notification_dao import NotificationDAO
+from werkzeug.exceptions import HTTPException
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("APP_SECRET_KEY", "elder-care-demo-key-2026")
 app.config["PERMANENT_SESSION_LIFETIME"] = dt.timedelta(minutes=30)  # 会话超时
 app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
 
 
@@ -62,10 +68,6 @@ def query_all(sql, args=None):
         conn.close()
 
 
-class BizError(Exception):
-    """业务规则不满足（由本文件或数据库触发器 SIGNAL 抛出）。"""
-
-
 def run_in_transaction(fn):
     """在单个事务里执行 fn(cursor)，返回其结果；BizError/触发器错误都会回滚。"""
     conn = get_conn()
@@ -93,9 +95,19 @@ def handle_biz(e):
 
 @app.errorhandler(Exception)
 def handle_500(e):
+    if isinstance(e, HTTPException):
+        return jsonify({"ok": False, "msg": e.description}), e.code
     if isinstance(e, pymysql.err.IntegrityError) and e.args[0] == 1062:
-        return jsonify({"ok": False, "msg": "违反唯一性约束（可能是重复申报/重复排班）"}), 409
-    return jsonify({"ok": False, "msg": f"服务器错误：{e}"}), 500
+        return jsonify({"ok": False, "msg": "记录重复（身份证号、申报或排班已存在）"}), 409
+    if isinstance(e, pymysql.err.OperationalError) and e.args[0] == 1644:
+        return jsonify({"ok": False, "msg": e.args[1]}), 400
+    if isinstance(e, pymysql.err.MySQLError):
+        message = database_error_message(e.args[0] if e.args else None)
+        if message:
+            return jsonify({"ok": False, "msg": message}), 503
+    # 不向客户端输出 SQL、身份证号、数据库配置等异常细节。
+    app.logger.error("数据库或请求处理异常：%s", type(e).__name__)
+    return jsonify({"ok": False, "msg": "服务器暂时无法处理请求，请稍后重试"}), 500
 
 
 # ------------------------------------------------------------------ 认证与 RBAC
@@ -110,6 +122,8 @@ def login_required(roles=None):
         def wrapper(*a, **kw):
             if not session.get("uid"):
                 return jsonify({"ok": False, "msg": "请先登录"}), 401
+            if session.get("role") == "家属" and not session.get("elder_id"):
+                return jsonify({"ok": False, "msg": "账号未绑定老人档案，请联系管理员"}), 403
             if roles and session.get("role") not in roles:
                 return jsonify({"ok": False, "msg":
                                 f"无权限：该操作需要「{'、'.join(roles)}」，当前角色为「{session.get('role')}」"}), 403
@@ -120,11 +134,13 @@ def login_required(roles=None):
 
 @app.post("/api/login")
 def login():
-    body = request.get_json(force=True)
+    body = json_body()
     username, password = body.get("username", ""), body.get("password", "")
+    if not isinstance(username, str) or not isinstance(password, str) or not username or not password:
+        raise BizError("请输入有效的账号和密码")
 
     def fn(cur):
-        cur.execute("SELECT * FROM sys_user WHERE username=%s", username)
+        cur.execute("SELECT * FROM sys_user WHERE username=%s FOR UPDATE", username)
         u = cur.fetchone()
         generic_err = BizError("账号或密码错误")
         if not u or u["status"] != "启用":
@@ -137,17 +153,21 @@ def login():
             if fails >= 5:
                 cur.execute("""UPDATE sys_user SET failed_attempts=0,
                                locked_until=NOW()+INTERVAL 10 MINUTE WHERE user_id=%s""", u["user_id"])
-                raise BizError("密码连续错误 5 次，账号锁定 10 分钟")
+                return {"login_error": "密码连续错误 5 次，账号锁定 10 分钟"}
             cur.execute("UPDATE sys_user SET failed_attempts=%s WHERE user_id=%s", (fails, u["user_id"]))
-            raise generic_err
+            return {"login_error": "账号或密码错误"}
         cur.execute("""UPDATE sys_user SET failed_attempts=0, locked_until=NULL,
                        last_login=NOW() WHERE user_id=%s""", u["user_id"])
-        session.permanent = True
-        session.update({"uid": u["user_id"], "role": u["role"], "name": u["real_name"],
-                        "elder_id": u["elder_id"], "caregiver_id": u["caregiver_id"]})
-        return {"real_name": u["real_name"], "role": u["role"]}
+        return u
 
-    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+    result = run_in_transaction(fn)
+    if "login_error" in result:
+        raise BizError(result["login_error"])
+    session.clear()
+    session.permanent = True
+    session.update({"uid": result["user_id"], "role": result["role"], "name": result["real_name"],
+                    "elder_id": result["elder_id"], "caregiver_id": result["caregiver_id"]})
+    return jsonify({"ok": True, "data": {"real_name": result["real_name"], "role": result["role"]}})
 
 
 @app.post("/api/logout")
@@ -168,7 +188,9 @@ def me():
 # ------------------------------------------------------------------ 页面
 @app.get("/")
 def index():
-    return send_file(FRONTEND)
+    response = send_file(FRONTEND)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 # ------------------------------------------------------------------ 基础数据
@@ -207,72 +229,210 @@ def stats():
           (SELECT COUNT(*) FROM elder WHERE status='正常') AS elders_normal,
           (SELECT COUNT(*) FROM service_order WHERE status IN ('待派单','已派单','服务中')) AS orders_active,
           (SELECT COUNT(*) FROM v_pending_dispatch_orders WHERE timeout_flag='超时') AS orders_timeout,
-          (SELECT COUNT(*) FROM care_plan p WHERE p.status='生效' AND
-             (SELECT MAX(a.expire_date) FROM assessment a WHERE a.elder_id=p.elder_id) < CURDATE()
+          (SELECT COUNT(*) FROM care_plan p LEFT JOIN v_latest_assessment a ON a.elder_id=p.elder_id
+            WHERE p.status='生效' AND (a.assessment_id IS NULL OR a.expire_date<CURDATE() OR a.assess_date>CURDATE())
           ) AS plans_to_pause,
           (SELECT COUNT(*) FROM subsidy_claim WHERE status IN ('待审核','街道已审')) AS claims_in_progress
     """)
     return jsonify({"ok": True, "data": rows[0]})
 
 
-# ------------------------------------------------------------------ 老人档案（家属只见自家）
+# ------------------------------------------------------------------ 业务线1：档案/评估/照护计划
+ELDER_READ_ROLES = ("社区管理员", "家属", "监管人员")
+
+
+def elder_dao():
+    return ElderDAO(get_conn)
+
+
+def json_body():
+    body = request.get_json()
+    if not isinstance(body, dict):
+        raise BizError("请求体必须是 JSON 对象")
+    return body
+
+
+def family_scope(elder_id):
+    if session["role"] == "家属" and elder_id != session.get("elder_id"):
+        return jsonify({"ok": False, "msg": "无权限：只能查看自家老人档案"}), 403
+
+
+def rows_response(rows):
+    return jsonify({"ok": True, "data": [jsonable(row) for row in rows]})
+
+
+@app.get("/api/communities")
+@login_required(roles=("社区管理员", "监管人员"))
+def communities():
+    return rows_response(query_all("SELECT community_id,name,district FROM community ORDER BY community_id"))
+
+
+@app.get("/api/plan-caregivers")
+@login_required(roles=("社区管理员",))
+def plan_caregivers():
+    return rows_response(query_all("""SELECT caregiver_id,name,cert_type FROM caregiver
+        WHERE on_duty='在岗' AND cert_expire>=CURDATE() ORDER BY caregiver_id"""))
+
+
 @app.get("/api/elders")
-@login_required()
+@login_required(roles=ELDER_READ_ROLES)
 def elders():
-    sql = "SELECT * FROM v_elder_assessment_plan"
-    args = ()
-    if session["role"] == "家属":
-        sql += " WHERE elder_id=%s"
-        args = (session["elder_id"],)
-    return jsonify({"ok": True, "data": query_all(sql + " ORDER BY elder_id", args)})
+    def number(key, default=None, maximum=None):
+        raw = request.args.get(key)
+        if raw is None:
+            return default
+        if not raw.isascii() or not raw.isdecimal() or len(raw) > 10 or int(raw) < 1 or (maximum and int(raw) > maximum):
+            raise BizError(f"{key}应为有效正整数" + (f"，最大{maximum}" if maximum else ""))
+        return int(raw)
+    status = request.args.get("status") or None
+    if status and status not in ("正常", "暂停服务", "注销"):
+        raise BizError("档案状态无效")
+    page = number("page", maximum=1000000)
+    size = number("page_size", 20, 100)
+    data = elder_dao().list_elders(
+        elder_id=session.get("elder_id") if session["role"] == "家属" else None,
+        keyword=request.args.get("keyword", "")[:30], community_id=number("community_id"),
+        status=status, page=page, page_size=size)
+    if page is None:
+        return rows_response(data)
+    rows, total = data
+    return jsonify({"ok": True, "data": [jsonable(r) for r in rows],
+                    "pagination": {"page": page, "page_size": size, "total": total}})
 
 
-# ------------------------------------------------------------------ 能力评估
+@app.get("/api/elders/<int:elder_id>")
+@login_required(roles=ELDER_READ_ROLES)
+def elder_detail(elder_id):
+    forbidden = family_scope(elder_id)
+    if forbidden:
+        return forbidden
+    row = elder_dao().get_elder(elder_id)
+    if session["role"] == "监管人员":
+        row["guardian_phone"] = row["guardian_phone"][:3] + "****" + row["guardian_phone"][-4:]
+        row.pop("address", None)
+    return jsonify({"ok": True, "data": jsonable(row)})
+
+
+@app.post("/api/elders")
+@login_required(roles=("社区管理员",))
+def create_elder():
+    ids = elder_dao().create_elders([json_body()])
+    return jsonify({"ok": True, "data": {"elder_id": ids[0]}}), 201
+
+
+@app.post("/api/elders/batch")
+@login_required(roles=("社区管理员",))
+def batch_elders():
+    ids = elder_dao().create_elders(json_body().get("elders"))
+    return jsonify({"ok": True, "data": {"elder_ids": ids}}), 201
+
+
+@app.put("/api/elders/<int:elder_id>")
+@login_required(roles=("社区管理员",))
+def update_elder(elder_id):
+    return jsonify({"ok": True, "data": elder_dao().update_elder(elder_id, json_body())})
+
+
+@app.patch("/api/elders/<int:elder_id>/status")
+@login_required(roles=("社区管理员",))
+def update_elder_status(elder_id):
+    return jsonify({"ok": True, "data": elder_dao().set_elder_status(elder_id, json_body().get("status"))})
+
+
+@app.delete("/api/elders/<int:elder_id>")
+@login_required(roles=("社区管理员",))
+def archive_elder(elder_id):
+    # 逻辑删除保留评估、订单、补贴及家庭绑定，禁止重新建同身份证档案。
+    return jsonify({"ok": True, "data": elder_dao().set_elder_status(elder_id, "注销")})
+
+
 @app.get("/api/elders/<int:elder_id>/assessments")
-@login_required()
+@login_required(roles=ELDER_READ_ROLES)
 def elder_assessments(elder_id):
-    """评估历史：家属只能查自家老人；含过期标志与剩余天数（复评提醒）。"""
-    if session["role"] == "家属" and elder_id != session["elder_id"]:
-        return jsonify({"ok": False, "msg": "无权限：只能查看自家老人的评估记录"}), 403
-    return jsonify({"ok": True, "data": query_all("""
-        SELECT a.scale, a.score, a.ability_level, a.assessor, a.assess_date, a.expire_date,
-               (a.expire_date < CURDATE()) AS expired,
-               DATEDIFF(a.expire_date, CURDATE()) AS days_left
-        FROM assessment a WHERE a.elder_id=%s ORDER BY a.assessment_id DESC""", elder_id)})
+    forbidden = family_scope(elder_id)
+    if forbidden:
+        return forbidden
+    elder_dao().get_elder(elder_id)
+    return rows_response(elder_dao().assessments(elder_id))
 
 
 @app.post("/api/elders/<int:elder_id>/assessments")
 @login_required(roles=("社区管理员",))
 def create_assessment(elder_id):
-    """社区录入能力评估：等级按得分自动核定（演示口径，与种子数据一致：
-    ≥85 能力完好 / 75-84 轻度 / 50-74 中度 / <50 重度），结果一年有效；
-    该老人此前因评估过期被暂停的照护计划随复评自动恢复。"""
-    body = request.get_json(force=True)
-    scale, score = body.get("scale", "ADL"), body["score"]
-    if not isinstance(score, int) or not 0 <= score <= 100:
-        raise BizError("得分应为 0-100 的整数")
+    result = elder_dao().create_assessment(elder_id, json_body(), session["name"])
+    return jsonify({"ok": True, "data": jsonable(result)})
 
-    def level_of(s):
-        return ("能力完好" if s >= 85 else "轻度失能" if s >= 75
-                else "中度失能" if s >= 50 else "重度失能")
 
-    def fn(cur):
-        cur.execute("SELECT elder_id FROM elder WHERE elder_id=%s AND status='正常'", elder_id)
-        if not cur.fetchone():
-            raise BizError("老人档案不存在或已暂停服务")
-        cur.execute("""INSERT INTO assessment (elder_id, scale, score, ability_level, assessor,
-                       assess_date, expire_date)
-                       VALUES (%s,%s,%s,%s,%s,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 1 YEAR))""",
-                    (elder_id, scale, score, level_of(score), session["name"]))
-        assessment_id = cur.lastrowid  # 须在 INSERT 后立即取，后续语句会覆盖该值
-        # 恢复暂停计划（演示口径：该老人的暂停计划默认因评估过期，见 sp_pause_expired_plans）
-        cur.execute("UPDATE care_plan SET status='生效' WHERE elder_id=%s AND status='暂停'", elder_id)
-        resumed = cur.rowcount
-        return {"assessment_id": assessment_id, "ability_level": level_of(score),
-                "expire_date": (dt.date.today() + dt.timedelta(days=365)).strftime("%Y-%m-%d"),
-                "resumed_plans": resumed}
+@app.get("/api/elders/<int:elder_id>/plans")
+@login_required(roles=ELDER_READ_ROLES)
+def elder_plans(elder_id):
+    forbidden = family_scope(elder_id)
+    if forbidden:
+        return forbidden
+    elder_dao().get_elder(elder_id)
+    return rows_response(elder_dao().plans(elder_id))
 
-    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+@app.get("/api/elders/<int:elder_id>/plan-recommendation")
+@login_required(roles=("社区管理员",))
+def plan_recommendation(elder_id):
+    return jsonify({"ok": True, "data": elder_dao().recommendations(elder_id)})
+
+
+@app.post("/api/elders/<int:elder_id>/plans")
+@login_required(roles=("社区管理员",))
+def create_plan(elder_id):
+    return jsonify({"ok": True, "data": elder_dao().save_plan(elder_id, json_body())}), 201
+
+
+@app.put("/api/elders/<int:elder_id>/plans/<int:plan_id>")
+@login_required(roles=("社区管理员",))
+def update_plan(elder_id, plan_id):
+    return jsonify({"ok": True, "data": elder_dao().save_plan(elder_id, json_body(), plan_id)})
+
+
+@app.patch("/api/elders/<int:elder_id>/plans/<int:plan_id>/status")
+@login_required(roles=("社区管理员",))
+def update_plan_status(elder_id, plan_id):
+    return jsonify({"ok": True, "data": elder_dao().set_plan_status(elder_id, plan_id, json_body().get("status"))})
+
+
+@app.get("/api/elders/reports/<report>")
+@login_required(roles=("社区管理员", "监管人员"))
+def elder_report(report):
+    views = {"living-alone": "v_living_alone_unassessed",
+             "ability-distribution": "v_community_ability_distribution",
+             "reassessment": "v_elder_reassessment_due"}
+    if report not in views:
+        raise BizError("不存在的档案报表")
+    return rows_response(query_all("SELECT * FROM " + views[report] + " ORDER BY community_id"))
+
+
+def notification_dao():
+    return NotificationDAO(get_conn)
+
+
+@app.post("/api/elders/<int:elder_id>/reminders")
+@login_required(roles=("社区管理员",))
+def send_assessment_reminder(elder_id):
+    return jsonify({"ok": True, "data": notification_dao().send_reminder(elder_id, session["uid"])})
+
+
+@app.get("/api/notifications")
+@login_required(roles=("家属",))
+def notifications():
+    raw_page = request.args.get("page", "1")
+    if not raw_page.isascii() or not raw_page.isdecimal() or len(raw_page) > 7 or not 1 <= int(raw_page) <= 1000000:
+        raise BizError("page应为有效正整数，最大1000000")
+    data = notification_dao().inbox(session["uid"], page=int(raw_page))
+    data["messages"] = [jsonable(row) for row in data["messages"]]
+    return jsonify({"ok": True, "data": data})
+
+
+@app.patch("/api/notifications/<int:notification_id>/read")
+@login_required(roles=("家属",))
+def read_notification(notification_id):
+    return jsonify({"ok": True, "data": notification_dao().mark_read(notification_id, session["uid"])})
 
 
 # ------------------------------------------------------------------ 订单
@@ -322,20 +482,20 @@ def create_order():
         raise BizError("预约时间格式应为 YYYY-MM-DD HH:MM")
 
     def fn(cur):
-        cur.execute("SELECT status, address FROM elder WHERE elder_id=%s", elder_id)
+        cur.execute("SELECT status, address FROM elder WHERE elder_id=%s FOR UPDATE", elder_id)
         elder = cur.fetchone()
         if not elder:
             raise BizError("老人档案不存在")
         if elder["status"] != "正常":
             raise BizError(f"档案状态为「{elder['status']}」，不允许下单")
 
-        cur.execute("""SELECT MAX(expire_date) AS exp FROM assessment WHERE elder_id=%s""",
+        cur.execute("""SELECT expire_date AS exp FROM v_latest_assessment WHERE elder_id=%s AND assess_date<=CURDATE()""",
                     elder_id)
         row = cur.fetchone()
         if not row or not row["exp"]:
             raise BizError("该老人尚未做能力评估，请先安排评估")
-        if row["exp"] < dt.date.today():
-            raise BizError(f"能力评估已于 {row['exp'].strftime('%Y-%m-%d')} 过期，须复评后才可下单")
+        if row["exp"] < max(dt.date.today(), dt.datetime.strptime(appoint_time, "%Y-%m-%d %H:%M").date()):
+            raise BizError(f"能力评估有效期至 {row['exp'].strftime('%Y-%m-%d')}，无法覆盖当前或预约日期，须复评后才可下单")
 
         cur.execute("""SELECT guide_price, std_hours, unit FROM service_item WHERE item_id=%s""",
                     item_id)
@@ -551,28 +711,19 @@ def expired_preview():
         SELECT p.plan_id, e.name AS elder_name, p.package_name, p.status, a.expire_date
         FROM care_plan p
         JOIN elder e ON e.elder_id = p.elder_id
-        JOIN (SELECT elder_id, MAX(assessment_id) aid FROM assessment GROUP BY elder_id) x
-             ON x.elder_id = p.elder_id
-        JOIN assessment a ON a.assessment_id = x.aid
-        WHERE p.status='生效' AND a.expire_date < CURDATE()""")})
+        LEFT JOIN v_latest_assessment a ON a.elder_id=p.elder_id
+        WHERE p.status='生效' AND (a.assessment_id IS NULL OR a.expire_date<CURDATE() OR a.assess_date>CURDATE())""")})
 
 
 @app.post("/api/maintenance/pause-expired-plans")
 @login_required(roles=("社区管理员",))
 def pause_expired_plans():
     """调用存储过程 sp_pause_expired_plans：评估到期的照护计划自动暂停。"""
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("CALL sp_pause_expired_plans()")
-            row = cur.fetchone()
-        conn.commit()
-        return jsonify({"ok": True, "data": jsonable(row)})
-    finally:
-        conn.close()
+    return jsonify({"ok": True, "data": elder_dao().pause_expired()})
 
 
 if __name__ == "__main__":
-    print("养老服务平台演示后端已启动 → http://127.0.0.1:5000")
-    print("演示账号（密码均为 123456）：shequ / jiashu / jiashu2 / hugong / jigou / jianguan")
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    import sys
+    from demo_server import run_demo
+
+    raise SystemExit(run_demo(app, open_browser="--open-browser" in sys.argv))

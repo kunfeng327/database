@@ -64,7 +64,8 @@ CREATE TABLE assessment (
   CONSTRAINT fk_assess_elder FOREIGN KEY (elder_id) REFERENCES elder(elder_id),
   CONSTRAINT chk_score CHECK (score BETWEEN 0 AND 100),
   CONSTRAINT chk_assess_date CHECK (expire_date > assess_date),
-  INDEX idx_assess_elder (elder_id, expire_date)
+  INDEX idx_assess_elder (elder_id, expire_date),
+  INDEX idx_assess_latest (elder_id, assess_date, assessment_id)
 );
 
 -- ------------------------- 5 照护计划 -------------------------
@@ -77,10 +78,12 @@ CREATE TABLE care_plan (
   end_date     DATE NOT NULL,
   caregiver_id INT NULL COMMENT '责任护工',
   status       ENUM('生效','暂停','结束') NOT NULL DEFAULT '生效',
+  pause_reason VARCHAR(20) NULL COMMENT '评估过期/手动暂停/档案暂停；只恢复评估过期计划',
+  CONSTRAINT chk_pause_reason CHECK (pause_reason IS NULL OR (status='暂停' AND pause_reason IN ('评估过期','手动暂停','档案暂停'))),
   CONSTRAINT fk_plan_elder FOREIGN KEY (elder_id) REFERENCES elder(elder_id),
   CONSTRAINT fk_plan_caregiver FOREIGN KEY (caregiver_id) REFERENCES caregiver(caregiver_id),
   CONSTRAINT chk_plan_date CHECK (end_date >= start_date),
-  INDEX idx_plan_elder (elder_id, status)
+  INDEX idx_plan_elder (elder_id, status, start_date, end_date)
 );
 
 -- ------------------------- 6 服务项目 -------------------------
@@ -92,6 +95,15 @@ CREATE TABLE service_item (
   guide_price DECIMAL(8,2) NOT NULL COMMENT '指导价',
   std_hours   DECIMAL(3,1) NOT NULL COMMENT '标准时长(小时)',
   subsidizable TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否可补贴'
+);
+
+-- 计划项目明细：一个计划多个项目，避免逗号拼接，满足第三范式
+CREATE TABLE care_plan_item (
+  plan_id INT NOT NULL,
+  item_id INT NOT NULL,
+  PRIMARY KEY (plan_id, item_id),
+  CONSTRAINT fk_plan_item_plan FOREIGN KEY (plan_id) REFERENCES care_plan(plan_id),
+  CONSTRAINT fk_plan_item_service FOREIGN KEY (item_id) REFERENCES service_item(item_id)
 );
 
 -- ------------------------- 7 服务订单 -------------------------
@@ -200,3 +212,23 @@ CREATE TABLE sys_user (
   ),
   INDEX idx_user_role (role, status)
 );
+
+-- 家属评估提醒站内信
+CREATE TABLE family_notification (
+  notification_id INT PRIMARY KEY AUTO_INCREMENT,
+  recipient_id INT NOT NULL COMMENT '收信家属账号',
+  elder_id INT NOT NULL COMMENT '提醒对应老人',
+  sender_id INT NOT NULL COMMENT '发送提醒的社区管理员',
+  reminder_key VARCHAR(64) NOT NULL COMMENT '评估编号及提醒类型，用于当日去重',
+  sent_date DATE NOT NULL,
+  title VARCHAR(100) NOT NULL,
+  content VARCHAR(500) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  read_at DATETIME NULL,
+  CONSTRAINT fk_notification_recipient FOREIGN KEY (recipient_id) REFERENCES sys_user(user_id),
+  CONSTRAINT fk_notification_elder FOREIGN KEY (elder_id) REFERENCES elder(elder_id),
+  CONSTRAINT fk_notification_sender FOREIGN KEY (sender_id) REFERENCES sys_user(user_id),
+  CONSTRAINT uk_notification_daily UNIQUE (recipient_id,elder_id,reminder_key,sent_date),
+  INDEX idx_notification_inbox (recipient_id,elder_id,created_at,notification_id),
+  INDEX idx_notification_unread (recipient_id,elder_id,read_at)
+) ENGINE=InnoDB;

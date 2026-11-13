@@ -8,9 +8,10 @@ DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
 SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE family_notification;
 TRUNCATE subsidy_claim; TRUNCATE subsidy_policy; TRUNCATE schedule;
 TRUNCATE dispatch;     TRUNCATE service_order;  TRUNCATE service_item;
-TRUNCATE care_plan;    TRUNCATE assessment;     TRUNCATE elder;
+TRUNCATE care_plan_item; TRUNCATE care_plan;    TRUNCATE assessment;     TRUNCATE elder;
 TRUNCATE caregiver;    TRUNCATE community;      TRUNCATE sys_user;
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -33,7 +34,7 @@ INSERT INTO caregiver (caregiver_id, name, agency, cert_type, cert_level, cert_e
 (8,'周德海','乐龄养老服务社','养老护理员','四级', DATE_SUB(CURDATE(), INTERVAL 30 DAY),'幸福社区','在岗',4.2),
 (9,'吴美琴','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'阳光社区','离职',4.0);
 
--- 老人（14 位，11/12 号档案暂停服务）
+-- 初始老人（后文补充至24位，11/12号档案暂停服务）
 INSERT INTO elder (elder_id, name, id_card, birth_date, gender, address, community_id, guardian_name, guardian_phone, special_tag, status) VALUES
 (1,'陈桂香','110108194503152245','1945-03-15','女','幸福社区3号楼2单元101',1,'陈明','13800000001','独居,高龄','正常'),
 (2,'王守义','110108194811040117','1948-11-04','男','幸福社区5号楼1单元302',1,'王芳','13800000002','高龄','正常'),
@@ -50,7 +51,7 @@ INSERT INTO elder (elder_id, name, id_card, birth_date, gender, address, communi
 (13,'高崇礼','110105194410081130','1944-10-08','男','阳光社区1栋502',2,'高远','13800000013','高龄,独居','正常'),
 (14,'林淑仪','11010219570522442X','1957-05-22','女','滨江社区北里8号楼',4,'林峰','13800000014','','正常');
 
--- 能力评估（4、13 号评估已过期 → 触发"暂停派单"演示）
+-- 能力评估（10、13号老人评估已过期 → 触发"暂停派单"演示）
 INSERT INTO assessment (assessment_id, elder_id, scale, score, ability_level, assessor, assess_date, expire_date) VALUES
 (1,1,'ADL',95,'能力完好','评估员小马', DATE_SUB(CURDATE(), INTERVAL 100 DAY), DATE_ADD(CURDATE(), INTERVAL 265 DAY)),
 (2,1,'简易智能状态',92,'能力完好','评估员小马', DATE_SUB(CURDATE(), INTERVAL 100 DAY), DATE_ADD(CURDATE(), INTERVAL 265 DAY)),
@@ -178,3 +179,37 @@ INSERT INTO sys_user (username, password_hash, salt, real_name, role, elder_id, 
 ('hugong',  SHA2(CONCAT('s@lt!hugong',  '123456'),256), 's@lt!hugong',  '王秀兰', '护工', NULL, 1),
 ('jigou',   SHA2(CONCAT('s@lt!jigou',   '123456'),256), 's@lt!jigou',   '安康护理负责人', '机构负责人', NULL, NULL),
 ('jianguan',SHA2(CONCAT('s@lt!jianguan','123456'),256), 's@lt!jianguan','街道张监管', '监管人员', NULL, NULL);
+
+-- 业务线1补充样例（全部为虚构数据）：24份档案、21次评估、21份计划。
+-- 23/24号独居未评估；20号临近到期；21号评估过期；历史计划不与当前计划重叠。
+INSERT INTO elder (elder_id,name,id_card,birth_date,gender,address,community_id,guardian_name,guardian_phone,special_tag)
+SELECT 14+n,CONCAT('样例老人',n),CONCAT('11010819500101',LPAD(200+n,4,'0')),
+       '1950-01-01',IF(MOD(n,2)=0,'女','男'),CONCAT('演示社区样例楼',n,'号'),
+       1+MOD(n-1,4),CONCAT('样例监护人',n),CONCAT('1390000',LPAD(n,4,'0')),
+       IF(n>=9,'独居',IF(MOD(n,2)=0,'高龄','独居,高龄'))
+FROM (SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+      UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10) numbers;
+
+INSERT INTO assessment (elder_id,scale,score,ability_level,assessor,assess_date,expire_date)
+SELECT elder_id,'ADL',CASE MOD(elder_id,4) WHEN 0 THEN 90 WHEN 1 THEN 80 WHEN 2 THEN 60 ELSE 40 END,
+       CASE MOD(elder_id,4) WHEN 0 THEN '能力完好' WHEN 1 THEN '轻度失能' WHEN 2 THEN '中度失能' ELSE '重度失能' END,
+       '评估员小周',DATE_SUB(CURDATE(),INTERVAL 355 DAY),
+       CASE elder_id WHEN 20 THEN DATE_ADD(CURDATE(),INTERVAL 10 DAY)
+                     WHEN 21 THEN DATE_SUB(CURDATE(),INTERVAL 1 DAY)
+                     ELSE DATE_ADD(CURDATE(),INTERVAL 200 DAY) END
+FROM elder WHERE elder_id BETWEEN 15 AND 22 ORDER BY elder_id;
+
+INSERT INTO care_plan (elder_id,package_name,frequency,start_date,end_date,caregiver_id,status)
+SELECT elder_id,'探访与助餐关怀包','每周2次探访、每日助餐',DATE_SUB(CURDATE(),INTERVAL 10 DAY),
+       DATE_ADD(CURDATE(),INTERVAL 180 DAY),1,'生效'
+FROM elder WHERE elder_id BETWEEN 15 AND 22 ORDER BY elder_id;
+INSERT INTO care_plan (elder_id,package_name,frequency,start_date,end_date,caregiver_id,status)
+SELECT elder_id,'历史探访包','每周1次',DATE_SUB(CURDATE(),INTERVAL 500 DAY),
+       DATE_SUB(CURDATE(),INTERVAL 400 DAY),1,'结束'
+FROM elder WHERE elder_id BETWEEN 15 AND 18 ORDER BY elder_id;
+UPDATE care_plan SET pause_reason='手动暂停' WHERE status='暂停';
+INSERT INTO care_plan_item (plan_id,item_id) VALUES
+(1,4),(1,8),(2,2),(2,6),(3,1),(4,5),(5,6),(6,1),(7,8),(8,2),(9,5);
+INSERT INTO care_plan_item (plan_id,item_id)
+SELECT p.plan_id,si.item_id FROM care_plan p CROSS JOIN service_item si
+WHERE p.elder_id BETWEEN 15 AND 22 AND si.item_id IN (1,8);

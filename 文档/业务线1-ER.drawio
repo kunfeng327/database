@@ -1,0 +1,673 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" type="device" version="24.7.17">
+  <diagram id="line1-chen-core" name="档案、评估与照护计划（Chen ER）">
+    <mxGraphModel dx="3000" dy="2160" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3000" pageHeight="2160" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="业务线1 · 老人档案、能力评估与照护计划" style="text;html=0;align=left;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=30;fontStyle=1;fontColor=#17212b;" vertex="1" parent="1">
+          <mxGeometry x="80" y="28" width="2840" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Chen ER 图｜矩形：实体　椭圆：属性　带下划线：主键　双椭圆：多值属性　菱形：联系　1 / N / M：联系基数" style="text;html=0;align=left;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#455a64;" vertex="1" parent="1">
+          <mxGeometry x="80" y="86" width="2840" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_community" value="社区&#10;community" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rectangle;rounded=0;fillColor=#ffffff;strokeWidth=2;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="608" width="240" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_elder" value="老人档案&#10;elder" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rectangle;rounded=0;fillColor=#ffffff;strokeWidth=2;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="608" width="240" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_assessment" value="能力评估&#10;assessment" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rectangle;rounded=0;fillColor=#ffffff;strokeWidth=2;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="2330" y="608" width="240" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_caregiver" value="责任护工&#10;caregiver" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rectangle;rounded=0;fillColor=#ffffff;strokeWidth=2;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="1538" width="240" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_care_plan" value="照护计划&#10;care_plan" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rectangle;rounded=0;fillColor=#ffffff;strokeWidth=2;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="1538" width="240" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_service_item" value="服务项目&#10;service_item" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rectangle;rounded=0;fillColor=#ffffff;strokeWidth=2;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="2330" y="1538" width="240" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="attr_community_community_id" value="社区编号&#10;community_id" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;fontStyle=4;" vertex="1" parent="1">
+          <mxGeometry x="58.89" y="458.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_community_community_id" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_community" target="attr_community_community_id">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_community_name" value="社区名称（唯一）&#10;name" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="362.0" y="298.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_community_name" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_community" target="attr_community_name">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_community_district" value="所属区县&#10;district" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="665.11" y="458.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_community_district" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_community" target="attr_community_district">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_community_service_radius_km" value="服务半径（公里）&#10;service_radius_km" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="362" y="918" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_community_service_radius_km" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_community" target="attr_community_service_radius_km">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_elder_id" value="档案编号&#10;elder_id" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;fontStyle=4;" vertex="1" parent="1">
+          <mxGeometry x="939.14" y="474.35" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_elder_id" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_elder_id">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_name" value="姓名&#10;name" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1032.89" y="331.56" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_name" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_name">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_id_card" value="身份证号（唯一）&#10;id_card" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1178.97" y="234.31" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_id_card" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_id_card">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_birth_date" value="出生日期&#10;birth_date" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1362.0" y="198.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_birth_date" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_birth_date">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_gender" value="性别&#10;gender" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1545.03" y="234.31" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_gender" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_gender">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_address" value="居住地址&#10;address" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1691.11" y="331.56" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_address" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_address">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_guardian_name" value="监护人姓名&#10;guardian_name" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1784.86" y="474.35" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_guardian_name" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_guardian_name">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_guardian_phone" value="监护人电话&#10;guardian_phone" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1012" y="818" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_guardian_phone" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_guardian_phone">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_special_tag" value="特殊标签&#10;special_tag" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=doubleEllipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1112" y="968" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_special_tag" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_special_tag">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_status" value="档案状态&#10;status" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1712" y="818" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_status" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_status">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_created_at" value="建档时间&#10;created_at" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1612" y="968" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_created_at" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_created_at">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_assessment_assessment_id" value="评估编号&#10;assessment_id" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;fontStyle=4;" vertex="1" parent="1">
+          <mxGeometry x="2033.11" y="498.29" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_assessment_assessment_id" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_assessment" target="attr_assessment_assessment_id">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_assessment_scale" value="评估量表&#10;scale" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2161.25" y="331.3" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_assessment_scale" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_assessment" target="attr_assessment_scale">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_assessment_score" value="得分&#10;score" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2362.0" y="268.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_assessment_score" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_assessment" target="attr_assessment_score">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_assessment_ability_level" value="能力等级&#10;ability_level" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2562.75" y="331.3" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_assessment_ability_level" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_assessment" target="attr_assessment_ability_level">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_assessment_assessor" value="评估员&#10;assessor" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2690.89" y="498.29" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_assessment_assessor" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_assessment" target="attr_assessment_assessor">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_assessment_assess_date" value="评估日期&#10;assess_date" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2102" y="918" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_assessment_assess_date" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_assessment" target="attr_assessment_assess_date">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_assessment_expire_date" value="有效期截止&#10;expire_date" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2622" y="918" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_assessment_expire_date" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_assessment" target="attr_assessment_expire_date">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_caregiver_caregiver_id" value="护工编号&#10;caregiver_id" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;fontStyle=4;" vertex="1" parent="1">
+          <mxGeometry x="33.11" y="1445.39" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_caregiver_caregiver_id" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_caregiver" target="attr_caregiver_caregiver_id">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_caregiver_name" value="姓名&#10;name" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="161.25" y="1302.25" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_caregiver_name" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_caregiver" target="attr_caregiver_name">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_caregiver_agency" value="所属机构&#10;agency" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="362.0" y="1248.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_caregiver_agency" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_caregiver" target="attr_caregiver_agency">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_caregiver_cert_type" value="证书类型&#10;cert_type" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="562.75" y="1302.25" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_caregiver_cert_type" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_caregiver" target="attr_caregiver_cert_type">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_caregiver_cert_level" value="证书等级&#10;cert_level" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="690.89" y="1445.39" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_caregiver_cert_level" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_caregiver" target="attr_caregiver_cert_level">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_caregiver_cert_expire" value="证书有效期&#10;cert_expire" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="58.89" y="1698.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_caregiver_cert_expire" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_caregiver" target="attr_caregiver_cert_expire">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_caregiver_service_regions" value="服务区域&#10;service_regions" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="242.29" y="1829.91" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_caregiver_service_regions" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_caregiver" target="attr_caregiver_service_regions">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_caregiver_on_duty" value="在岗状态&#10;on_duty" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="481.71" y="1829.91" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_caregiver_on_duty" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_caregiver" target="attr_caregiver_on_duty">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_caregiver_rating" value="评分&#10;rating" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="665.11" y="1698.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_caregiver_rating" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_caregiver" target="attr_caregiver_rating">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_care_plan_plan_id" value="计划编号&#10;plan_id" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;fontStyle=4;" vertex="1" parent="1">
+          <mxGeometry x="1112" y="1318" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_care_plan_plan_id" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_care_plan" target="attr_care_plan_plan_id">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_care_plan_package_name" value="服务包名称&#10;package_name" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1612" y="1318" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_care_plan_package_name" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_care_plan" target="attr_care_plan_package_name">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_care_plan_frequency" value="服务频次&#10;frequency" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1033.11" y="1660.87" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_care_plan_frequency" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_care_plan" target="attr_care_plan_frequency">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_care_plan_start_date" value="开始日期&#10;start_date" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1161.25" y="1818.32" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_care_plan_start_date" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_care_plan" target="attr_care_plan_start_date">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_care_plan_end_date" value="结束日期&#10;end_date" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1362.0" y="1878.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_care_plan_end_date" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_care_plan" target="attr_care_plan_end_date">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_care_plan_status" value="计划状态&#10;status" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1562.75" y="1818.32" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_care_plan_status" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_care_plan" target="attr_care_plan_status">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_care_plan_pause_reason" value="暂停原因&#10;pause_reason" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1690.89" y="1660.87" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_care_plan_pause_reason" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_care_plan" target="attr_care_plan_pause_reason">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_service_item_item_id" value="项目编号&#10;item_id" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;fontStyle=4;" vertex="1" parent="1">
+          <mxGeometry x="2033.11" y="1435.13" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_service_item_item_id" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_service_item" target="attr_service_item_item_id">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_service_item_name" value="项目名称（唯一）&#10;name" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2161.25" y="1277.68" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_service_item_name" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_service_item" target="attr_service_item_name">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_service_item_type" value="服务类型&#10;type" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2362.0" y="1218.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_service_item_type" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_service_item" target="attr_service_item_type">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_service_item_unit" value="计价单位&#10;unit" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2562.75" y="1277.68" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_service_item_unit" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_service_item" target="attr_service_item_unit">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_service_item_guide_price" value="指导价&#10;guide_price" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2690.89" y="1435.13" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_service_item_guide_price" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_service_item" target="attr_service_item_guide_price">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_service_item_std_hours" value="标准时长（小时）&#10;std_hours" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2102" y="1858" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_service_item_std_hours" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_service_item" target="attr_service_item_std_hours">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_service_item_subsidizable" value="是否可补贴&#10;subsidizable" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2622" y="1858" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_service_item_subsidizable" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_service_item" target="attr_service_item_subsidizable">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_belongs" value="归属" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rhombus;perimeter=rhombusPerimeter;fillColor=#f1f5f8;strokeWidth=1.8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="878" y="602" width="144" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="belongs_a" value="1" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_community" target="rel_belongs">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="belongs_b" value="N" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="rel_belongs">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_assessed" value="接受评估" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rhombus;perimeter=rhombusPerimeter;fillColor=#f1f5f8;strokeWidth=1.8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1878" y="602" width="144" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="assessed_a" value="1" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="rel_assessed">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assessed_b" value="N" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_assessment" target="rel_assessed">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_plans" value="制定" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rhombus;perimeter=rhombusPerimeter;fillColor=#f1f5f8;strokeWidth=1.8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1378" y="1082" width="144" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="plans_a" value="1" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="rel_plans">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="plans_b" value="N" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_care_plan" target="rel_plans">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_responsible" value="负责" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rhombus;perimeter=rhombusPerimeter;fillColor=#f1f5f8;strokeWidth=1.8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="878" y="1532" width="144" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="responsible_a" value="1" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_caregiver" target="rel_responsible">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="responsible_b" value="N" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_care_plan" target="rel_responsible">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_contains" value="包含" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rhombus;perimeter=rhombusPerimeter;fillColor=#f1f5f8;strokeWidth=1.8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1878" y="1532" width="144" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="contains_a" value="M" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_care_plan" target="rel_contains">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="contains_b" value="N" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_service_item" target="rel_contains">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note1" value="联系映射：“包含”为 M:N 联系，落库为 care_plan_item(plan_id, item_id)，两列组成联合主键；外键由联系表达，不重复绘为普通属性。" style="text;html=0;align=left;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#455a64;" vertex="1" parent="1">
+          <mxGeometry x="80" y="2010" width="2840" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="note2" value="参与约束：每位老人归属一个社区；每次评估、每份计划归属一位老人；计划可暂不指定护工，指定后最多一位；完整计划至少包含一个服务项目。" style="text;html=0;align=left;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#455a64;" vertex="1" parent="1">
+          <mxGeometry x="80" y="2050" width="2840" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="note3" value="业务约束：同一老人同一时间段最多一份生效计划。能力等级与有效期为已保存的评估属性；特殊标签可同时选择多项，使用双椭圆。" style="text;html=0;align=left;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#455a64;" vertex="1" parent="1">
+          <mxGeometry x="80" y="2090" width="2840" height="38" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="line1-chen-notifications" name="家属提醒与信箱（Chen ER）">
+    <mxGraphModel dx="2900" dy="1900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2900" pageHeight="1900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="业务线1 · 家属评估提醒与消息信箱" style="text;html=0;align=left;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=30;fontStyle=1;fontColor=#17212b;" vertex="1" parent="1">
+          <mxGeometry x="80" y="28" width="2740" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Chen ER 图｜主键带下划线；每项属性独立连接实体；“发送”和“接收”分别建模，保留不同账号角色的含义。" style="text;html=0;align=left;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#455a64;" vertex="1" parent="1">
+          <mxGeometry x="80" y="86" width="2740" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_elder" value="老人档案&#10;elder" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rectangle;rounded=0;fillColor=#ffffff;strokeWidth=2;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="388" width="240" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_sys_user" value="系统用户&#10;sys_user" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rectangle;rounded=0;fillColor=#ffffff;strokeWidth=2;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="1208" width="240" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_family_notification" value="家属站内信&#10;family_notification" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rectangle;rounded=0;fillColor=#ffffff;strokeWidth=2;fontSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="2080" y="1208" width="240" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="attr_elder_elder_id" value="档案编号&#10;elder_id" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;fontStyle=4;" vertex="1" parent="1">
+          <mxGeometry x="1008.89" y="278.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_elder_id" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_elder_id">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_name" value="姓名&#10;name" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1312.0" y="158.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_name" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_name">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_elder_status" value="档案状态&#10;status" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="1615.11" y="278.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_elder_status" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="attr_elder_status">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_sys_user_user_id" value="用户编号&#10;user_id" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;fontStyle=4;" vertex="1" parent="1">
+          <mxGeometry x="413.65" y="899.24" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_sys_user_user_id" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_sys_user" target="attr_sys_user_user_id">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_sys_user_username" value="登录名（唯一）&#10;username" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="220.9" y="1005.88" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_sys_user_username" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_sys_user" target="attr_sys_user_username">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_sys_user_real_name" value="用户姓名&#10;real_name" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="132.0" y="1218.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_sys_user_real_name" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_sys_user" target="attr_sys_user_real_name">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_sys_user_role" value="角色&#10;role" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="220.9" y="1430.12" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_sys_user_role" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_sys_user" target="attr_sys_user_role">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_sys_user_status" value="账号状态&#10;status" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="413.65" y="1536.76" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_sys_user_status" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_sys_user" target="attr_sys_user_status">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_family_notification_notification_id" value="消息编号&#10;notification_id" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;fontStyle=4;" vertex="1" parent="1">
+          <mxGeometry x="2112.0" y="838.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_family_notification_notification_id" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_family_notification" target="attr_family_notification_notification_id">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_family_notification_reminder_key" value="提醒去重标识&#10;reminder_key" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2312.0" y="888.91" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_family_notification_reminder_key" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_family_notification" target="attr_family_notification_reminder_key">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_family_notification_sent_date" value="投递日期&#10;sent_date" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2458.41" y="1028.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_family_notification_sent_date" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_family_notification" target="attr_family_notification_sent_date">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_family_notification_title" value="消息标题&#10;title" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2512.0" y="1218.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_family_notification_title" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_family_notification" target="attr_family_notification_title">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_family_notification_content" value="消息正文&#10;content" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2458.41" y="1408.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_family_notification_content" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_family_notification" target="attr_family_notification_content">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_family_notification_created_at" value="发送时间&#10;created_at" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2312.0" y="1547.09" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_family_notification_created_at" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_family_notification" target="attr_family_notification_created_at">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="attr_family_notification_read_at" value="首次阅读时间&#10;read_at" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;ellipse;perimeter=ellipsePerimeter;fillColor=#ffffff;strokeWidth=1.4;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="2112.0" y="1598.0" width="176" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="attribute_family_notification_read_at" value="" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_family_notification" target="attr_family_notification_read_at">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_family_binding" value="家属绑定" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rhombus;perimeter=rhombusPerimeter;fillColor=#f1f5f8;strokeWidth=1.8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="778" y="712" width="144" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="family_binding_a" value="1" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="rel_family_binding">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="family_binding_b" value="N" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_sys_user" target="rel_family_binding">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_notification_subject" value="对应老人" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rhombus;perimeter=rhombusPerimeter;fillColor=#f1f5f8;strokeWidth=1.8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1878" y="712" width="144" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="notification_subject_a" value="1" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_elder" target="rel_notification_subject">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="notification_subject_b" value="N" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_family_notification" target="rel_notification_subject">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_send" value="发送" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rhombus;perimeter=rhombusPerimeter;fillColor=#f1f5f8;strokeWidth=1.8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1328" y="982" width="144" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="send_a" value="1" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_sys_user" target="rel_send">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="send_b" value="N" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_family_notification" target="rel_send">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel_receive" value="接收" style="whiteSpace=wrap;html=0;fontFamily=Microsoft YaHei;strokeColor=#263238;fontColor=#17212b;shape=rhombus;perimeter=rhombusPerimeter;fillColor=#f1f5f8;strokeWidth=1.8;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1328" y="1462" width="144" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="receive_a" value="1" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_sys_user" target="rel_receive">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="receive_b" value="N" style="edgeStyle=none;rounded=0;curved=0;html=0;endArrow=none;startArrow=none;strokeColor=#455a64;strokeWidth=1.3;fontSize=20;fontColor=#17212b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="entity_family_notification" target="rel_receive">
+          <mxGeometry relative="1" as="geometry" x="-0.55" y="-16">
+            <mxPoint as="offset" x="0" y="0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note1" value="角色约束：仅家属账号参与“家属绑定”；发送人为社区管理员，收件人为该老人绑定且启用的家属。每条站内信对应一位老人、一位发件人和一位收件人。" style="text;html=0;align=left;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#455a64;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1740" width="2740" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="note2" value="落库映射：家属绑定 → sys_user.elder_id；对应老人 → family_notification.elder_id；发送 → sender_id；接收 → recipient_id。" style="text;html=0;align=left;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#455a64;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1780" width="2740" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="note3" value="唯一约束：(recipient_id, elder_id, reminder_key, sent_date)。此页展示老人和账号的相关属性；老人完整属性见第一页，账号认证字段见系统用户数据字典。" style="text;html=0;align=left;verticalAlign=middle;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#455a64;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1820" width="2740" height="38" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -34,7 +34,22 @@ if os.environ.get("MYSQL_PORT"):
     DB_CONFIG["port"] = int(os.environ["MYSQL_PORT"])
 if os.environ.get("MYSQL_USER"):
     DB_CONFIG["user"] = os.environ["MYSQL_USER"]
-if os.environ.get("MYSQL_PWD"):
+if "MYSQL_PWD" in os.environ:
     DB_CONFIG["password"] = os.environ["MYSQL_PWD"]
 if os.environ.get("MYSQL_DB"):
     DB_CONFIG["database"] = os.environ["MYSQL_DB"]
+
+
+def transaction(connection_factory, operation):
+    """一次连接、一次提交；任一步失败都回滚，调用方不能提前提交。"""
+    conn = connection_factory()
+    try:
+        with conn.cursor() as cur:
+            result = operation(cur)
+        conn.commit()
+        return result
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()

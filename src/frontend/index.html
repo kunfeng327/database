@@ -22,10 +22,14 @@
 body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:var(--bg);
   color:var(--text); font-size:14px; }
 
+.data-load-alert { position:sticky; top:0; z-index:20; background:#fff2d6; color:#663c00;
+  padding:12px 20px; border-bottom:1px solid #e5c77a; }
+.data-load-alert button { margin-left:12px; padding:5px 12px; cursor:pointer; }
+
 /* ---------------- 登录页 ---------------- */
 #login-view { min-height:100vh; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(135deg,#1a2332 0%,#17303c 60%,#1ABB9C 160%); }
-.login-card { background:#fff; border-radius:12px; padding:36px 40px; width:400px;
+.login-card { background:#fff; border-radius:12px; padding:36px 40px; width:min(400px,calc(100vw - 32px));
   box-shadow:0 18px 50px rgba(0,0,0,.35); }
 .login-card h1 { font-size:19px; margin-bottom:4px; }
 .login-card .sub { color:var(--muted); font-size:12px; margin-bottom:22px; }
@@ -71,14 +75,14 @@ body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:
 .topbar h2 { font-size:18px; font-weight:600; }
 .role-badge { font-size:12px; padding:4px 12px; border-radius:14px; background:var(--primary-lt);
   color:var(--primary-dk); font-weight:600; }
-.content { padding:24px 28px; max-width:1250px; }
+.content { padding:24px 28px; max-width:1250px; min-width:0; }
 
 /* ---------------- 通用组件 ---------------- */
 .card { background:var(--surface); border:1px solid var(--border); border-radius:8px;
   padding:18px 20px; margin-bottom:18px; }
 .card h3 { font-size:14px; margin-bottom:14px; color:var(--text); font-weight:600; }
 .card h3 small { font-weight:400; color:var(--muted); margin-left:8px; }
-.stats { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:18px; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:14px; margin-bottom:18px; }
 .stat { background:var(--surface); border:1px solid var(--border); border-radius:8px;
   padding:16px; display:flex; gap:12px; align-items:flex-start; }
 .stat .icon { width:38px; height:38px; border-radius:8px; display:flex; align-items:center;
@@ -106,7 +110,7 @@ button.btn.small { padding:4px 11px; font-size:12px; }
 button.btn.ghost { background:#fff; color:var(--primary-dk); border:1px solid var(--primary); }
 button.btn.warn { background:var(--red); }
 form.inline { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
-.field { display:flex; flex-direction:column; gap:4px; }
+.field { display:flex; flex-direction:column; gap:4px; min-width:0; max-width:100%; }
 .field label { font-size:12px; color:var(--muted); }
 select, input, textarea { border:1px solid var(--border); border-radius:6px; padding:8px 10px;
   font-size:13px; font-family:inherit; background:#fff; min-width:130px; }
@@ -119,10 +123,101 @@ textarea { width:100%; min-height:56px; resize:vertical; }
 #action-panel { display:none; border-left:3px solid var(--primary); }
 #action-panel .row { display:flex; gap:10px; align-items:flex-start; }
 .muted { color:var(--muted); font-size:12px; }
-.hide { display:none; }
+.hide { display:none !important; }
+button:disabled { opacity:.55; cursor:not-allowed; }
+body:has(#elder-dialog[open]) { overflow:hidden; }
+#elder-dialog { width:min(1120px,96vw); max-height:90vh; margin:auto; padding:0;
+  border:0; border-radius:12px; background:var(--bg); color:var(--text); box-shadow:0 20px 80px #0005; }
+#elder-dialog::backdrop { background:rgba(17,27,42,.55); }
+.dialog-heading { position:sticky; top:0; z-index:2; display:flex; align-items:center;
+  justify-content:space-between; gap:16px; padding:16px 20px; background:#fff; border-bottom:1px solid var(--border); }
+.dialog-heading h2 { font-size:18px; }
+.dialog-close { border:0; background:var(--bg); color:var(--text-2); width:36px; height:36px;
+  font-size:26px; line-height:1; border-radius:6px; cursor:pointer; flex:none; }
+.dialog-close:hover { background:var(--red-lt); color:var(--red); }
+.dialog-content { padding:18px; }
+.dialog-content .card { min-width:0; }
+#elder-dialog-loading { padding:8px 12px; margin-bottom:12px; color:var(--primary-dk); }
+/* 各发送状态保持相同尺寸，避免表格列宽和卡片高度跳动。 */
+.reminder-send { width:7em; white-space:nowrap; }
+#elder-dialog-error { padding:12px; margin-bottom:12px; background:var(--red-lt); color:var(--red); }
+#elder-detail p { margin:8px 0; }
+#elder-status-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.chart-legend { display:flex; flex-wrap:wrap; gap:14px; margin:18px 0; font-size:12px; }
+.legend-dot { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; }
+.level-0 { background:#239d83; } .level-1 { background:#428bd4; } .level-2 { background:#dc940f; }
+.level-3 { background:#cd5860; } .level-4 { background:#8c98a8; }
+.ability-row { display:grid; grid-template-columns:100px minmax(120px,1fr) 90px; align-items:center; gap:12px; margin:18px 0; }
+.ability-track { display:flex; background:var(--bg); border-radius:5px; min-height:32px; }
+.ability-segment { display:flex; align-items:center; justify-content:center; color:white; font-size:12px;
+  min-width:0; position:relative; }
+.ability-segment:focus { outline:2px solid var(--text); outline-offset:2px; z-index:1; }
+.ability-total { text-align:right; } .ability-total small { display:block; color:var(--muted); }
+.chart-data { margin-top:20px; overflow-x:auto; }
+.chart-data summary { cursor:pointer; color:var(--primary-dk); margin-bottom:10px; }
+.inbox-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.inbox-heading h3 { margin:0; }
+#inbox-messages { margin:18px 0; }
+.message-card { border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:12px; }
+.message-card.unread { border-left:4px solid var(--primary); background:var(--primary-lt); }
+.message-card h4 { margin-bottom:8px; }.message-card p { margin:10px 0; line-height:1.7; }
+.message-meta { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.table-scroll { width:100%; max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
+.table-scroll:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+.table-scroll table { min-width:560px; }
+#elder-table { min-width:980px; } #assess-table,#plan-table,#order-table,#claim-table { min-width:760px; }
+#ability-table { min-width:440px; }
+.card,.message-card { min-width:0; overflow-wrap:anywhere; }
+#elder-detail p,.message-card p { overflow-wrap:anywhere; }
+.dialog-heading h2 { min-width:0; overflow-wrap:anywhere; }
+#elder-batch-file { max-width:100%; }
+#toast { width:max-content; max-width:calc(100vw - 24px); line-height:1.5; overflow-wrap:anywhere; }
+@media(max-width:800px) {
+  .sidebar { position:static; width:auto; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .brand { padding:14px; border:0; align-self:center; }
+  .brand b { font-size:14px; } .brand span { font-size:10px; }
+  .side-user { grid-column:2; grid-row:1; padding:10px 14px; border:0; text-align:right; overflow-wrap:anywhere; }
+  .side-user button { display:block; width:auto; min-height:36px; margin:6px 0 0 auto; padding:7px 12px; }
+  .nav { grid-column:1 / -1; grid-row:2; display:flex; padding:0; min-width:0; overflow-x:auto; }
+  .nav button { flex:none; width:auto; min-height:46px; padding:10px 14px; white-space:nowrap; border-left:0; border-bottom:3px solid transparent; }
+  .nav button.active { border-bottom-color:var(--primary); }
+  .main { margin-left:0; min-height:0; }
+  .topbar { padding:14px 16px; gap:12px; }
+  .topbar h2 { font-size:17px; } .role-badge { flex:none; }
+  .content { padding:16px; }
+  .card { padding:16px; }
+  .card h3 small { display:block; margin:6px 0 0; line-height:1.6; }
+  #elder-dialog { width:calc(100vw - 16px); max-width:none; max-height:calc(100vh - 16px); max-height:calc(100dvh - 16px); }
+  .dialog-heading { padding:12px; } .dialog-close { width:44px; height:44px; }
+  .dialog-content { padding:10px; }
+}
+@media(max-width:520px) {
+  .login-card { padding:28px 24px; }
+  .login-card input { font-size:16px; }
+  .content { padding:12px; } .card { padding:14px 12px; }
+  .stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .stat { padding:12px; gap:8px; } .stat .icon { width:28px; height:28px; }
+  .stat .num { font-size:21px; }
+  form.inline > .field { flex:1 1 100%; width:100%; }
+  .field input,.field select,.field textarea { width:100% !important; min-width:0; font-size:16px; }
+  form.inline > button { min-height:44px; flex:1 1 auto; }
+  button.btn.small { min-height:36px; }
+  #elder-batch-submit { margin-top:10px; }
+  #elder-status-actions button { flex:1 1 auto; min-height:44px; }
+  .ability-row { grid-template-columns:68px minmax(0,1fr) 60px; gap:6px; font-size:12px; }
+  .ability-segment { overflow:hidden; }
+  .chart-legend { gap:10px; }
+  .inbox-heading,.message-meta { flex-wrap:wrap; }
+  #action-panel .row { flex-direction:column; } #action-panel .row > div { width:100%; }
+  #toast { top:12px; padding:12px 16px; }
+}
+
 </style>
 </head>
 <body>
+<div id="data-load-alert" class="data-load-alert hide" role="alert">
+  <span id="data-load-message"></span><button type="button" onclick="boot()">重新加载</button>
+</div>
 
 <!-- ================= 登录页 ================= -->
 <div id="login-view">
@@ -165,33 +260,51 @@ textarea { width:100%; min-height:56px; resize:vertical; }
         <div class="stats" id="stat-cards"></div>
         <div class="card">
           <h3>待派单订单<small>视图 v_pending_dispatch_orders，30 分钟未接单标记超时</small></h3>
-          <table id="pending-table"><thead><tr>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="待派单订单（可左右滑动）"><table id="pending-table"><thead><tr>
             <th>订单号</th><th>老人</th><th>社区</th><th>服务项目</th><th>预约时间</th>
-            <th>等待(分钟)</th><th>超时标志</th></tr></thead><tbody></tbody></table>
+            <th>等待(分钟)</th><th>超时标志</th></tr></thead><tbody></tbody></table></div>
         </div>
       </section>
 
       <section id="tab-elders" class="hide">
         <div class="card">
-          <h3>老人档案 · 能力评估 · 照护计划<small>视图 v_elder_assessment_plan，身份证脱敏</small></h3>
-          <table id="elder-table"><thead><tr>
-            <th>编号</th><th>姓名</th><th>年龄</th><th>社区</th><th>身份证(脱敏)</th>
-            <th>特殊标签</th><th>能力等级</th><th>评估到期</th><th>状态</th><th>生效计划</th></tr></thead><tbody></tbody></table>
-        </div>
-        <div class="card">
-          <h3 id="assess-title">能力评估记录<small id="assess-sub">评估结果一年有效，到期须复评，逾期自动暂停派单</small></h3>
-          <div id="assess-alert"></div>
-          <div class="field" id="assess-elder-field" style="margin:10px 0 12px; max-width:260px">
-            <label>选择老人</label><select id="a-elder"></select></div>
-          <table id="assess-table"><thead><tr>
-            <th>量表</th><th>得分</th><th>能力等级</th><th>评估员</th><th>评估日期</th>
-            <th>有效期至</th><th>剩余天数</th><th>状态</th></tr></thead><tbody></tbody></table>
-          <form class="inline" id="assess-form-card" style="margin-top:16px">
-            <div class="field"><label>评估量表</label>
-              <select id="a-scale"><option>ADL</option><option>简易智能状态</option></select></div>
-            <div class="field"><label>得分(0-100)</label><input id="a-score" type="number" min="0" max="100" style="width:110px"></div>
-            <button class="btn" type="submit">录入评估（等级自动核定）</button>
+          <h3>老人档案 · 能力评估 · 照护计划<small>选择档案查看详情、评估和照护计划</small></h3>
+          <form class="inline" id="elder-search">
+            <div class="field"><label>姓名</label><input id="elder-keyword" maxlength="30" placeholder="按姓名搜索"></div>
+            <div class="field"><label>状态</label><select id="elder-status-filter"><option value="">全部</option><option>正常</option><option>暂停服务</option><option>注销</option></select></div>
+            <div class="field" id="elder-community-filter-field"><label>社区</label><select id="elder-community-filter"><option value="">全部社区</option></select></div>
+            <button class="btn" type="submit">查询</button>
+            <button class="btn ghost" type="button" id="new-elder">新建档案</button>
           </form>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="老人档案（可左右滑动）"><table id="elder-table"><thead><tr>
+            <th>编号</th><th>姓名</th><th>年龄</th><th>社区</th><th>身份证</th>
+            <th>特殊标签</th><th>能力等级</th><th>评估到期</th><th>状态</th><th>当前计划</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <p><button class="btn small ghost" id="elder-prev">上一页</button> <span id="elder-pagination"></span> <button class="btn small ghost" id="elder-next">下一页</button></p>
+        </div>
+        <div class="card" id="elder-batch-card">
+          <h3>批量建档<small>上传 JSON 档案数组，每批最多100条；任一条失败则整批不保存</small></h3>
+          <input id="elder-batch-file" type="file" accept=".json,application/json" aria-label="批量档案JSON文件">
+          <button class="btn ghost" id="elder-batch-submit">导入档案</button>
+        </div>
+        <div id="elder-reports">
+          <div class="card"><h3>首次评估与复评提醒</h3><div class="table-scroll" role="region" tabindex="0" aria-label="评估提醒（可左右滑动）"><table id="reminder-table"><thead><tr><th>老人</th><th>社区</th><th>提醒</th><th>有效期至</th><th>剩余天数</th><th>通知家属</th></tr></thead><tbody></tbody></table></div></div>
+          <div class="card"><h3>独居老人未评估清单</h3><div class="table-scroll" role="region" tabindex="0" aria-label="独居未评估老人（可左右滑动）"><table id="alone-table"><thead><tr><th>老人</th><th>社区</th><th>建档时间</th><th>通知家属</th></tr></thead><tbody></tbody></table></div></div>
+          <div class="card"><h3>各社区能力等级分布</h3>
+            <p class="muted">统计正常档案的最新评估；未评估单独计数。条形长度代表人数，悬停色块可查看详情。</p>
+            <div id="ability-legend" class="chart-legend"></div>
+            <div id="ability-chart" aria-label="各社区能力等级人数分布"></div>
+            <details class="chart-data"><summary>查看详细数据（含评估过期人数）</summary><div class="table-scroll" role="region" tabindex="0" aria-label="社区能力分布（可左右滑动）"><table id="ability-table"><thead><tr><th>社区</th><th>能力等级</th><th>人数</th><th>其中评估过期</th></tr></thead><tbody></tbody></table></div></details></div>
+        </div>
+      </section>
+
+      <section id="tab-inbox" class="hide">
+        <div class="card">
+          <div class="inbox-heading"><h3>消息信箱 <span id="inbox-count" class="badge b-red">0 条未读</span></h3>
+            <button class="btn ghost" id="refresh-inbox">刷新消息</button></div>
+          <p class="muted">接收社区发送的首次评估、到期复评和评估过期提醒。登录期间每30秒自动检查新消息。</p>
+          <div id="inbox-messages" aria-live="polite"></div>
+          <p><button class="btn small ghost" id="inbox-prev">上一页</button> <span id="inbox-pagination"></span>
+            <button class="btn small ghost" id="inbox-next">下一页</button></p>
         </div>
       </section>
 
@@ -213,9 +326,9 @@ textarea { width:100%; min-height:56px; resize:vertical; }
         </div>
         <div class="card">
           <h3 id="orders-title">服务订单</h3>
-          <table id="order-table"><thead><tr>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="服务订单（可左右滑动）"><table id="order-table"><thead><tr>
             <th>订单号</th><th>老人</th><th>项目</th><th>预约时间</th><th>渠道</th>
-            <th>金额</th><th>状态</th><th>护工</th><th>操作</th></tr></thead><tbody></tbody></table>
+            <th>金额</th><th>状态</th><th>护工</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </section>
 
@@ -231,9 +344,9 @@ textarea { width:100%; min-height:56px; resize:vertical; }
         </div>
         <div class="card">
           <h3>申报与拨付进度<small>视图 v_claim_progress</small></h3>
-          <table id="claim-table"><thead><tr>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="补贴申报（可左右滑动）"><table id="claim-table"><thead><tr>
             <th>申报号</th><th>老人</th><th>区县</th><th>对象类别</th><th>补贴项目</th>
-            <th>账期</th><th>金额</th><th>状态</th><th>审核人</th><th id="claim-act-th">操作</th></tr></thead><tbody></tbody></table>
+            <th>账期</th><th>金额</th><th>状态</th><th>审核人</th><th id="claim-act-th">操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </section>
 
@@ -241,8 +354,8 @@ textarea { width:100%; min-height:56px; resize:vertical; }
         <div class="card">
           <h3>存储过程 sp_pause_expired_plans<small>评估到期 → 照护计划自动暂停</small></h3>
           <p class="muted" style="margin-bottom:10px">下表为将被暂停的「生效」计划（老人最新评估已过期）：</p>
-          <table id="expired-table"><thead><tr>
-            <th>计划号</th><th>老人</th><th>服务包</th><th>当前状态</th><th>评估到期日</th></tr></thead><tbody></tbody></table>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="过期照护计划（可左右滑动）"><table id="expired-table"><thead><tr>
+            <th>计划号</th><th>老人</th><th>服务包</th><th>当前状态</th><th>评估到期日</th></tr></thead><tbody></tbody></table></div>
           <p style="margin-top:12px"><button class="btn warn" id="btn-pause">执行存储过程：暂停过期计划</button></p>
         </div>
       </section>
@@ -250,9 +363,9 @@ textarea { width:100%; min-height:56px; resize:vertical; }
       <section id="tab-schedules" class="hide">
         <div class="card">
           <h3>护工排班与接单余量<small>视图 v_schedule_capacity（排班不重叠，已接单量 ≤ 可接单量）</small></h3>
-          <table id="sched-table"><thead><tr>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="护工排班（可左右滑动）"><table id="sched-table"><thead><tr>
             <th>护工</th><th>证书类型</th><th>证书到期</th><th>日期</th><th>班次</th>
-            <th>已接/可接</th><th>余量</th></tr></thead><tbody></tbody></table>
+            <th>已接/可接</th><th>余量</th></tr></thead><tbody></tbody></table></div>
         </div>
       </section>
 
@@ -260,22 +373,109 @@ textarea { width:100%; min-height:56px; resize:vertical; }
   </div>
 </div>
 
-<div id="toast"></div>
+<dialog id="elder-dialog" aria-labelledby="elder-dialog-title">
+  <div class="dialog-heading"><h2 id="elder-dialog-title">老人档案</h2>
+    <button type="button" class="dialog-close" id="close-elder-dialog" aria-label="关闭老人详情" autofocus>×</button>
+  </div>
+  <div class="dialog-content">
+    <p id="elder-dialog-error" class="hide" role="alert"></p>
+    <p id="elder-dialog-loading" class="hide" role="status">正在更新档案…</p>
+    <div id="elder-view-panel">
+        <div class="card" id="elder-detail-card">
+          <h3 id="elder-detail-title">档案详情</h3><div id="elder-detail"></div>
+          <p id="elder-status-actions"></p>
+        </div>
+        <div class="card">
+          <h3 id="assess-title">能力评估记录<small id="assess-sub">评估结果一年有效，到期前30天提醒复评，逾期禁止派单</small></h3>
+          <div id="assess-alert"></div>
+          <div class="field" id="assess-elder-field" style="margin:10px 0 12px; max-width:260px">
+            <label>选择老人</label><select id="a-elder"></select></div>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="能力评估记录（可左右滑动）"><table id="assess-table"><thead><tr>
+            <th>量表</th><th>得分</th><th>能力等级</th><th>评估员</th><th>评估日期</th>
+            <th>有效期至</th><th>剩余天数</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+          <form class="inline" id="assess-form-card" style="margin-top:16px">
+            <div class="field"><label>评估量表</label>
+              <select id="a-scale"><option>ADL</option><option>简易智能状态</option></select></div>
+            <div class="field"><label>得分(0-100)</label><input id="a-score" type="number" min="0" max="100" style="width:110px"></div>
+            <button class="btn" type="submit">录入评估（等级自动核定）</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>照护计划<small>保留历史记录，同一时段只允许一份生效计划</small></h3>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="照护计划（可左右滑动）"><table id="plan-table"><thead><tr><th>编号</th><th>服务包 / 频次</th><th>服务项目</th><th>起止日期</th><th>责任护工</th><th>状态 / 原因</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div id="plan-editor">
+            <h3 id="plan-edit-title">新建照护计划</h3>
+            <button class="btn ghost" id="recommend-plan">按能力等级填入推荐方案</button>
+            <form class="inline" id="plan-form" style="margin-top:12px">
+              <div class="field"><label for="p-name">服务包名称</label><input id="p-name" required maxlength="50"></div>
+              <div class="field"><label for="p-frequency">服务频次</label><input id="p-frequency" required maxlength="50"></div>
+              <div class="field"><label for="p-start">开始日期</label><input id="p-start" type="date" required></div>
+              <div class="field"><label for="p-end">结束日期</label><input id="p-end" type="date" required></div>
+              <div class="field"><label for="p-caregiver">责任护工</label><select id="p-caregiver"><option value="">暂未指定</option></select></div>
+              <div class="field"><label for="p-items">服务项目清单（可多选）</label><select id="p-items" multiple required size="5"></select></div>
+              <button class="btn" type="submit">保存计划</button><button class="btn ghost" type="button" id="reset-plan">清空 / 新建</button>
+            </form>
+            <p class="muted">推荐方案采用课程演示规则，社区可根据实际需求调整；补贴资格以政策审核为准。</p>
+          </div>
+        </div>
+    </div>
+        <div class="card hide" id="elder-edit-card">
+          <h3 id="elder-edit-title">新建档案</h3>
+          <form class="inline" id="elder-form">
+            <div class="field"><label for="e-name">姓名</label><input id="e-name" required maxlength="30"></div>
+            <div class="field"><label for="e-id-card">身份证号（新建必填，建档后不可改）</label><input id="e-id-card" required maxlength="18" pattern="[0-9]{17}[0-9Xx]" autocomplete="off"></div>
+            <div class="field"><label for="e-birth">出生日期</label><input id="e-birth" type="date" required></div>
+            <div class="field"><label for="e-gender">性别</label><select id="e-gender"><option>女</option><option>男</option></select></div>
+            <div class="field"><label for="e-community">所属社区</label><select id="e-community" required></select></div>
+            <div class="field"><label for="e-address">居住地址</label><input id="e-address" required maxlength="100"></div>
+            <div class="field"><label for="e-guardian">监护人姓名</label><input id="e-guardian" required maxlength="30"></div>
+            <div class="field"><label for="e-phone">监护人手机号</label><input id="e-phone" type="tel" required pattern="1[3-9][0-9]{9}" maxlength="11"></div>
+            <div class="field"><label for="e-tags">特殊标签（可多选）</label><select id="e-tags" multiple><option>独居</option><option>失能</option><option>低保</option><option>高龄</option></select></div>
+            <button class="btn" type="submit">保存档案</button><button class="btn ghost" type="button" id="cancel-elder-edit">取消</button>
+          </form>
+        </div>
+  </div>
+</dialog>
+
+<div id="toast" role="status"></div>
 
 <script>
 const $ = s => document.querySelector(s);
 let ME = null;                 // 当前登录用户 {name, role, elder_id, caregiver_id}
 let elderList = [];
 
+function showDataError(message){
+  $('#data-load-message').textContent = message;
+  $('#data-load-alert').classList.remove('hide');
+}
 async function API(url, opts) {
-  const r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...opts,
-    body: opts && opts.body ? JSON.stringify(opts.body) : undefined });
-  const j = await r.json().catch(() => ({ok:false, msg:'网络错误'}));
+  const {suppressErrorBanner=false, ...requestOptions}=opts||{};
+  let r, j;
+  try {
+    r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...requestOptions,
+      body: requestOptions.body ? JSON.stringify(requestOptions.body) : undefined });
+  } catch(e) {
+    const msg = '无法连接服务，请运行启动演示.bat并保持后端窗口开启，然后访问 http://127.0.0.1:5000。';
+    if (!suppressErrorBanner) showDataError(msg);
+    return {ok:false, msg};
+  }
+  try { j = await r.json(); } catch(e) {
+    j = {ok:false, msg:'服务返回了非预期内容，请确认通过启动演示.bat打开的地址访问。'};
+  }
+  if (!j || typeof j.ok !== 'boolean') j = {ok:false, msg:'服务响应格式不正确，请确认前后端使用同一版本。'};
+  if (r.status === 404 && url.startsWith('/api/')) {
+    j = {ok:false, msg:`当前后端没有${url.endsWith('/reminders')?'“发送提醒”':'此'}接口（404）。请关闭旧后端窗口，运行最新版启动演示.bat，选择N后刷新页面。`};
+  }
   if (r.status === 401) { showLogin(); throw new Error(j.msg || '请先登录'); }
+  if (!r.ok || !j.ok) {
+    j.ok = false;
+    if (!suppressErrorBanner && (!opts?.method || r.status >= 500)) showDataError(j.msg || '数据加载失败，请稍后重试。');
+  }
   return j;
 }
 function toast(msg, err=false) {
   const t = $('#toast');
+  ($('#elder-dialog').open ? $('#elder-dialog') : document.body).appendChild(t);
   t.textContent = msg; t.className = err ? 'err' : ''; t.style.display = 'block';
   clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 3500);
 }
@@ -284,10 +484,10 @@ const fmtYuan = n => '￥' + Number(n).toFixed(2);
 
 /* ================= 登录 / 登出 ================= */
 function fillLogin(u){ $('#lg-user').value = u; $('#lg-pass').value = '123456'; }
-function showLogin(){ $('#app-view').style.display='none'; $('#login-view').style.display='flex'; }
+function showLogin(){ stopInboxPolling(); closeElderDialog(); ME=null; $('#app-view').style.display='none'; $('#login-view').style.display='flex'; }
 async function doLogin(){
-  const r = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({username:$('#lg-user').value, password:$('#lg-pass').value}) }).then(x=>x.json());
+  const r = await API('/api/login', {method:'POST',
+    body:{username:$('#lg-user').value, password:$('#lg-pass').value}});
   if (r.ok) { toast(`欢迎，${r.data.real_name}（${r.data.role}）`); boot(); }
   else toast(r.msg, true);
 }
@@ -301,13 +501,15 @@ document.getElementById('lg-pass').addEventListener('keydown', e => { if(e.key==
 const ROLE_TABS = {
   '社区管理员': [['dashboard','总览','📊'],['orders','订单与派单','📋'],['elders','老人档案','👴'],
                  ['subsidy','补贴申报','💰'],['ops','运维工具','🛠']],
-  '家属':       [['orders','服务订单','📋'],['elders','家庭档案','🏠']],
+  '家属':       [['orders','服务订单','📋'],['elders','家庭档案','🏠'],['inbox','消息信箱','✉']],
   '护工':       [['orders','我的派单','🧑‍⚕️'],['schedules','我的排班','📅']],
   '机构负责人': [['schedules','排班总览','📅']],
   '监管人员':   [['dashboard','总览','📊'],['subsidy','补贴监管','🔍'],['elders','老人档案','👴']],
 };
 
 async function boot(){
+  stopInboxPolling(); closeElderDialog();
+  $('#data-load-alert').classList.add('hide');
   let me;
   try { me = await API('/api/me'); } catch(e) { return; }
   if (!me.ok) { showLogin(); return; }
@@ -318,22 +520,30 @@ async function boot(){
   $('#u-role').textContent = ME.role + (ME.role==='家属' ? ' · 绑定老人档案' : '');
   $('#role-badge').textContent = ME.role;
   buildNav();
-  await loadItems();
-  await Promise.all([loadElders(), loadOrders(), loadSchedules()]);
-  loadStats(); loadPending(); loadSubsidy(); loadOps();
+  // 单个模块出错不能阻断总览、订单等独立模块；错误保持可见，支持重试。
+  const initial = await Promise.allSettled([loadItems(), loadElders(), loadOrders(), loadSchedules(), loadInbox(1)]);
+  for (const result of initial) if (result.status === 'rejected') showDataError(result.reason.message || '部分数据加载失败');
+  if ($('#app-view').style.display === 'none') return;
+  if (ME?.role === '家属') inboxTimer=setInterval(()=>{ if (!document.hidden) runElderUI(()=>loadInbox(inboxPage)); },30000);
+  const remaining = await Promise.allSettled([loadStats(), loadPending(), loadSubsidy(), loadOps()]);
+  for (const result of remaining) if (result.status === 'rejected') showDataError(result.reason.message || '部分数据加载失败');
 }
 
 function buildNav(){
   const tabs = ROLE_TABS[ME.role] || [];
   $('#nav').innerHTML = tabs.map(([id,label,ico],i) =>
     `<button data-tab="${id}" class="${i===0?'active':''}"><span class="ico">${ico}</span>${label}</button>`).join('');
+  reminderResults.clear();
   document.querySelectorAll('#nav button').forEach(btn => btn.onclick = () => {
+    closeElderDialog();
     document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.content > section').forEach(s => s.classList.add('hide'));
     btn.classList.add('active');
     $('#tab-' + btn.dataset.tab).classList.remove('hide');
-    $('#page-title').textContent = btn.textContent.trim().replace(/^[^\u4e00-\u9fa5]+/,'');
+    $('#page-title').textContent = tabs.find(tab=>tab[0]===btn.dataset.tab)[1];
     loadSchedules(); // 切到排班页时刷新
+    if (btn.dataset.tab === 'elders') runElderUI(()=>loadElders({refreshSelection:false}));
+    if (btn.dataset.tab === 'inbox') runElderUI(()=>loadInbox(1));
   });
   document.querySelectorAll('.content > section').forEach(s => s.classList.add('hide'));
   $('#tab-' + tabs[0][0]).classList.remove('hide');
@@ -346,7 +556,15 @@ function buildNav(){
   $('#f-channel-field').classList.toggle('hide', isFamily);
   $('#claim-form-card').classList.toggle('hide', !isAdmin);
   $('#claim-act-th').classList.toggle('hide', !isReg);
-  $('#assess-elder-field').classList.toggle('hide', !isAdmin);
+  $('#assess-elder-field').classList.toggle('hide', isFamily);
+  ['new-elder','elder-batch-card','plan-editor'].forEach(id => $('#'+id).classList.toggle('hide', !isAdmin));
+  $('#elder-edit-card').classList.add('hide');
+  $('#elder-reports').classList.toggle('hide', isFamily);
+  $('#elder-community-filter-field').classList.toggle('hide', isFamily);
+  elderPage = 1; editingElder = null; editingPlan = null; displayedElderId = null;
+  $('#elder-keyword').value = ''; $('#elder-status-filter').value = '';
+  $('#elder-community-filter').value = ''; $('#a-elder').innerHTML = '';
+  $('#elder-form').reset(); $('#plan-form').reset(); $('#elder-batch-file').value = '';
   $('#assess-form-card').classList.toggle('hide', !isAdmin);
   $('#orders-title').textContent = ME.role==='护工' ? '我的派单记录' :
       isFamily ? '家庭服务订单' : '服务订单';
@@ -358,12 +576,14 @@ function buildNav(){
 /* ================= 数据加载 ================= */
 async function loadItems(){
   const r = await API('/api/items');
+  if (!r.ok) return;
   $('#f-item').innerHTML = r.data.map(i =>
     `<option value="${i.item_id}">${esc(i.name)}（￥${i.guide_price}/${i.unit}${i.subsidizable?'，可补贴':''}）</option>`).join('');
 }
 async function loadStats(){
   if (!['社区管理员','监管人员','机构负责人'].includes(ME.role)) { $('#stat-cards').innerHTML=''; return; }
   const r = await API('/api/stats');
+  if (!r.ok) return;
   const d = r.data, cards = [
     ['elders_normal','在册正常老人','👴','i-teal'],['orders_active','进行中订单','📋','i-blue'],
     ['orders_timeout','超时未派单','⏰','i-red'],['plans_to_pause','待暂停计划','⚠️','i-yellow'],
@@ -374,56 +594,323 @@ async function loadStats(){
 async function loadPending(){
   if (ME.role !== '社区管理员') return;
   const p = await API('/api/pending-orders');
+  if (!p.ok) return;
   $('#pending-table tbody').innerHTML = p.data.map(o => `<tr>
     <td>${o.order_id}</td><td>${esc(o.elder_name)}</td><td>${esc(o.community)}</td>
     <td>${esc(o.item_name)}</td><td>${o.appoint_time}</td><td>${o.waited_min}</td>
     <td>${o.timeout_flag==='超时'?'<span class="badge b-red">超时</span>':o.timeout_flag==='临近超时'?'<span class="badge b-wait">临近超时</span>':'<span class="badge b-done">正常</span>'}</td></tr>`).join('')
     || '<tr><td colspan="7" class="muted">暂无待派单订单</td></tr>';
 }
-async function loadElders(){
-  const r = await API('/api/elders');
+let elderPage = 1, editingElder = null, editingPlan = null, selectedPlans = [];
+function selectedElder(){ return ME?.role === '家属' ? ME.elder_id : Number($('#a-elder').value); }
+async function runElderUI(action){
+  try { await action(); } catch(e) { toast(e.message || '请求失败，请稍后重试', true); }
+}
+async function elderRequest(url, opts){
+  const r = await API(url, opts);
+  if (!r.ok) throw new Error(r.msg || '操作失败');
+  return r;
+}
+async function loadElders({refreshSelection=true}={}){
+  if (!['社区管理员','家属','监管人员'].includes(ME.role)) return;
+  const user=ME;
+  const r = await elderRequest('/api/elders');
+  if (user!==ME) return;
+  const previous = selectedElder();
   elderList = r.data;
-  $('#elder-table tbody').innerHTML = r.data.map(e => `<tr>
-    <td>${e.elder_id}</td><td>${esc(e.name)}</td><td>${e.age}</td><td>${esc(e.community)}</td>
-    <td>${esc(e.id_masked)}</td>
-    <td>${(e.special_tag||'').split(',').filter(Boolean).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</td>
-    <td>${esc(e.ability_level)||'<span class="muted">未评估</span>'}</td>
-    <td>${e.assess_expire||''} ${e.assess_expired?'<span class="badge b-red">已过期</span>':''}</td>
-    <td>${e.elder_status==='正常'?'<span class="badge b-done">正常</span>':`<span class="badge b-canc">${esc(e.elder_status)}</span>`}</td>
-    <td>${esc(e.package_name)||'<span class="muted">无</span>'}${e.plan_status==='暂停'?' <span class="badge b-red">暂停</span>':''}</td></tr>`).join('');
   $('#f-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
     .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}${e.assess_expired?'，评估已过期':''}）</option>`).join('');
-  const t = new Date(Date.now() + 26*3600e3);
-  $('#f-time').value = t.toISOString().slice(0,16);
-  // 评估卡片：家属自动绑定自家老人，管理员可选
-  $('#a-elder').innerHTML = elderList.map(e =>
-    `<option value="${e.elder_id}">${esc(e.name)}${e.assess_expired?'（评估已过期）':''}</option>`).join('');
-  loadAssessments();
-  $('#a-elder').onchange = () => loadAssessments();
+  if (!$('#f-time').value) $('#f-time').value = new Date(Date.now() + 26*3600e3).toISOString().slice(0,16);
+  $('#a-elder').innerHTML = elderList.map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}）</option>`).join('');
+  if (elderList.some(e=>e.elder_id===previous)) $('#a-elder').value = previous;
+  $('#a-elder').onchange = () => runElderUI(()=>loadElderSelection({resetEditors:true}));
+  if (ME.role !== '家属') {
+    const communities = (await elderRequest('/api/communities')).data;
+    const filter = $('#elder-community-filter').value;
+    const options = communities.map(c=>`<option value="${c.community_id}">${esc(c.name)}</option>`).join('');
+    $('#e-community').innerHTML = options;
+    $('#elder-community-filter').innerHTML = '<option value="">全部社区</option>' + options;
+    $('#elder-community-filter').value = filter;
+  }
+  if (ME.role === '社区管理员') {
+    const [caregivers, items] = await Promise.all([elderRequest('/api/plan-caregivers'),elderRequest('/api/items')]);
+    $('#p-caregiver').innerHTML = '<option value="">暂未指定</option>' + caregivers.data.map(c=>`<option value="${c.caregiver_id}">${esc(c.name)}（${esc(c.cert_type)}）</option>`).join('');
+    $('#p-items').innerHTML = items.data.map(i=>`<option value="${i.item_id}">${esc(i.name)}</option>`).join('');
+  }
+  await Promise.all([renderElderPage(), refreshSelection && $('#elder-dialog').open && !$('#elder-view-panel').classList.contains('hide') ? loadElderSelection() : Promise.resolve(), loadElderReports()]);
 }
+async function renderElderPage(){
+  const params = new URLSearchParams({page:elderPage,page_size:10,keyword:$('#elder-keyword').value,status:$('#elder-status-filter').value});
+  if ($('#elder-community-filter').value && ME.role !== '家属') params.set('community_id',$('#elder-community-filter').value);
+  const r = await elderRequest('/api/elders?' + params);
+  $('#elder-table tbody').innerHTML = r.data.map(e=>`<tr>
+    <td>${e.elder_id}</td><td>${esc(e.name)}</td><td>${e.age}</td><td>${esc(e.community)}</td><td class="muted">已全部隐藏</td>
+    <td>${esc(e.special_tag)}</td><td>${esc(e.ability_level)||'未评估'}</td><td>${esc(e.assess_expire)} ${e.assess_expired?'（已过期）':''}</td>
+    <td>${esc(e.elder_status)}</td><td>${esc(e.package_name)||'无'}</td><td><button class="btn small" onclick="selectElder(${e.elder_id},this)">查看</button></td></tr>`).join('') || '<tr><td colspan="11">没有符合条件的档案</td></tr>';
+  $('#elder-pagination').textContent = `第 ${elderPage} 页，共 ${r.pagination.total} 份档案`;
+  $('#elder-prev').disabled = elderPage<=1; $('#elder-next').disabled = elderPage*10>=r.pagination.total;
+}
+let elderSelectionVersion=0, displayedElderId=null;
+const pendingElderButtons=new Set();
+function releaseElderButton(button){
+  if(!button)return;
+  button.disabled=false;button.textContent='查看';pendingElderButtons.delete(button);
+}
+function closeElderDialog(){
+  elderSelectionVersion++;
+  pendingElderButtons.forEach(releaseElderButton);
+  $('#elder-view-panel').inert=false;
+  $('#elder-dialog-loading').classList.add('hide');
+  if ($('#elder-dialog').open) $('#elder-dialog').close();
+  $('#elder-form').reset(); $('#e-id-card').value='';
+}
+$('#close-elder-dialog').onclick=closeElderDialog;
+$('#elder-dialog').addEventListener('cancel',event=>{event.preventDefault();closeElderDialog();});
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape' && !$('#elder-dialog').open && pendingElderButtons.size)closeElderDialog();
+});
+function openElderDialog(){
+  $('#elder-dialog-error').classList.add('hide');
+  if (!$('#elder-dialog').open) $('#elder-dialog').showModal();
+  $('#elder-dialog').scrollTop=0;
+}
+function selectElder(id,button=null){
+  if(!Number.isSafeInteger(id)||id<=0){toast('档案编号无效，请刷新列表',true);return Promise.resolve();}
+  if(button?.disabled)return Promise.resolve();
+  if(button){button.disabled=true;button.textContent='正在打开…';pendingElderButtons.add(button);}
+  return runElderUI(async()=>{
+    try {await loadElderSelection({id,showWhenReady:true,resetEditors:true,button});}
+    finally {releaseElderButton(button);}
+  });
+}
+async function loadElderSelection({id=selectedElder(),showWhenReady=false,resetEditors=false,button=null}={}){
+  if(!id)return;
+  const version=++elderSelectionVersion,user=ME;
+  $('#elder-dialog-error').classList.add('hide');
+  if($('#elder-dialog').open){
+    $('#elder-view-panel').inert=true;
+    $('#elder-dialog-loading').classList.remove('hide');
+  }
+  try {
+    // 先并行取得三部分数据，再在同一帧填入并打开；刷新也保留现有内容。
+    const [detail,assessments,plans]=await Promise.all([
+      elderRequest(`/api/elders/${id}`),elderRequest(`/api/elders/${id}/assessments`),elderRequest(`/api/elders/${id}/plans`)
+    ]);
+    if(version!==elderSelectionVersion || user!==ME)return;
+    if(!showWhenReady && !$('#elder-dialog').open)return;
+    const e=detail.data;
+    if(!e || !Array.isArray(assessments.data) || !Array.isArray(plans.data))throw new Error('档案数据格式不正确，请刷新后重试');
+    $('#a-elder').value=id;
+    if(resetEditors){resetPlan();$('#a-score').value='';}
+    $('#elder-dialog-title').textContent=`${e.name} · 老人档案`;
+    $('#elder-detail-title').textContent = `${e.name} · 档案详情`;
+    $('#elder-detail').innerHTML = `<p>身份证：已全部隐藏　出生日期：${esc(e.birth_date)}　性别：${esc(e.gender)}</p>
+      <p>社区：${esc(e.community)}　地址：${esc(e.address)||'—'}</p><p>监护人：${esc(e.guardian_name)}　联系电话：${esc(e.guardian_phone)}</p>
+      <p>标签：${esc(e.special_tag)||'无'}　状态：${esc(e.status)}</p>`;
+    $('#elder-status-actions').innerHTML = ME.role==='社区管理员' && e.status!=='注销'
+      ? `<button class="btn ghost" onclick="editElder(${id})">编辑 / 迁移社区</button>
+         <button class="btn ghost" onclick="changeElderStatus('${e.status==='正常'?'暂停服务':'正常'}')">${e.status==='正常'?'暂停服务':'恢复档案'}</button>
+         <button class="btn warn" onclick="changeElderStatus('注销')">注销档案</button>` : '';
+    renderAssessments(assessments.data);renderPlans(plans.data);
+    displayedElderId=id;
+    $('#elder-edit-card').classList.add('hide');$('#elder-view-panel').classList.remove('hide');
+    if(showWhenReady){
+      releaseElderButton(button);
+      if(button?.isConnected && !$('#elder-dialog').open)button.focus({preventScroll:true});
+      openElderDialog();
+    }
+  } catch(error) {
+    if(version!==elderSelectionVersion || user!==ME)return;
+    if(displayedElderId)$('#a-elder').value=displayedElderId;
+    if($('#elder-dialog').open){
+      $('#elder-dialog-error').textContent=error.message;
+      $('#elder-dialog-error').classList.remove('hide');
+    }
+    throw error;
+  } finally {
+    if(version===elderSelectionVersion){
+      $('#elder-view-panel').inert=false;
+      $('#elder-dialog-loading').classList.add('hide');
+    }
+  }
+}
+function renderPlans(plans){
+  selectedPlans=plans;
+  $('#plan-table tbody').innerHTML=selectedPlans.map(p=>`<tr><td>${p.plan_id}</td><td>${esc(p.package_name)}<br>${esc(p.frequency)}</td>
+    <td>${p.items.map(i=>esc(i.name)).join('、')||'待补录项目'}</td><td>${esc(p.start_date)} 至 ${esc(p.end_date)}</td><td>${esc(p.caregiver_name)||'暂未指定'}</td>
+    <td>${esc(p.status)} ${esc(p.pause_reason)}</td><td>${ME.role==='社区管理员' && p.status!=='结束'
+      ? `<button class="btn small ghost" onclick="editPlan(${p.plan_id})">编辑</button> <button class="btn small" onclick="changePlanStatus(${p.plan_id},'${p.status==='生效'?'暂停':'生效'}')">${p.status==='生效'?'暂停':'恢复'}</button> <button class="btn small warn" onclick="changePlanStatus(${p.plan_id},'结束')">结束</button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="7">暂无照护计划</td></tr>';
+}
+const reminderResults=new Map(), pendingReminders=new Map();
+function reminderAction(id){
+  if(ME.role!=='社区管理员')return '仅社区管理员可发送';
+  if(!Number.isSafeInteger(id)||id<=0)return '<span class="muted">缺少档案编号，请刷新页面</span>';
+  const result=reminderResults.get(id),pending=pendingReminders.get(id)===ME;
+  return `<button type="button" class="btn small ghost reminder-send" data-remind="${id}" onclick="sendReminder(${id})" aria-busy="${pending}" ${pending?'disabled':''}>${pending?'发送中…':result?.state==='success'?'今日已提醒':result?.state==='error'?'重试发送':'发送提醒'}</button>`;
+}
+function reminderFeedback(id,state){
+  reminderResults.set(id,{state});
+  document.querySelectorAll(`[data-remind="${id}"]`).forEach(button=>{
+    button.disabled=pendingReminders.get(id)===ME;
+    button.setAttribute('aria-busy',String(button.disabled));
+    button.textContent=button.disabled?'发送中…':state==='success'?'今日已提醒':'重试发送';
+  });
+}
+async function sendReminder(id){
+  if(!Number.isSafeInteger(id)||id<=0){toast('缺少有效的老人档案编号，请刷新页面',true);return;}
+  if(pendingReminders.get(id)===ME)return;
+  const user=ME;
+  pendingReminders.set(id,user);reminderFeedback(id,'pending');
+  let state='error',message='发送失败，请重试';
+  try {
+    const r=await elderRequest(`/api/elders/${id}/reminders`,{method:'POST',suppressErrorBanner:true});
+    state='success';
+    message=r.data.created_count ? `已发送到 ${r.data.created_count} 位家属的消息信箱` : '今天已发送过相同提醒，无需重复发送';
+  } catch(e) {message=e.message;}
+  finally {
+    if(pendingReminders.get(id)===user)pendingReminders.delete(id);
+    if(user===ME){reminderFeedback(id,state);toast(message,state==='error');}
+  }
+}
+const abilityLevels=['能力完好','轻度失能','中度失能','重度失能','未评估'];
+function renderAbilityChart(rows){
+  const communities=new Map();
+  for(const row of rows){
+    if(!communities.has(row.community_id))communities.set(row.community_id,{name:row.community,counts:Array(5).fill(0),expired:0});
+    const c=communities.get(row.community_id),i=abilityLevels.indexOf(row.ability_level);
+    if(i>=0)c.counts[i]+=Math.max(0,Number(row.elder_count)||0);
+    c.expired+=Math.max(0,Number(row.expired_count)||0);
+  }
+  const data=[...communities.values()], max=Math.max(1,...data.map(c=>c.counts.reduce((a,b)=>a+b,0)));
+  $('#ability-legend').innerHTML=abilityLevels.map((level,i)=>`<span><i class="legend-dot level-${i}"></i>${level}</span>`).join('');
+  $('#ability-chart').innerHTML=data.map(c=>{
+    const total=c.counts.reduce((a,b)=>a+b,0);
+    return `<div class="ability-row"><span>${esc(c.name)}</span><div class="ability-track">${total ? c.counts.map((count,i)=>count ?
+      `<span tabindex="0" role="img" class="ability-segment level-${i}" style="width:${count/max*100}%" title="${esc(c.name)} · ${abilityLevels[i]}：${count} 人" aria-label="${esc(c.name)}，${abilityLevels[i]} ${count} 人">${count}</span>` : '').join('') : '<span class="muted">暂无正常档案</span>'}</div>
+      <div class="ability-total">${total} 人<small>过期 ${c.expired} 人</small></div></div>`;
+  }).join('')||'<p class="muted">暂无社区分布数据</p>';
+}
+async function loadElderReports(){
+  if (ME.role==='家属') return;
+  const [reminders,alone,ability]=await Promise.all(['reassessment','living-alone','ability-distribution'].map(r=>elderRequest('/api/elders/reports/'+r)));
+  $('#reminder-table tbody').innerHTML=reminders.data.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.community)}</td><td>${esc(r.reminder)}</td><td>${esc(r.expire_date)||'—'}</td><td>${r.days_left??'—'}</td><td>${reminderAction(r.elder_id)}</td></tr>`).join('')||'<tr><td colspan="6">暂无到期提醒</td></tr>';
+  $('#alone-table tbody').innerHTML=alone.data.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.community)}</td><td>${esc(r.created_at)}</td><td>${reminderAction(r.elder_id)}</td></tr>`).join('')||'<tr><td colspan="4">暂无未评估独居老人</td></tr>';
+  renderAbilityChart(ability.data);
+  $('#ability-table tbody').innerHTML=ability.data.map(r=>`<tr><td>${esc(r.community)}</td><td>${esc(r.ability_level)}</td><td>${r.elder_count}</td><td>${r.expired_count}</td></tr>`).join('')||'<tr><td colspan="4">暂无分布数据</td></tr>';
+}
+let inboxPage=1, inboxTimer=null, inboxRequest=0;
+function stopInboxPolling(){clearInterval(inboxTimer);inboxTimer=null;inboxRequest++;}
+async function loadInbox(page=inboxPage){
+  if(ME?.role!=='家属')return;
+  const user=ME,requestId=++inboxRequest;
+  const r=await elderRequest('/api/notifications?page='+page);
+  if(user!==ME || requestId!==inboxRequest)return;
+  const d=r.data;
+  if(page>1 && !d.messages.length && d.total>0)return loadInbox(Math.ceil(d.total/d.page_size));
+  inboxPage=page;
+  $('#inbox-count').textContent=`${d.unread_count} 条未读`;
+  const nav=$('#nav [data-tab="inbox"]');
+  if(nav)nav.innerHTML=`<span class="ico">✉</span>消息信箱${d.unread_count?` <span class="badge b-red">${d.unread_count}</span>`:''}`;
+  $('#inbox-messages').innerHTML=d.messages.map(m=>`<article class="message-card ${m.read_at?'':'unread'}">
+    <h4>${esc(m.title)} <span class="badge ${m.read_at?'b-canc':'b-disp'}">${m.read_at?'已读':'未读'}</span></h4>
+    <p>${esc(m.content)}</p><div class="message-meta"><span class="muted">社区管理员 · ${esc(m.created_at)}</span>
+    ${m.read_at?`<span class="muted">已读于 ${esc(m.read_at)}</span>`:`<button class="btn small ghost" onclick="markMessageRead(${m.notification_id},this)">标记已读</button>`}</div></article>`).join('')||'<p class="muted">暂无消息，社区发送的评估提醒会出现在这里。</p>';
+  $('#inbox-pagination').textContent=`第 ${page} 页，共 ${d.total} 条消息`;
+  $('#inbox-prev').disabled=page<=1;$('#inbox-next').disabled=page*d.page_size>=d.total;
+}
+async function markMessageRead(id,button){
+  button.disabled=true;
+  try {await elderRequest(`/api/notifications/${id}/read`,{method:'PATCH'});await loadInbox();}
+  catch(e){toast(e.message,true);button.disabled=false;}
+}
+$('#refresh-inbox').onclick=()=>runElderUI(()=>loadInbox());
+$('#inbox-prev').onclick=()=>runElderUI(()=>loadInbox(inboxPage-1));
+$('#inbox-next').onclick=()=>runElderUI(()=>loadInbox(inboxPage+1));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden && ME?.role==='家属')runElderUI(()=>loadInbox());});
+$('#elder-search').onsubmit=e=>{e.preventDefault();elderPage=1;runElderUI(renderElderPage);};
+$('#elder-prev').onclick=()=>{elderPage--;runElderUI(renderElderPage);};
+$('#elder-next').onclick=()=>{elderPage++;runElderUI(renderElderPage);};
+$('#new-elder').onclick=()=>{
+  closeElderDialog();
+  editingElder=null; $('#elder-form').reset(); $('#e-id-card').disabled=false; $('#e-birth').disabled=false;
+  $('#elder-edit-title').textContent='新建档案'; $('#elder-dialog-title').textContent='新建档案';
+  $('#elder-edit-card').classList.remove('hide'); $('#elder-view-panel').classList.add('hide'); openElderDialog();
+};
+$('#cancel-elder-edit').onclick=()=>{ if(editingElder) selectElder(editingElder); else closeElderDialog(); };
+function editElder(id){runElderUI(async()=>{
+  const version=elderSelectionVersion, user=ME;
+  const e=(await elderRequest(`/api/elders/${id}`)).data;
+  if(version!==elderSelectionVersion || user!==ME || !$('#elder-dialog').open)return;
+  editingElder=id;
+  for (const [field,key] of Object.entries({'e-name':'name','e-birth':'birth_date','e-gender':'gender','e-community':'community_id','e-address':'address','e-guardian':'guardian_name','e-phone':'guardian_phone'})) $('#'+field).value=e[key];
+  $('#e-id-card').value='已全部隐藏'; $('#e-id-card').disabled=true; $('#e-birth').disabled=true;
+  for (const o of $('#e-tags').options) o.selected=(e.special_tag||'').split(',').includes(o.value);
+  $('#elder-edit-title').textContent='编辑档案 / 跨社区迁移（保留原档案编号）'; $('#elder-edit-card').classList.remove('hide');
+  $('#elder-view-panel').classList.add('hide'); $('#elder-dialog-title').textContent=`${e.name} · 编辑档案`; openElderDialog();
+});}
+$('#elder-form').onsubmit=ev=>{ev.preventDefault();runElderUI(async()=>{
+  const body={name:$('#e-name').value,birth_date:$('#e-birth').value,gender:$('#e-gender').value,community_id:Number($('#e-community').value),address:$('#e-address').value,guardian_name:$('#e-guardian').value,guardian_phone:$('#e-phone').value,special_tag:[...$('#e-tags').selectedOptions].map(o=>o.value)};
+  if (!editingElder) body.id_card=$('#e-id-card').value;
+  const r=await elderRequest(editingElder?`/api/elders/${editingElder}`:'/api/elders',{method:editingElder?'PUT':'POST',body});
+  toast('档案已保存'); await loadElders({refreshSelection:false}); await selectElder(r.data.elder_id); $('#elder-form').reset(); loadStats();
+});};
+function changeElderStatus(status){runElderUI(async()=>{
+  if (!confirm(status==='注销'?'注销后不可恢复，全部计划将结束，历史数据保留。确认注销？':`确认将档案设为「${status}」？恢复档案后需逐份核实并恢复计划。`)) return;
+  const id=selectedElder(); await elderRequest(`/api/elders/${id}/status`,{method:'PATCH',body:{status}}); toast('档案状态已更新'); resetPlan(); await loadElders(); loadStats();
+});}
+$('#elder-batch-submit').onclick=()=>runElderUI(async()=>{
+  const file=$('#elder-batch-file').files[0]; if(!file) throw new Error('请选择 JSON 档案文件');
+  if(file.size>1024*1024) throw new Error('文件不能超过1MB');
+  let elders; try{elders=JSON.parse(await file.text());}catch(e){throw new Error('JSON 格式不正确');}
+  const r=await elderRequest('/api/elders/batch',{method:'POST',body:{elders}}); toast(`已导入 ${r.data.elder_ids.length} 份档案`); $('#elder-batch-file').value=''; await loadElders(); loadStats();
+});
+function resetPlan(){editingPlan=null;$('#plan-form').reset();$('#plan-edit-title').textContent='新建照护计划';}
+$('#reset-plan').onclick=resetPlan;
+function editPlan(id){
+  const p=selectedPlans.find(p=>p.plan_id===id); if(!p) return; editingPlan=id;
+  $('#plan-edit-title').textContent=`编辑照护计划 #${id}`;
+  for(const [field,key] of Object.entries({'p-name':'package_name','p-frequency':'frequency','p-start':'start_date','p-end':'end_date'})) $('#'+field).value=p[key];
+  if(p.caregiver_id && ![...$('#p-caregiver').options].some(o=>Number(o.value)===p.caregiver_id)){
+    const o=new Option(`${p.caregiver_name}（已不可选，请重新指定）`,p.caregiver_id); $('#p-caregiver').add(o);
+  }
+  $('#p-caregiver').value=p.caregiver_id||'';
+  for(const o of $('#p-items').options) o.selected=p.items.some(i=>i.item_id===Number(o.value));
+  $('#plan-editor').scrollIntoView({behavior:'smooth'});
+}
+$('#recommend-plan').onclick=()=>runElderUI(async()=>{
+  const id=selectedElder();if(!id) throw new Error('请先选择老人');
+  const r=(await elderRequest(`/api/elders/${id}/plan-recommendation`)).data;
+  $('#p-name').value=r.package_name;$('#p-frequency').value=r.frequency;
+  for(const o of $('#p-items').options) o.selected=r.items.some(i=>i.item_id===Number(o.value));
+  toast('已填入推荐方案，请核实日期、项目和责任护工后保存');
+});
+$('#plan-form').onsubmit=ev=>{ev.preventDefault();runElderUI(async()=>{
+  const id=selectedElder();if(!id) throw new Error('请先选择老人');
+  const body={package_name:$('#p-name').value,frequency:$('#p-frequency').value,start_date:$('#p-start').value,end_date:$('#p-end').value,caregiver_id:Number($('#p-caregiver').value)||null,item_ids:[...$('#p-items').selectedOptions].map(o=>Number(o.value))};
+  await elderRequest(`/api/elders/${id}/plans`+(editingPlan?`/${editingPlan}`:''),{method:editingPlan?'PUT':'POST',body});
+  resetPlan();toast('照护计划已保存');await loadElders();loadStats();
+});};
+function changePlanStatus(id,status){runElderUI(async()=>{
+  if(status==='结束'&&!confirm('结束后该计划不能恢复，确认结束？'))return;
+  await elderRequest(`/api/elders/${selectedElder()}/plans/${id}/status`,{method:'PATCH',body:{status}});resetPlan();toast('计划状态已更新');await loadElders();loadStats();
+});}
 
-async function loadAssessments(){
-  if ($('#tab-elders').classList.contains('hide') && ME.role !== '家属') return;
-  const isAdmin = ME.role === '社区管理员';
-  const id = isAdmin ? +($('#a-elder').value || 0) : ME.elder_id;
-  if (!id) return;
-  const r = await API(`/api/elders/${id}/assessments`);
-  if (!r.ok) return;
-  $('#assess-table tbody').innerHTML = r.data.map(a => `<tr>
+function renderAssessments(assessments){
+  $('#assess-table tbody').innerHTML = assessments.map(a => `<tr>
     <td>${esc(a.scale)}</td><td>${a.score}</td><td>${esc(a.ability_level)}</td>
     <td>${esc(a.assessor)}</td><td>${a.assess_date}</td><td>${a.expire_date}</td>
-    <td>${a.days_left > 0 ? a.days_left : '—'}</td>
+    <td>${a.days_left ?? '—'}</td>
     <td>${a.expired ? '<span class="badge b-red">已过期</span>'
         : a.days_left <= 30 ? '<span class="badge b-wait">即将到期</span>'
         : '<span class="badge b-done">有效</span>'}</td></tr>`).join('')
     || '<tr><td colspan="8" class="muted">暂无评估记录，请联系社区安排首次评估</td></tr>';
-  const latest = r.data[0];
+  const latest = assessments[0];
   if (!latest) {
     $('#assess-alert').innerHTML = `<div class="badge b-red" style="display:block;padding:9px 14px;margin-bottom:12px">
       尚未做能力评估：不可下单，请联系社区安排评估</div>`;
   } else if (latest.expired) {
     $('#assess-alert').innerHTML = `<div class="badge b-red" style="display:block;padding:9px 14px;margin-bottom:12px">
-      评估已于 ${latest.expire_date} 过期（逾期 ${-latest.days_left} 天）：暂不可下单，照护计划已暂停，请联系社区复评</div>`;
+      评估已于 ${latest.expire_date} 过期（逾期 ${-latest.days_left} 天）：暂不可下单或派单，请联系社区复评</div>`;
   } else if (latest.days_left <= 30) {
     $('#assess-alert').innerHTML = `<div class="badge b-wait" style="display:block;padding:9px 14px;margin-bottom:12px">
       评估 ${latest.days_left} 天后到期，请及时联系社区安排复评</div>`;
@@ -433,18 +920,20 @@ async function loadAssessments(){
 $('#assess-form-card').onsubmit = async ev => {
   ev.preventDefault();
   const elderId = +$('#a-elder').value;
-  const score = parseInt($('#a-score').value, 10);
+  const score = Number($('#a-score').value);
+  if (!$('#a-score').value || !Number.isInteger(score)) { toast('请输入0-100的整数得分', true); return; }
   const r = await API(`/api/elders/${elderId}/assessments`, {method:'POST',
     body:{scale:$('#a-scale').value, score}});
   if (r.ok) {
     const extra = r.data.resumed_plans > 0 ? `，已自动恢复 ${r.data.resumed_plans} 份照护计划` : '';
     toast(`评估已录入：等级「${r.data.ability_level}」，有效期至 ${r.data.expire_date}${extra}`);
     $('#a-score').value = '';
-    loadAssessments(); loadElders(); loadStats();
+    resetPlan(); runElderUI(loadElders); loadStats(); loadOps();
   } else toast(r.msg, true);
 };
 async function loadOrders(){
   const r = await API('/api/orders');
+  if (!r.ok) return;
   const isAdmin = ME.role === '社区管理员', isWorker = ME.role === '护工';
   $('#order-table tbody').innerHTML = r.data.map(o => {
     let act = '—';
@@ -479,11 +968,11 @@ async function openRecommend(orderId){
   const r = await API(`/api/orders/${orderId}/recommend`);
   $('#action-panel').style.display = 'block';
   $('#action-title').textContent = `订单 ${orderId} · 推荐护工（在岗+证书有效+区域匹配+班次有余量）`;
-  $('#action-body').innerHTML = r.ok && r.data.length ? '<table><thead><tr><th>护工</th><th>机构</th><th>证书</th><th>评分</th><th>班次余量</th><th>操作</th></tr></thead><tbody>'
+  $('#action-body').innerHTML = r.ok && r.data.length ? '<div class="table-scroll" role="region" tabindex="0" aria-label="推荐护工（可左右滑动）"><table><thead><tr><th>护工</th><th>机构</th><th>证书</th><th>评分</th><th>班次余量</th><th>操作</th></tr></thead><tbody>'
     + r.data.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.agency)}</td><td>${esc(c.cert_type)}</td>
       <td>${c.rating}</td><td>${c.booked}/${c.capacity}</td>
       <td><button class="btn small" onclick="doDispatch(${orderId},${c.caregiver_id})">派单</button></td></tr>`).join('')
-    + '</tbody></table>' : '<p class="muted">没有符合条件的护工（可改约日期，或到运维页看排班余量）。</p>';
+    + '</tbody></table></div>' : '<p class="muted">没有符合条件的护工（可改约日期，或到运维页看排班余量）。</p>';
   $('#action-panel').scrollIntoView({behavior:'smooth'});
 }
 async function doDispatch(orderId, caregiverId){
@@ -566,6 +1055,7 @@ async function audit(id, action){
 async function loadOps(){
   if (ME.role !== '社区管理员') return;
   const r = await API('/api/maintenance/expired-preview');
+  if (!r.ok) return;
   $('#expired-table tbody').innerHTML = r.data.length ? r.data.map(x => `<tr>
     <td>${x.plan_id}</td><td>${esc(x.elder_name)}</td><td>${esc(x.package_name)}</td>
     <td>${esc(x.status)}</td><td>${x.expire_date} <span class="badge b-red">已过期</span></td></tr>`).join('')
