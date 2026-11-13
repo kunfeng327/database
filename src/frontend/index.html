@@ -29,7 +29,7 @@ body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:
 /* ---------------- 登录页 ---------------- */
 #login-view { min-height:100vh; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(135deg,#1a2332 0%,#17303c 60%,#1ABB9C 160%); }
-.login-card { background:#fff; border-radius:12px; padding:36px 40px; width:400px;
+.login-card { background:#fff; border-radius:12px; padding:36px 40px; width:min(400px,calc(100vw - 32px));
   box-shadow:0 18px 50px rgba(0,0,0,.35); }
 .login-card h1 { font-size:19px; margin-bottom:4px; }
 .login-card .sub { color:var(--muted); font-size:12px; margin-bottom:22px; }
@@ -75,14 +75,14 @@ body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:
 .topbar h2 { font-size:18px; font-weight:600; }
 .role-badge { font-size:12px; padding:4px 12px; border-radius:14px; background:var(--primary-lt);
   color:var(--primary-dk); font-weight:600; }
-.content { padding:24px 28px; max-width:1250px; }
+.content { padding:24px 28px; max-width:1250px; min-width:0; }
 
 /* ---------------- 通用组件 ---------------- */
 .card { background:var(--surface); border:1px solid var(--border); border-radius:8px;
   padding:18px 20px; margin-bottom:18px; }
 .card h3 { font-size:14px; margin-bottom:14px; color:var(--text); font-weight:600; }
 .card h3 small { font-weight:400; color:var(--muted); margin-left:8px; }
-.stats { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:18px; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:14px; margin-bottom:18px; }
 .stat { background:var(--surface); border:1px solid var(--border); border-radius:8px;
   padding:16px; display:flex; gap:12px; align-items:flex-start; }
 .stat .icon { width:38px; height:38px; border-radius:8px; display:flex; align-items:center;
@@ -110,7 +110,7 @@ button.btn.small { padding:4px 11px; font-size:12px; }
 button.btn.ghost { background:#fff; color:var(--primary-dk); border:1px solid var(--primary); }
 button.btn.warn { background:var(--red); }
 form.inline { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
-.field { display:flex; flex-direction:column; gap:4px; }
+.field { display:flex; flex-direction:column; gap:4px; min-width:0; max-width:100%; }
 .field label { font-size:12px; color:var(--muted); }
 select, input, textarea { border:1px solid var(--border); border-radius:6px; padding:8px 10px;
   font-size:13px; font-family:inherit; background:#fff; min-width:130px; }
@@ -136,10 +136,9 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
   font-size:26px; line-height:1; border-radius:6px; cursor:pointer; flex:none; }
 .dialog-close:hover { background:var(--red-lt); color:var(--red); }
 .dialog-content { padding:18px; }
-.dialog-content .card { overflow-x:auto; }
+.dialog-content .card { min-width:0; }
 #elder-dialog-loading { padding:8px 12px; margin-bottom:12px; color:var(--primary-dk); }
 .reminder-result { max-width:280px; margin-top:6px; font-size:12px; line-height:1.5; }
-.reminder-result.error { color:var(--red); }
 .reminder-result.success { color:var(--primary-dk); }
 #elder-dialog-error { padding:12px; margin-bottom:12px; background:var(--red-lt); color:var(--red); }
 #elder-detail p { margin:8px 0; }
@@ -163,12 +162,56 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
 .message-card.unread { border-left:4px solid var(--primary); background:var(--primary-lt); }
 .message-card h4 { margin-bottom:8px; }.message-card p { margin:10px 0; line-height:1.7; }
 .message-meta { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-@media(max-width:700px) {
-  .sidebar { width:150px; } .main { margin-left:150px; } .content { padding:14px; }
-  .ability-row { grid-template-columns:65px minmax(60px,1fr) 58px; gap:6px; font-size:12px; }
-  .dialog-content { padding:10px; } .dialog-content .card { padding:14px; }
-  .stats { grid-template-columns:repeat(2,1fr); }
+.table-scroll { width:100%; max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
+.table-scroll:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+.table-scroll table { min-width:560px; }
+#elder-table { min-width:980px; } #assess-table,#plan-table,#order-table,#claim-table { min-width:760px; }
+#ability-table { min-width:440px; }
+.card,.message-card { min-width:0; overflow-wrap:anywhere; }
+#elder-detail p,.message-card p { overflow-wrap:anywhere; }
+.dialog-heading h2 { min-width:0; overflow-wrap:anywhere; }
+#elder-batch-file { max-width:100%; }
+#toast { width:max-content; max-width:calc(100vw - 24px); line-height:1.5; overflow-wrap:anywhere; }
+@media(max-width:800px) {
+  .sidebar { position:static; width:auto; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .brand { padding:14px; border:0; align-self:center; }
+  .brand b { font-size:14px; } .brand span { font-size:10px; }
+  .side-user { grid-column:2; grid-row:1; padding:10px 14px; border:0; text-align:right; overflow-wrap:anywhere; }
+  .side-user button { display:block; width:auto; min-height:36px; margin:6px 0 0 auto; padding:7px 12px; }
+  .nav { grid-column:1 / -1; grid-row:2; display:flex; padding:0; min-width:0; overflow-x:auto; }
+  .nav button { flex:none; width:auto; min-height:46px; padding:10px 14px; white-space:nowrap; border-left:0; border-bottom:3px solid transparent; }
+  .nav button.active { border-bottom-color:var(--primary); }
+  .main { margin-left:0; min-height:0; }
+  .topbar { padding:14px 16px; gap:12px; }
+  .topbar h2 { font-size:17px; } .role-badge { flex:none; }
+  .content { padding:16px; }
+  .card { padding:16px; }
+  .card h3 small { display:block; margin:6px 0 0; line-height:1.6; }
+  #elder-dialog { width:calc(100vw - 16px); max-width:none; max-height:calc(100vh - 16px); max-height:calc(100dvh - 16px); }
+  .dialog-heading { padding:12px; } .dialog-close { width:44px; height:44px; }
+  .dialog-content { padding:10px; }
 }
+@media(max-width:520px) {
+  .login-card { padding:28px 24px; }
+  .login-card input { font-size:16px; }
+  .content { padding:12px; } .card { padding:14px 12px; }
+  .stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .stat { padding:12px; gap:8px; } .stat .icon { width:28px; height:28px; }
+  .stat .num { font-size:21px; }
+  form.inline > .field { flex:1 1 100%; width:100%; }
+  .field input,.field select,.field textarea { width:100% !important; min-width:0; font-size:16px; }
+  form.inline > button { min-height:44px; flex:1 1 auto; }
+  button.btn.small { min-height:36px; }
+  #elder-batch-submit { margin-top:10px; }
+  #elder-status-actions button { flex:1 1 auto; min-height:44px; }
+  .ability-row { grid-template-columns:68px minmax(0,1fr) 60px; gap:6px; font-size:12px; }
+  .ability-segment { overflow:hidden; }
+  .chart-legend { gap:10px; }
+  .inbox-heading,.message-meta { flex-wrap:wrap; }
+  #action-panel .row { flex-direction:column; } #action-panel .row > div { width:100%; }
+  #toast { top:12px; padding:12px 16px; }
+}
+
 </style>
 </head>
 <body>
@@ -217,9 +260,9 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
         <div class="stats" id="stat-cards"></div>
         <div class="card">
           <h3>待派单订单<small>视图 v_pending_dispatch_orders，30 分钟未接单标记超时</small></h3>
-          <table id="pending-table"><thead><tr>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="待派单订单（可左右滑动）"><table id="pending-table"><thead><tr>
             <th>订单号</th><th>老人</th><th>社区</th><th>服务项目</th><th>预约时间</th>
-            <th>等待(分钟)</th><th>超时标志</th></tr></thead><tbody></tbody></table>
+            <th>等待(分钟)</th><th>超时标志</th></tr></thead><tbody></tbody></table></div>
         </div>
       </section>
 
@@ -233,9 +276,9 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
             <button class="btn" type="submit">查询</button>
             <button class="btn ghost" type="button" id="new-elder">新建档案</button>
           </form>
-          <table id="elder-table"><thead><tr>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="老人档案（可左右滑动）"><table id="elder-table"><thead><tr>
             <th>编号</th><th>姓名</th><th>年龄</th><th>社区</th><th>身份证</th>
-            <th>特殊标签</th><th>能力等级</th><th>评估到期</th><th>状态</th><th>当前计划</th><th>操作</th></tr></thead><tbody></tbody></table>
+            <th>特殊标签</th><th>能力等级</th><th>评估到期</th><th>状态</th><th>当前计划</th><th>操作</th></tr></thead><tbody></tbody></table></div>
           <p><button class="btn small ghost" id="elder-prev">上一页</button> <span id="elder-pagination"></span> <button class="btn small ghost" id="elder-next">下一页</button></p>
         </div>
         <div class="card" id="elder-batch-card">
@@ -244,13 +287,13 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
           <button class="btn ghost" id="elder-batch-submit">导入档案</button>
         </div>
         <div id="elder-reports">
-          <div class="card"><h3>首次评估与复评提醒</h3><table id="reminder-table"><thead><tr><th>老人</th><th>社区</th><th>提醒</th><th>有效期至</th><th>剩余天数</th><th>通知家属</th></tr></thead><tbody></tbody></table></div>
-          <div class="card"><h3>独居老人未评估清单</h3><table id="alone-table"><thead><tr><th>老人</th><th>社区</th><th>建档时间</th><th>通知家属</th></tr></thead><tbody></tbody></table></div>
+          <div class="card"><h3>首次评估与复评提醒</h3><div class="table-scroll" role="region" tabindex="0" aria-label="评估提醒（可左右滑动）"><table id="reminder-table"><thead><tr><th>老人</th><th>社区</th><th>提醒</th><th>有效期至</th><th>剩余天数</th><th>通知家属</th></tr></thead><tbody></tbody></table></div></div>
+          <div class="card"><h3>独居老人未评估清单</h3><div class="table-scroll" role="region" tabindex="0" aria-label="独居未评估老人（可左右滑动）"><table id="alone-table"><thead><tr><th>老人</th><th>社区</th><th>建档时间</th><th>通知家属</th></tr></thead><tbody></tbody></table></div></div>
           <div class="card"><h3>各社区能力等级分布</h3>
             <p class="muted">统计正常档案的最新评估；未评估单独计数。条形长度代表人数，悬停色块可查看详情。</p>
             <div id="ability-legend" class="chart-legend"></div>
             <div id="ability-chart" aria-label="各社区能力等级人数分布"></div>
-            <details class="chart-data"><summary>查看详细数据（含评估过期人数）</summary><table id="ability-table"><thead><tr><th>社区</th><th>能力等级</th><th>人数</th><th>其中评估过期</th></tr></thead><tbody></tbody></table></details></div>
+            <details class="chart-data"><summary>查看详细数据（含评估过期人数）</summary><div class="table-scroll" role="region" tabindex="0" aria-label="社区能力分布（可左右滑动）"><table id="ability-table"><thead><tr><th>社区</th><th>能力等级</th><th>人数</th><th>其中评估过期</th></tr></thead><tbody></tbody></table></div></details></div>
         </div>
       </section>
 
@@ -283,9 +326,9 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
         </div>
         <div class="card">
           <h3 id="orders-title">服务订单</h3>
-          <table id="order-table"><thead><tr>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="服务订单（可左右滑动）"><table id="order-table"><thead><tr>
             <th>订单号</th><th>老人</th><th>项目</th><th>预约时间</th><th>渠道</th>
-            <th>金额</th><th>状态</th><th>护工</th><th>操作</th></tr></thead><tbody></tbody></table>
+            <th>金额</th><th>状态</th><th>护工</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </section>
 
@@ -301,9 +344,9 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
         </div>
         <div class="card">
           <h3>申报与拨付进度<small>视图 v_claim_progress</small></h3>
-          <table id="claim-table"><thead><tr>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="补贴申报（可左右滑动）"><table id="claim-table"><thead><tr>
             <th>申报号</th><th>老人</th><th>区县</th><th>对象类别</th><th>补贴项目</th>
-            <th>账期</th><th>金额</th><th>状态</th><th>审核人</th><th id="claim-act-th">操作</th></tr></thead><tbody></tbody></table>
+            <th>账期</th><th>金额</th><th>状态</th><th>审核人</th><th id="claim-act-th">操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </section>
 
@@ -311,8 +354,8 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
         <div class="card">
           <h3>存储过程 sp_pause_expired_plans<small>评估到期 → 照护计划自动暂停</small></h3>
           <p class="muted" style="margin-bottom:10px">下表为将被暂停的「生效」计划（老人最新评估已过期）：</p>
-          <table id="expired-table"><thead><tr>
-            <th>计划号</th><th>老人</th><th>服务包</th><th>当前状态</th><th>评估到期日</th></tr></thead><tbody></tbody></table>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="过期照护计划（可左右滑动）"><table id="expired-table"><thead><tr>
+            <th>计划号</th><th>老人</th><th>服务包</th><th>当前状态</th><th>评估到期日</th></tr></thead><tbody></tbody></table></div>
           <p style="margin-top:12px"><button class="btn warn" id="btn-pause">执行存储过程：暂停过期计划</button></p>
         </div>
       </section>
@@ -320,9 +363,9 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
       <section id="tab-schedules" class="hide">
         <div class="card">
           <h3>护工排班与接单余量<small>视图 v_schedule_capacity（排班不重叠，已接单量 ≤ 可接单量）</small></h3>
-          <table id="sched-table"><thead><tr>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="护工排班（可左右滑动）"><table id="sched-table"><thead><tr>
             <th>护工</th><th>证书类型</th><th>证书到期</th><th>日期</th><th>班次</th>
-            <th>已接/可接</th><th>余量</th></tr></thead><tbody></tbody></table>
+            <th>已接/可接</th><th>余量</th></tr></thead><tbody></tbody></table></div>
         </div>
       </section>
 
@@ -347,9 +390,9 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
           <div id="assess-alert"></div>
           <div class="field" id="assess-elder-field" style="margin:10px 0 12px; max-width:260px">
             <label>选择老人</label><select id="a-elder"></select></div>
-          <table id="assess-table"><thead><tr>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="能力评估记录（可左右滑动）"><table id="assess-table"><thead><tr>
             <th>量表</th><th>得分</th><th>能力等级</th><th>评估员</th><th>评估日期</th>
-            <th>有效期至</th><th>剩余天数</th><th>状态</th></tr></thead><tbody></tbody></table>
+            <th>有效期至</th><th>剩余天数</th><th>状态</th></tr></thead><tbody></tbody></table></div>
           <form class="inline" id="assess-form-card" style="margin-top:16px">
             <div class="field"><label>评估量表</label>
               <select id="a-scale"><option>ADL</option><option>简易智能状态</option></select></div>
@@ -359,7 +402,7 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
         </div>
         <div class="card">
           <h3>照护计划<small>保留历史记录，同一时段只允许一份生效计划</small></h3>
-          <table id="plan-table"><thead><tr><th>编号</th><th>服务包 / 频次</th><th>服务项目</th><th>起止日期</th><th>责任护工</th><th>状态 / 原因</th><th>操作</th></tr></thead><tbody></tbody></table>
+          <div class="table-scroll" role="region" tabindex="0" aria-label="照护计划（可左右滑动）"><table id="plan-table"><thead><tr><th>编号</th><th>服务包 / 频次</th><th>服务项目</th><th>起止日期</th><th>责任护工</th><th>状态 / 原因</th><th>操作</th></tr></thead><tbody></tbody></table></div>
           <div id="plan-editor">
             <h3 id="plan-edit-title">新建照护计划</h3>
             <button class="btn ghost" id="recommend-plan">按能力等级填入推荐方案</button>
@@ -406,13 +449,14 @@ function showDataError(message){
   $('#data-load-alert').classList.remove('hide');
 }
 async function API(url, opts) {
+  const {suppressErrorBanner=false, ...requestOptions}=opts||{};
   let r, j;
   try {
-    r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...opts,
-      body: opts && opts.body ? JSON.stringify(opts.body) : undefined });
+    r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...requestOptions,
+      body: requestOptions.body ? JSON.stringify(requestOptions.body) : undefined });
   } catch(e) {
     const msg = '无法连接服务，请运行启动演示.bat并保持后端窗口开启，然后访问 http://127.0.0.1:5000。';
-    showDataError(msg);
+    if (!suppressErrorBanner) showDataError(msg);
     return {ok:false, msg};
   }
   try { j = await r.json(); } catch(e) {
@@ -425,7 +469,7 @@ async function API(url, opts) {
   if (r.status === 401) { showLogin(); throw new Error(j.msg || '请先登录'); }
   if (!r.ok || !j.ok) {
     j.ok = false;
-    if (!opts?.method || r.status >= 500) showDataError(j.msg || '数据加载失败，请稍后重试。');
+    if (!suppressErrorBanner && (!opts?.method || r.status >= 500)) showDataError(j.msg || '数据加载失败，请稍后重试。');
   }
   return j;
 }
@@ -700,14 +744,17 @@ function renderPlans(plans){
 const reminderResults=new Map(), pendingReminders=new Map();
 function reminderAction(id){
   if(ME.role!=='社区管理员')return '仅社区管理员可发送';
-  if(!Number.isSafeInteger(id)||id<=0)return '<span class="reminder-result error">缺少档案编号，请刷新页面</span>';
+  if(!Number.isSafeInteger(id)||id<=0)return '<span class="muted">缺少档案编号，请刷新页面</span>';
   const result=reminderResults.get(id),pending=pendingReminders.get(id)===ME;
-  return `<button type="button" class="btn small ghost" data-remind="${id}" onclick="sendReminder(${id})" ${pending?'disabled':''}>${pending?'发送中…':result?.state==='success'?'今日已提醒':'发送提醒'}</button>
-    <p class="reminder-result ${result?.state||''}" data-reminder-result="${id}" role="status">${esc(result?.message||'')}</p>`;
+  return `<button type="button" class="btn small ghost" data-remind="${id}" onclick="sendReminder(${id})" ${pending?'disabled':''}>${pending?'发送中…':result?.state==='success'?'今日已提醒':result?.state==='error'?'重试发送':'发送提醒'}</button>
+    <p class="reminder-result ${result?.state==='error'||!result?'hide':result.state}" data-reminder-result="${id}" role="status">${esc(result?.state==='error'?'':result?.message||'')}</p>`;
 }
 function reminderFeedback(id,state,message){
   reminderResults.set(id,{state,message});
-  document.querySelectorAll(`[data-reminder-result="${id}"]`).forEach(el=>{el.className='reminder-result '+state;el.textContent=message;});
+  document.querySelectorAll(`[data-reminder-result="${id}"]`).forEach(el=>{
+    el.className='reminder-result '+(state==='error'?'hide':state);
+    el.textContent=state==='error'?'':message;
+  });
   document.querySelectorAll(`[data-remind="${id}"]`).forEach(button=>{
     button.disabled=pendingReminders.get(id)===ME;
     button.textContent=button.disabled?'发送中…':state==='success'?'今日已提醒':'重试发送';
@@ -720,7 +767,7 @@ async function sendReminder(id){
   pendingReminders.set(id,user);reminderFeedback(id,'','正在发送，请稍候…');
   let state='error',message='发送失败，请重试';
   try {
-    const r=await elderRequest(`/api/elders/${id}/reminders`,{method:'POST'});
+    const r=await elderRequest(`/api/elders/${id}/reminders`,{method:'POST',suppressErrorBanner:true});
     state='success';
     message=r.data.created_count ? `已发送到 ${r.data.created_count} 位家属的消息信箱` : '今天已发送过相同提醒，无需重复发送';
   } catch(e) {message=e.message;}
@@ -925,11 +972,11 @@ async function openRecommend(orderId){
   const r = await API(`/api/orders/${orderId}/recommend`);
   $('#action-panel').style.display = 'block';
   $('#action-title').textContent = `订单 ${orderId} · 推荐护工（在岗+证书有效+区域匹配+班次有余量）`;
-  $('#action-body').innerHTML = r.ok && r.data.length ? '<table><thead><tr><th>护工</th><th>机构</th><th>证书</th><th>评分</th><th>班次余量</th><th>操作</th></tr></thead><tbody>'
+  $('#action-body').innerHTML = r.ok && r.data.length ? '<div class="table-scroll" role="region" tabindex="0" aria-label="推荐护工（可左右滑动）"><table><thead><tr><th>护工</th><th>机构</th><th>证书</th><th>评分</th><th>班次余量</th><th>操作</th></tr></thead><tbody>'
     + r.data.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.agency)}</td><td>${esc(c.cert_type)}</td>
       <td>${c.rating}</td><td>${c.booked}/${c.capacity}</td>
       <td><button class="btn small" onclick="doDispatch(${orderId},${c.caregiver_id})">派单</button></td></tr>`).join('')
-    + '</tbody></table>' : '<p class="muted">没有符合条件的护工（可改约日期，或到运维页看排班余量）。</p>';
+    + '</tbody></table></div>' : '<p class="muted">没有符合条件的护工（可改约日期，或到运维页看排班余量）。</p>';
   $('#action-panel').scrollIntoView({behavior:'smooth'});
 }
 async function doDispatch(orderId, caregiverId){
