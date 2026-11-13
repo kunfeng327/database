@@ -188,7 +188,9 @@ def me():
 # ------------------------------------------------------------------ 页面
 @app.get("/")
 def index():
-    return send_file(FRONTEND)
+    response = send_file(FRONTEND)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 # ------------------------------------------------------------------ 基础数据
@@ -721,6 +723,7 @@ def pause_expired_plans():
 
 
 if __name__ == "__main__":
-    print("养老服务平台演示后端已启动 → http://127.0.0.1:5000")
-    print("演示账号（密码均为 123456）：shequ / jiashu / jiashu2 / hugong / jigou / jianguan")
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    import sys
+    from demo_server import run_demo
+
+    raise SystemExit(run_demo(app, open_browser="--open-browser" in sys.argv))

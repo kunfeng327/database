@@ -137,6 +137,10 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
 .dialog-close:hover { background:var(--red-lt); color:var(--red); }
 .dialog-content { padding:18px; }
 .dialog-content .card { overflow-x:auto; }
+#elder-dialog-loading { padding:8px 12px; margin-bottom:12px; color:var(--primary-dk); }
+.reminder-result { max-width:280px; margin-top:6px; font-size:12px; line-height:1.5; }
+.reminder-result.error { color:var(--red); }
+.reminder-result.success { color:var(--primary-dk); }
 #elder-dialog-error { padding:12px; margin-bottom:12px; background:var(--red-lt); color:var(--red); }
 #elder-detail p { margin:8px 0; }
 #elder-status-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
@@ -332,6 +336,7 @@ body:has(#elder-dialog[open]) { overflow:hidden; }
   </div>
   <div class="dialog-content">
     <p id="elder-dialog-error" class="hide" role="alert"></p>
+    <p id="elder-dialog-loading" class="hide" role="status">正在更新档案…</p>
     <div id="elder-view-panel">
         <div class="card" id="elder-detail-card">
           <h3 id="elder-detail-title">档案详情</h3><div id="elder-detail"></div>
@@ -414,6 +419,9 @@ async function API(url, opts) {
     j = {ok:false, msg:'服务返回了非预期内容，请确认通过启动演示.bat打开的地址访问。'};
   }
   if (!j || typeof j.ok !== 'boolean') j = {ok:false, msg:'服务响应格式不正确，请确认前后端使用同一版本。'};
+  if (r.status === 404 && url.startsWith('/api/')) {
+    j = {ok:false, msg:`当前后端没有${url.endsWith('/reminders')?'“发送提醒”':'此'}接口（404）。请关闭旧后端窗口，运行最新版启动演示.bat，选择N后刷新页面。`};
+  }
   if (r.status === 401) { showLogin(); throw new Error(j.msg || '请先登录'); }
   if (!r.ok || !j.ok) {
     j.ok = false;
@@ -481,14 +489,16 @@ function buildNav(){
   const tabs = ROLE_TABS[ME.role] || [];
   $('#nav').innerHTML = tabs.map(([id,label,ico],i) =>
     `<button data-tab="${id}" class="${i===0?'active':''}"><span class="ico">${ico}</span>${label}</button>`).join('');
+  reminderResults.clear();
   document.querySelectorAll('#nav button').forEach(btn => btn.onclick = () => {
+    closeElderDialog();
     document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.content > section').forEach(s => s.classList.add('hide'));
     btn.classList.add('active');
     $('#tab-' + btn.dataset.tab).classList.remove('hide');
     $('#page-title').textContent = tabs.find(tab=>tab[0]===btn.dataset.tab)[1];
     loadSchedules(); // 切到排班页时刷新
-    if (btn.dataset.tab === 'elders') runElderUI(loadElders);
+    if (btn.dataset.tab === 'elders') runElderUI(()=>loadElders({refreshSelection:false}));
     if (btn.dataset.tab === 'inbox') runElderUI(()=>loadInbox(1));
   });
   document.querySelectorAll('.content > section').forEach(s => s.classList.add('hide'));
@@ -507,7 +517,7 @@ function buildNav(){
   $('#elder-edit-card').classList.add('hide');
   $('#elder-reports').classList.toggle('hide', isFamily);
   $('#elder-community-filter-field').classList.toggle('hide', isFamily);
-  elderPage = 1; editingElder = null; editingPlan = null;
+  elderPage = 1; editingElder = null; editingPlan = null; displayedElderId = null;
   $('#elder-keyword').value = ''; $('#elder-status-filter').value = '';
   $('#elder-community-filter').value = ''; $('#a-elder').innerHTML = '';
   $('#elder-form').reset(); $('#plan-form').reset(); $('#elder-batch-file').value = '';
@@ -557,17 +567,19 @@ async function elderRequest(url, opts){
   if (!r.ok) throw new Error(r.msg || '操作失败');
   return r;
 }
-async function loadElders(){
+async function loadElders({refreshSelection=true}={}){
   if (!['社区管理员','家属','监管人员'].includes(ME.role)) return;
-  const previous = selectedElder();
+  const user=ME;
   const r = await elderRequest('/api/elders');
+  if (user!==ME) return;
+  const previous = selectedElder();
   elderList = r.data;
   $('#f-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
     .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}${e.assess_expired?'，评估已过期':''}）</option>`).join('');
   if (!$('#f-time').value) $('#f-time').value = new Date(Date.now() + 26*3600e3).toISOString().slice(0,16);
   $('#a-elder').innerHTML = elderList.map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}）</option>`).join('');
   if (elderList.some(e=>e.elder_id===previous)) $('#a-elder').value = previous;
-  $('#a-elder').onchange = () => runElderUI(async () => { resetPlan(); $('#elder-edit-card').classList.add('hide'); await loadElderSelection(); });
+  $('#a-elder').onchange = () => runElderUI(()=>loadElderSelection({resetEditors:true}));
   if (ME.role !== '家属') {
     const communities = (await elderRequest('/api/communities')).data;
     const filter = $('#elder-community-filter').value;
@@ -581,7 +593,7 @@ async function loadElders(){
     $('#p-caregiver').innerHTML = '<option value="">暂未指定</option>' + caregivers.data.map(c=>`<option value="${c.caregiver_id}">${esc(c.name)}（${esc(c.cert_type)}）</option>`).join('');
     $('#p-items').innerHTML = items.data.map(i=>`<option value="${i.item_id}">${esc(i.name)}</option>`).join('');
   }
-  await Promise.all([renderElderPage(), $('#elder-dialog').open && !$('#elder-view-panel').classList.contains('hide') ? loadElderSelection() : Promise.resolve(), loadElderReports()]);
+  await Promise.all([renderElderPage(), refreshSelection && $('#elder-dialog').open && !$('#elder-view-panel').classList.contains('hide') ? loadElderSelection() : Promise.resolve(), loadElderReports()]);
 }
 async function renderElderPage(){
   const params = new URLSearchParams({page:elderPage,page_size:10,keyword:$('#elder-keyword').value,status:$('#elder-status-filter').value});
@@ -590,80 +602,132 @@ async function renderElderPage(){
   $('#elder-table tbody').innerHTML = r.data.map(e=>`<tr>
     <td>${e.elder_id}</td><td>${esc(e.name)}</td><td>${e.age}</td><td>${esc(e.community)}</td><td class="muted">已全部隐藏</td>
     <td>${esc(e.special_tag)}</td><td>${esc(e.ability_level)||'未评估'}</td><td>${esc(e.assess_expire)} ${e.assess_expired?'（已过期）':''}</td>
-    <td>${esc(e.elder_status)}</td><td>${esc(e.package_name)||'无'}</td><td><button class="btn small" onclick="selectElder(${e.elder_id})">查看</button></td></tr>`).join('') || '<tr><td colspan="11">没有符合条件的档案</td></tr>';
+    <td>${esc(e.elder_status)}</td><td>${esc(e.package_name)||'无'}</td><td><button class="btn small" onclick="selectElder(${e.elder_id},this)">查看</button></td></tr>`).join('') || '<tr><td colspan="11">没有符合条件的档案</td></tr>';
   $('#elder-pagination').textContent = `第 ${elderPage} 页，共 ${r.pagination.total} 份档案`;
   $('#elder-prev').disabled = elderPage<=1; $('#elder-next').disabled = elderPage*10>=r.pagination.total;
 }
-let elderSelectionVersion=0;
+let elderSelectionVersion=0, displayedElderId=null;
+const pendingElderButtons=new Set();
+function releaseElderButton(button){
+  if(!button)return;
+  button.disabled=false;button.textContent='查看';pendingElderButtons.delete(button);
+}
 function closeElderDialog(){
   elderSelectionVersion++;
+  pendingElderButtons.forEach(releaseElderButton);
+  $('#elder-view-panel').inert=false;
+  $('#elder-dialog-loading').classList.add('hide');
   if ($('#elder-dialog').open) $('#elder-dialog').close();
   $('#elder-form').reset(); $('#e-id-card').value='';
 }
 $('#close-elder-dialog').onclick=closeElderDialog;
 $('#elder-dialog').addEventListener('cancel',event=>{event.preventDefault();closeElderDialog();});
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape' && !$('#elder-dialog').open && pendingElderButtons.size)closeElderDialog();
+});
 function openElderDialog(){
   $('#elder-dialog-error').classList.add('hide');
   if (!$('#elder-dialog').open) $('#elder-dialog').showModal();
   $('#elder-dialog').scrollTop=0;
 }
-function selectElder(id){
-  $('#a-elder').value=id; resetPlan(); $('#elder-edit-card').classList.add('hide');
-  $('#elder-view-panel').classList.remove('hide');
-  $('#elder-dialog-title').textContent='老人档案';
-  openElderDialog(); runElderUI(loadElderSelection);
+function selectElder(id,button=null){
+  if(!Number.isSafeInteger(id)||id<=0){toast('档案编号无效，请刷新列表',true);return Promise.resolve();}
+  if(button?.disabled)return Promise.resolve();
+  if(button){button.disabled=true;button.textContent='正在打开…';pendingElderButtons.add(button);}
+  return runElderUI(async()=>{
+    try {await loadElderSelection({id,showWhenReady:true,resetEditors:true,button});}
+    finally {releaseElderButton(button);}
+  });
 }
-async function loadElderSelection(){
-  const id = selectedElder(), version=++elderSelectionVersion, user=ME;
-  $('#elder-detail-title').textContent='正在加载档案…';
-  $('#elder-detail').textContent=''; $('#elder-status-actions').innerHTML='';
-  $('#assess-table tbody').innerHTML=''; $('#assess-alert').innerHTML=''; $('#plan-table tbody').innerHTML='';
-  selectedPlans=[]; $('#elder-dialog-error').classList.add('hide');
-  if (!id) {
-    $('#elder-detail').textContent = '暂无档案，请先建档'; $('#elder-status-actions').innerHTML = '';
-    $('#assess-table tbody').innerHTML = ''; $('#assess-alert').innerHTML = ''; $('#plan-table tbody').innerHTML = '';
-    return;
+async function loadElderSelection({id=selectedElder(),showWhenReady=false,resetEditors=false,button=null}={}){
+  if(!id)return;
+  const version=++elderSelectionVersion,user=ME;
+  $('#elder-dialog-error').classList.add('hide');
+  if($('#elder-dialog').open){
+    $('#elder-view-panel').inert=true;
+    $('#elder-dialog-loading').classList.remove('hide');
   }
-  let e;
-  try { e=(await elderRequest(`/api/elders/${id}`)).data; } catch(error) {
-    if(version===elderSelectionVersion && user===ME){ $('#elder-detail-title').textContent='档案加载失败'; $('#elder-dialog-error').textContent=error.message; $('#elder-dialog-error').classList.remove('hide'); }
+  try {
+    // 先并行取得三部分数据，再在同一帧填入并打开；刷新也保留现有内容。
+    const [detail,assessments,plans]=await Promise.all([
+      elderRequest(`/api/elders/${id}`),elderRequest(`/api/elders/${id}/assessments`),elderRequest(`/api/elders/${id}/plans`)
+    ]);
+    if(version!==elderSelectionVersion || user!==ME)return;
+    if(!showWhenReady && !$('#elder-dialog').open)return;
+    const e=detail.data;
+    if(!e || !Array.isArray(assessments.data) || !Array.isArray(plans.data))throw new Error('档案数据格式不正确，请刷新后重试');
+    $('#a-elder').value=id;
+    if(resetEditors){resetPlan();$('#a-score').value='';}
+    $('#elder-dialog-title').textContent=`${e.name} · 老人档案`;
+    $('#elder-detail-title').textContent = `${e.name} · 档案详情`;
+    $('#elder-detail').innerHTML = `<p>身份证：已全部隐藏　出生日期：${esc(e.birth_date)}　性别：${esc(e.gender)}</p>
+      <p>社区：${esc(e.community)}　地址：${esc(e.address)||'—'}</p><p>监护人：${esc(e.guardian_name)}　联系电话：${esc(e.guardian_phone)}</p>
+      <p>标签：${esc(e.special_tag)||'无'}　状态：${esc(e.status)}</p>`;
+    $('#elder-status-actions').innerHTML = ME.role==='社区管理员' && e.status!=='注销'
+      ? `<button class="btn ghost" onclick="editElder(${id})">编辑 / 迁移社区</button>
+         <button class="btn ghost" onclick="changeElderStatus('${e.status==='正常'?'暂停服务':'正常'}')">${e.status==='正常'?'暂停服务':'恢复档案'}</button>
+         <button class="btn warn" onclick="changeElderStatus('注销')">注销档案</button>` : '';
+    renderAssessments(assessments.data);renderPlans(plans.data);
+    displayedElderId=id;
+    $('#elder-edit-card').classList.add('hide');$('#elder-view-panel').classList.remove('hide');
+    if(showWhenReady){
+      releaseElderButton(button);
+      if(button?.isConnected && !$('#elder-dialog').open)button.focus({preventScroll:true});
+      openElderDialog();
+    }
+  } catch(error) {
+    if(version!==elderSelectionVersion || user!==ME)return;
+    if(displayedElderId)$('#a-elder').value=displayedElderId;
+    if($('#elder-dialog').open){
+      $('#elder-dialog-error').textContent=error.message;
+      $('#elder-dialog-error').classList.remove('hide');
+    }
     throw error;
+  } finally {
+    if(version===elderSelectionVersion){
+      $('#elder-view-panel').inert=false;
+      $('#elder-dialog-loading').classList.add('hide');
+    }
   }
-  if (id !== selectedElder() || version!==elderSelectionVersion || user!==ME || !$('#elder-dialog').open) return;
-  $('#elder-dialog-title').textContent=`${e.name} · 老人档案`;
-  $('#elder-detail-title').textContent = `${e.name} · 档案详情`;
-  $('#elder-detail').innerHTML = `<p>身份证：已全部隐藏　出生日期：${esc(e.birth_date)}　性别：${esc(e.gender)}</p>
-    <p>社区：${esc(e.community)}　地址：${esc(e.address)||'—'}</p><p>监护人：${esc(e.guardian_name)}　联系电话：${esc(e.guardian_phone)}</p>
-    <p>标签：${esc(e.special_tag)||'无'}　状态：${esc(e.status)}</p>`;
-  $('#elder-status-actions').innerHTML = ME.role==='社区管理员' && e.status!=='注销'
-    ? `<button class="btn ghost" onclick="editElder(${id})">编辑 / 迁移社区</button>
-       <button class="btn ghost" onclick="changeElderStatus('${e.status==='正常'?'暂停服务':'正常'}')">${e.status==='正常'?'暂停服务':'恢复档案'}</button>
-       <button class="btn warn" onclick="changeElderStatus('注销')">注销档案</button>` : '';
-  await Promise.all([loadAssessments(version),loadPlans(version)]);
 }
-async function loadPlans(version=elderSelectionVersion){
-  const id=selectedElder(); if (!id) return;
-  const plans=(await elderRequest(`/api/elders/${id}/plans`)).data;
-  if (id !== selectedElder() || version!==elderSelectionVersion) return;
+function renderPlans(plans){
   selectedPlans=plans;
   $('#plan-table tbody').innerHTML=selectedPlans.map(p=>`<tr><td>${p.plan_id}</td><td>${esc(p.package_name)}<br>${esc(p.frequency)}</td>
     <td>${p.items.map(i=>esc(i.name)).join('、')||'待补录项目'}</td><td>${esc(p.start_date)} 至 ${esc(p.end_date)}</td><td>${esc(p.caregiver_name)||'暂未指定'}</td>
     <td>${esc(p.status)} ${esc(p.pause_reason)}</td><td>${ME.role==='社区管理员' && p.status!=='结束'
       ? `<button class="btn small ghost" onclick="editPlan(${p.plan_id})">编辑</button> <button class="btn small" onclick="changePlanStatus(${p.plan_id},'${p.status==='生效'?'暂停':'生效'}')">${p.status==='生效'?'暂停':'恢复'}</button> <button class="btn small warn" onclick="changePlanStatus(${p.plan_id},'结束')">结束</button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="7">暂无照护计划</td></tr>';
 }
+const reminderResults=new Map(), pendingReminders=new Map();
 function reminderAction(id){
-  return ME.role==='社区管理员' ? `<button class="btn small ghost" data-remind="${id}" onclick="sendReminder(${id})">发送提醒</button>` : '仅社区管理员可发送';
+  if(ME.role!=='社区管理员')return '仅社区管理员可发送';
+  if(!Number.isSafeInteger(id)||id<=0)return '<span class="reminder-result error">缺少档案编号，请刷新页面</span>';
+  const result=reminderResults.get(id),pending=pendingReminders.get(id)===ME;
+  return `<button type="button" class="btn small ghost" data-remind="${id}" onclick="sendReminder(${id})" ${pending?'disabled':''}>${pending?'发送中…':result?.state==='success'?'今日已提醒':'发送提醒'}</button>
+    <p class="reminder-result ${result?.state||''}" data-reminder-result="${id}" role="status">${esc(result?.message||'')}</p>`;
+}
+function reminderFeedback(id,state,message){
+  reminderResults.set(id,{state,message});
+  document.querySelectorAll(`[data-reminder-result="${id}"]`).forEach(el=>{el.className='reminder-result '+state;el.textContent=message;});
+  document.querySelectorAll(`[data-remind="${id}"]`).forEach(button=>{
+    button.disabled=pendingReminders.get(id)===ME;
+    button.textContent=button.disabled?'发送中…':state==='success'?'今日已提醒':'重试发送';
+  });
 }
 async function sendReminder(id){
-  const buttons=[...document.querySelectorAll(`[data-remind="${id}"]`)];
-  if(buttons.some(b=>b.disabled))return;
-  buttons.forEach(b=>{b.disabled=true;b.textContent='发送中…';});
+  if(!Number.isSafeInteger(id)||id<=0){toast('缺少有效的老人档案编号，请刷新页面',true);return;}
+  if(pendingReminders.get(id)===ME)return;
+  const user=ME;
+  pendingReminders.set(id,user);reminderFeedback(id,'','正在发送，请稍候…');
+  let state='error',message='发送失败，请重试';
   try {
     const r=await elderRequest(`/api/elders/${id}/reminders`,{method:'POST'});
-    toast(r.data.created_count ? `已发送到 ${r.data.created_count} 位家属的消息信箱` : '今天已发送过相同提醒，无需重复发送');
-    buttons.forEach(b=>b.textContent='今日已提醒');
-  } catch(e) { toast(e.message,true);buttons.forEach(b=>b.textContent='发送提醒'); }
-  finally {buttons.forEach(b=>b.disabled=false);}
+    state='success';
+    message=r.data.created_count ? `已发送到 ${r.data.created_count} 位家属的消息信箱` : '今天已发送过相同提醒，无需重复发送';
+  } catch(e) {message=e.message;}
+  finally {
+    if(pendingReminders.get(id)===user)pendingReminders.delete(id);
+    if(user===ME){reminderFeedback(id,state,message);toast(message,state==='error');}
+  }
 }
 const abilityLevels=['能力完好','轻度失能','中度失能','重度失能','未评估'];
 function renderAbilityChart(rows){
@@ -724,7 +788,7 @@ $('#elder-search').onsubmit=e=>{e.preventDefault();elderPage=1;runElderUI(render
 $('#elder-prev').onclick=()=>{elderPage--;runElderUI(renderElderPage);};
 $('#elder-next').onclick=()=>{elderPage++;runElderUI(renderElderPage);};
 $('#new-elder').onclick=()=>{
-  elderSelectionVersion++;
+  closeElderDialog();
   editingElder=null; $('#elder-form').reset(); $('#e-id-card').disabled=false; $('#e-birth').disabled=false;
   $('#elder-edit-title').textContent='新建档案'; $('#elder-dialog-title').textContent='新建档案';
   $('#elder-edit-card').classList.remove('hide'); $('#elder-view-panel').classList.add('hide'); openElderDialog();
@@ -745,7 +809,7 @@ $('#elder-form').onsubmit=ev=>{ev.preventDefault();runElderUI(async()=>{
   const body={name:$('#e-name').value,birth_date:$('#e-birth').value,gender:$('#e-gender').value,community_id:Number($('#e-community').value),address:$('#e-address').value,guardian_name:$('#e-guardian').value,guardian_phone:$('#e-phone').value,special_tag:[...$('#e-tags').selectedOptions].map(o=>o.value)};
   if (!editingElder) body.id_card=$('#e-id-card').value;
   const r=await elderRequest(editingElder?`/api/elders/${editingElder}`:'/api/elders',{method:editingElder?'PUT':'POST',body});
-  $('#elder-edit-card').classList.add('hide'); $('#elder-form').reset(); toast('档案已保存'); await loadElders(); selectElder(r.data.elder_id); loadStats();
+  toast('档案已保存'); await loadElders({refreshSelection:false}); await selectElder(r.data.elder_id); $('#elder-form').reset(); loadStats();
 });};
 function changeElderStatus(status){runElderUI(async()=>{
   if (!confirm(status==='注销'?'注销后不可恢复，全部计划将结束，历史数据保留。确认注销？':`确认将档案设为「${status}」？恢复档案后需逐份核实并恢复计划。`)) return;
@@ -788,12 +852,8 @@ function changePlanStatus(id,status){runElderUI(async()=>{
   await elderRequest(`/api/elders/${selectedElder()}/plans/${id}/status`,{method:'PATCH',body:{status}});resetPlan();toast('计划状态已更新');await loadElders();loadStats();
 });}
 
-async function loadAssessments(version=elderSelectionVersion){
-  const id = selectedElder();
-  if (!id) return;
-  const r = await API(`/api/elders/${id}/assessments`);
-  if (!r.ok || id !== selectedElder() || version!==elderSelectionVersion) return;
-  $('#assess-table tbody').innerHTML = r.data.map(a => `<tr>
+function renderAssessments(assessments){
+  $('#assess-table tbody').innerHTML = assessments.map(a => `<tr>
     <td>${esc(a.scale)}</td><td>${a.score}</td><td>${esc(a.ability_level)}</td>
     <td>${esc(a.assessor)}</td><td>${a.assess_date}</td><td>${a.expire_date}</td>
     <td>${a.days_left ?? '—'}</td>
@@ -801,7 +861,7 @@ async function loadAssessments(version=elderSelectionVersion){
         : a.days_left <= 30 ? '<span class="badge b-wait">即将到期</span>'
         : '<span class="badge b-done">有效</span>'}</td></tr>`).join('')
     || '<tr><td colspan="8" class="muted">暂无评估记录，请联系社区安排首次评估</td></tr>';
-  const latest = r.data[0];
+  const latest = assessments[0];
   if (!latest) {
     $('#assess-alert').innerHTML = `<div class="badge b-red" style="display:block;padding:9px 14px;margin-bottom:12px">
       尚未做能力评估：不可下单，请联系社区安排评估</div>`;

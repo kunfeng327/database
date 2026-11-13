@@ -50,7 +50,10 @@ if errorlevel 1 (
   pause & exit /b 1
 )
 
-echo 正在启动后端，浏览器将自动打开 http://127.0.0.1:5000 ...
-start "" cmd /c "timeout /t 2 /nobreak >nul & start "" http://127.0.0.1:5000"
+echo 正在启动后端，成功监听端口后自动打开浏览器...
 cd src\backend
-python app.py
+python app.py --open-browser
+if errorlevel 1 (
+  echo [错误] 后端启动失败，请查看上方提示，关闭旧后端后重试。
+  pause & exit /b 1
+)
