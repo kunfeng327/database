@@ -167,16 +167,48 @@ CREATE TABLE subsidy_claim (
   claim_period CHAR(7) NOT NULL COMMENT '所属账期 YYYY-MM',
   order_ids    VARCHAR(200) NOT NULL COMMENT '关联订单集合(可追溯)',
   amount       DECIMAL(8,2) NOT NULL COMMENT '申报金额',
-  status       ENUM('待审核','街道已审','已拨付','已驳回') NOT NULL DEFAULT '待审核',
+  audit_status ENUM('待审核','街道已审','通过','驳回') NOT NULL DEFAULT '待审核' COMMENT '审核状态',
+  pay_status   ENUM('未拨付','已拨付') NOT NULL DEFAULT '未拨付' COMMENT '拨付状态',
   reviewer     VARCHAR(30) NULL COMMENT '审核人',
+  audited_at   DATETIME NULL COMMENT '最近审核时间',
+  paid_at      DATETIME NULL COMMENT '拨付时间',
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_claim_elder  FOREIGN KEY (elder_id)  REFERENCES elder(elder_id),
   CONSTRAINT fk_claim_policy FOREIGN KEY (policy_id) REFERENCES subsidy_policy(policy_id),
   CONSTRAINT uk_claim_no_dup UNIQUE (elder_id, policy_id, claim_period) COMMENT '同一老人同期同项目不得重复申报',
-  INDEX idx_claim_status (status)
+  INDEX idx_claim_audit_pay (audit_status, pay_status),
+  INDEX idx_claim_period (claim_period)
 );
 
--- ------------------------- 12 系统用户（登录与RBAC） -------------------------
+-- ------------------------- 12 质量抽查 -------------------------
+CREATE TABLE quality_inspection (
+  inspection_id INT PRIMARY KEY AUTO_INCREMENT COMMENT '抽查编号',
+  order_id      INT NULL COMMENT '关联服务订单(抽查到具体订单时填写)',
+  caregiver_id  INT NULL COMMENT '关联护工(抽查对象)',
+  inspection_method ENUM('电话回访','上门核查') NOT NULL COMMENT '抽查方式',
+  score         TINYINT UNSIGNED NULL COMMENT '抽查评分(0-100，待抽查时为空)',
+  issue_tags    VARCHAR(200) NULL COMMENT '问题标签(逗号分隔)',
+  rectification_requirement VARCHAR(300) NULL COMMENT '整改要求',
+  rectification_result VARCHAR(300) NULL COMMENT '整改结果',
+  inspection_status ENUM('待抽查','已抽查') NOT NULL DEFAULT '待抽查' COMMENT '抽查完成状态',
+  rectification_status ENUM('无需整改','待整改','整改中','已完成') NULL COMMENT '整改状态',
+  inspector     VARCHAR(30) NOT NULL COMMENT '抽查人',
+  inspected_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '抽查发起/完成时间',
+  rectified_at  DATETIME NULL COMMENT '整改完成时间',
+  CONSTRAINT fk_quality_order FOREIGN KEY (order_id) REFERENCES service_order(order_id),
+  CONSTRAINT fk_quality_caregiver FOREIGN KEY (caregiver_id) REFERENCES caregiver(caregiver_id),
+  CONSTRAINT chk_quality_target CHECK (order_id IS NOT NULL OR caregiver_id IS NOT NULL),
+  CONSTRAINT chk_quality_score CHECK (score IS NULL OR score BETWEEN 0 AND 100),
+  CONSTRAINT chk_quality_state CHECK (
+    (inspection_status = '待抽查' AND score IS NULL AND rectification_status IS NULL)
+    OR (inspection_status = '已抽查' AND score IS NOT NULL AND rectification_status IS NOT NULL)
+  ),
+  INDEX idx_quality_caregiver_status (caregiver_id, rectification_status),
+  INDEX idx_quality_order (order_id),
+  INDEX idx_quality_inspected (inspected_at)
+);
+
+-- ------------------------- 13 系统用户（登录与RBAC） -------------------------
 CREATE TABLE sys_user (
   user_id        INT PRIMARY KEY AUTO_INCREMENT,
   username       VARCHAR(30) NOT NULL UNIQUE COMMENT '登录名',
