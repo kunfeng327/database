@@ -36,9 +36,9 @@
 
 ```
 sql/
-  01_schema.sql          # 建库建表（12 张表：11 业务表 + sys_user，含外键/CHECK/唯一约束/索引）
+  01_schema.sql          # 建库建表（13 张表：12 业务表 + sys_user，含外键/CHECK/唯一约束/索引）
   02_seed.sql            # 测试数据（日期相对 CURDATE() 生成，随时可重置；含演示账号）
-  03_views.sql           # 5 个视图：档案-评估-计划 / 待派单超时 / 申报进度 / 排班余量
+  03_views.sql           # 8 个视图（含辅助视图）：档案/评估/计划/提醒/分布及其他业务视图
   04_procs_triggers.sql  # 存储过程 sp_pause_expired_plans + 3 个触发器
 src/backend/  app.py db.py          # REST API（登录会话 / RBAC / 事务 / 触发器错误拦截）
 src/frontend/ index.html            # 单页前端（登录页 + 按角色生成的侧边栏导航）
@@ -55,7 +55,7 @@ src/frontend/ index.html            # 单页前端（登录页 + 按角色生成
   #    …… 02_seed / 03_views / 04_procs_triggers 同理
   # 2. 配置密码：复制 src/backend/config_example.py 为 config_local.py（已被 .gitignore 排除）
   # 3. 启动
-  cd src/backend && pip install flask pymysql && python app.py
+  cd src/backend && pip install -r ../../requirements.txt && python app.py
   ```
   打开 http://127.0.0.1:5000
 
@@ -109,3 +109,17 @@ git push origin feature/你的名字拼音-功能
 然后到 GitHub 网页上开 PR（自己的分支 → main），**由组长或另一位队员审完再合并，不许自己合自己的 PR**。
 
 > ⚠️ **.docx 文件无法合并冲突**：每个 Word 文档只由它的负责人一人修改，其他人提意见、不要直接改文件。
+
+
+## 业务线1完整实现（pengkunfeng）
+
+老人档案页现支持新建、编辑与跨社区迁移、分页筛选、批量JSON导入、暂停/注销；评估历史与复评；照护计划项目清单、推荐方案、编辑/暂停/恢复/结束；独居未评估、30天复评提醒和社区能力分布。家庭仅可见绑定档案，监管只读。
+
+- 设计、完整字段字典、API、测试与答辩步骤：`文档/业务线1-设计与验收.md`
+- 可编辑局部ER图：`文档/业务线1-ER.drawio`（全局关系图在设计文档内）
+- 安全与备份恢复：`文档/安全与备份恢复方案.md`
+- 独立持久层：`src/backend/elder_dao.py`；多表查询：`sql/07_line1_queries.sql`
+
+**数据库安装方式二选一**：新库按原顺序导入01–04；旧库先备份，执行05_line1_upgrade.sql一次，再重新执行03、04。05不会清空数据，旧计划项目清单需要管理员核实补录。不要把05当成新库初始化的第五步。自动暂停计划需DBA启用MySQL事件调度器并导入06_line1_scheduler.sql；未启用时用运维页手动执行，逾期派单仍由触发器即时拦截。
+
+测试：在仓库根目录执行 `python -m unittest discover -s tests -v`；真实MySQL集成测试显式设置 `LINE1_TEST_MYSQL=1` 后运行，创建独立随机测试库，账号需有建库/例程/触发器权限。当前开发环境仅执行了无需第三方依赖的DAO单元测试；API及MySQL集成测试保留为可运行用例，未宣称实测通过。具体范围见设计文档。

@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net">
+  <diagram name="业务线1 ER">
+    <mxGraphModel dx="1500" dy="1000" grid="1" page="1" pageWidth="1600" pageHeight="1200">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="community" value="社区 community&#10;PK community_id&#10;name UNIQUE&#10;district&#10;service_radius_km" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e8f5f2;strokeColor=#167d70;fontSize=16;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="20" y="30" width="230" height="150" />
+        </mxCell>
+        <mxCell id="elder" value="老人档案 elder&#10;PK elder_id&#10;FK community_id&#10;name / id_card UNIQUE&#10;birth_date / gender / address&#10;guardian_name / guardian_phone&#10;special_tag / status / created_at" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e8f5f2;strokeColor=#167d70;fontSize=16;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="330" y="30" width="300" height="230" />
+        </mxCell>
+        <mxCell id="assessment" value="能力评估 assessment&#10;PK assessment_id&#10;FK elder_id&#10;scale / score / ability_level&#10;assessor / assess_date / expire_date" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e8f5f2;strokeColor=#167d70;fontSize=16;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="760" y="30" width="300" height="190" />
+        </mxCell>
+        <mxCell id="plan" value="照护计划 care_plan&#10;PK plan_id&#10;FK elder_id / caregiver_id (NULL)&#10;package_name / frequency&#10;start_date / end_date&#10;status / pause_reason" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e8f5f2;strokeColor=#167d70;fontSize=16;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="330" y="390" width="300" height="200" />
+        </mxCell>
+        <mxCell id="caregiver" value="责任护工 caregiver&#10;PK caregiver_id&#10;name / agency / cert_type&#10;cert_expire / on_duty" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e8f5f2;strokeColor=#167d70;fontSize=16;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="20" y="410" width="230" height="150" />
+        </mxCell>
+        <mxCell id="plan_item" value="计划项目 care_plan_item&#10;PK,FK plan_id&#10;PK,FK item_id&#10;复合主键防止重复项目" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e8f5f2;strokeColor=#167d70;fontSize=16;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="760" y="410" width="300" height="160" />
+        </mxCell>
+        <mxCell id="service_item" value="服务项目 service_item&#10;PK item_id&#10;name / type / unit&#10;guide_price / std_hours / subsidizable" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e8f5f2;strokeColor=#167d70;fontSize=16;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="760" y="720" width="300" height="150" />
+        </mxCell>
+        <mxCell id="edge0" value="1 : 0..N 归属" style="edgeStyle=orthogonalEdgeStyle;html=0;endArrow=ERmany;startArrow=ERone;fontSize=14;" edge="1" parent="1" source="community" target="elder">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="edge1" value="1 : 0..N 历史" style="edgeStyle=orthogonalEdgeStyle;html=0;endArrow=ERmany;startArrow=ERone;fontSize=14;" edge="1" parent="1" source="elder" target="assessment">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="edge2" value="1 : 0..N 时间段不重叠" style="edgeStyle=orthogonalEdgeStyle;html=0;endArrow=ERmany;startArrow=ERone;fontSize=14;" edge="1" parent="1" source="elder" target="plan">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="edge3" value="0..1 : 0..N 负责" style="edgeStyle=orthogonalEdgeStyle;html=0;endArrow=ERmany;startArrow=ERone;fontSize=14;" edge="1" parent="1" source="caregiver" target="plan">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="edge4" value="1 : 1..N 项目清单" style="edgeStyle=orthogonalEdgeStyle;html=0;endArrow=ERmany;startArrow=ERone;fontSize=14;" edge="1" parent="1" source="plan" target="plan_item">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="edge5" value="1 : 0..N 引用" style="edgeStyle=orthogonalEdgeStyle;html=0;endArrow=ERmany;startArrow=ERone;fontSize=14;" edge="1" parent="1" source="service_item" target="plan_item">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -4,6 +4,7 @@
 USE elder_care;
 SET NAMES utf8mb4;
 DROP PROCEDURE IF EXISTS sp_pause_expired_plans;
+DROP PROCEDURE IF EXISTS sp_pause_expired_plans_worker;
 DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
@@ -13,16 +14,45 @@ DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
 -- 规则：老人最新一次评估已过期 → 其"生效"状态的照护计划全部置为"暂停"
 -- ---------------------------------------------------------------------
 DELIMITER $$
+CREATE PROCEDURE sp_pause_expired_plans_worker(OUT paused INT)
+BEGIN
+  DECLARE done INT DEFAULT 0;
+  DECLARE eid INT;
+  DECLARE locked_id INT;
+  DECLARE affected INT DEFAULT 0;
+  DECLARE latest_date DATE;
+  DECLARE latest_expire DATE;
+  DECLARE elders CURSOR FOR SELECT elder_id FROM elder ORDER BY elder_id;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done=1;
+  OPEN elders;
+  pause_loop: LOOP
+    FETCH elders INTO eid;
+    IF done=1 THEN LEAVE pause_loop; END IF;
+    -- 与 DAO 保持相同锁顺序：老人 -> 计划，复评与暂停不能交叉覆盖。
+    SELECT elder_id INTO locked_id FROM elder WHERE elder_id=eid FOR UPDATE;
+    SET latest_expire=NULL;
+    SET latest_date=NULL;
+    BEGIN
+      DECLARE CONTINUE HANDLER FOR NOT FOUND SET latest_expire=NULL;
+      -- 使用当前读，避免游标快照早于并发复评提交而误暂停新评估计划。
+      SELECT assess_date,expire_date INTO latest_date,latest_expire
+        FROM assessment WHERE elder_id=eid
+        ORDER BY assess_date DESC,assessment_id DESC LIMIT 1 FOR UPDATE;
+    END;
+    IF latest_expire IS NULL OR latest_expire<CURDATE() OR latest_date>CURDATE() THEN
+      UPDATE care_plan SET status='暂停',pause_reason='评估过期'
+        WHERE elder_id=eid AND status='生效';
+      SET affected=affected+ROW_COUNT();
+    END IF;
+  END LOOP;
+  CLOSE elders;
+  SET paused=affected;
+END$$
 CREATE PROCEDURE sp_pause_expired_plans()
 BEGIN
-  UPDATE care_plan p
-  JOIN (SELECT elder_id, MAX(expire_date) AS latest_expire
-          FROM assessment GROUP BY elder_id) a
-    ON a.elder_id = p.elder_id
-   SET p.status = '暂停'
-   WHERE p.status = '生效'
-     AND a.latest_expire < CURDATE();
-  SELECT ROW_COUNT() AS paused_plans;
+  DECLARE paused INT;
+  CALL sp_pause_expired_plans_worker(paused);
+  SELECT paused AS paused_plans;
 END$$
 DELIMITER ;
 
@@ -41,6 +71,21 @@ BEGIN
   DECLARE v_booked INT; DECLARE v_capacity INT;
   DECLARE v_on_duty VARCHAR(10); DECLARE v_cert_expire DATE;
   DECLARE v_order_status VARCHAR(10);
+  DECLARE v_elder_status VARCHAR(10);
+  DECLARE v_assess_expire DATE;
+  DECLARE v_assess_date DATE;
+  DECLARE v_appoint_date DATE;
+
+  SELECT e.status,a.expire_date,a.assess_date,DATE(o.appoint_time)
+    INTO v_elder_status,v_assess_expire,v_assess_date,v_appoint_date
+    FROM service_order o JOIN elder e ON e.elder_id=o.elder_id
+    LEFT JOIN v_latest_assessment a ON a.elder_id=e.elder_id
+    WHERE o.order_id=NEW.order_id FOR UPDATE;
+  IF v_elder_status IS NULL OR v_elder_status<>'正常' OR v_assess_expire IS NULL
+     OR v_assess_expire<GREATEST(CURDATE(),v_appoint_date) OR v_assess_date>CURDATE() THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='派单失败：档案不可服务或能力评估无效，请先复评';
+  END IF;
+
 
   SELECT status INTO v_order_status FROM service_order WHERE order_id = NEW.order_id;
   IF v_order_status NOT IN ('待派单','已派单') THEN
