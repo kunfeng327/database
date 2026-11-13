@@ -105,7 +105,10 @@ class ElderDAO:
             clauses.append("name LIKE %s")
             args.append("%" + keyword + "%")
         where = " WHERE " + " AND ".join(clauses) if clauses else ""
-        sql = "SELECT * FROM v_elder_assessment_plan" + where + " ORDER BY elder_id"
+        # 显式选列并全隐藏，旧库视图尚未升级时也不返回身份证的任何片段。
+        sql = """SELECT elder_id,name,age,community_id,community,special_tag,elder_status,
+                 ability_level,assess_expire,assess_expired,plan_id,package_name,plan_status,
+                 REPEAT('*',18) AS id_masked FROM v_elder_assessment_plan""" + where + " ORDER BY elder_id"
         if page is None:
             return self._read(sql, tuple(args))
         total = self._read(
@@ -122,7 +125,7 @@ class ElderDAO:
             """SELECT e.elder_id, e.name, e.birth_date, e.gender, e.address,
             e.community_id, c.name AS community, e.guardian_name, e.guardian_phone,
             e.special_tag, e.status, e.created_at,
-            CONCAT(LEFT(e.id_card,6),'********',RIGHT(e.id_card,4)) AS id_masked
+            REPEAT('*',18) AS id_masked
             FROM elder e JOIN community c ON c.community_id=e.community_id
             WHERE e.elder_id=%s""",
             (elder_id,),

@@ -47,4 +47,30 @@
       </root>
     </mxGraphModel>
   </diagram>
+  <diagram id="family-notifications" name="家属提醒与信箱">
+    <mxGraphModel page="1" pageWidth="1169" pageHeight="827">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="elder" value="老人 elder&#10;PK elder_id&#10;name / status" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e8f5f2;strokeColor=#167d70;fontSize=16;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="60" y="70" width="280" height="150" />
+        </mxCell>
+        <mxCell id="user" value="账号 sys_user&#10;PK user_id&#10;FK elder_id（家属绑定）&#10;role / status" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e8f5f2;strokeColor=#167d70;fontSize=16;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="650" y="70" width="320" height="180" />
+        </mxCell>
+        <mxCell id="notification" value="站内信 family_notification&#10;PK notification_id&#10;FK recipient_id / sender_id → sys_user&#10;FK elder_id → elder&#10;reminder_key / sent_date&#10;title / content / created_at / read_at&#10;UQ (recipient_id, elder_id, reminder_key, sent_date)" style="rounded=0;whiteSpace=wrap;html=0;fillColor=#e8f5f2;strokeColor=#167d70;fontSize=16;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="260" y="360" width="540" height="240" />
+        </mxCell>
+        <mxCell id="notification-edge1" value="1 : 0..N 家属绑定" style="edgeStyle=orthogonalEdgeStyle;html=0;endArrow=ERmany;startArrow=ERone;fontSize=14;" edge="1" parent="1" source="elder" target="user">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="notification-edge2" value="1 : 0..N 提醒" style="edgeStyle=orthogonalEdgeStyle;html=0;endArrow=ERmany;startArrow=ERone;fontSize=14;" edge="1" parent="1" source="elder" target="notification">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="notification-edge3" value="1 : 0..N 收件人 / 发件人（两个外键）" style="edgeStyle=orthogonalEdgeStyle;html=0;endArrow=ERmany;startArrow=ERone;fontSize=14;" edge="1" parent="1" source="user" target="notification">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
 </mxfile>

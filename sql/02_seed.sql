@@ -8,6 +8,7 @@ DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
 SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE family_notification;
 TRUNCATE subsidy_claim; TRUNCATE subsidy_policy; TRUNCATE schedule;
 TRUNCATE dispatch;     TRUNCATE service_order;  TRUNCATE service_item;
 TRUNCATE care_plan_item; TRUNCATE care_plan;    TRUNCATE assessment;     TRUNCATE elder;

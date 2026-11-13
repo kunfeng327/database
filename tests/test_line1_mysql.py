@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src/backend"))
 from db import DB_CONFIG
 from elder_dao import ElderDAO
+from notification_dao import NotificationDAO
 from errors import BizError
 
 
@@ -130,6 +131,7 @@ class MySQLTests(unittest.TestCase):
 
         before = self.sql("SELECT elder_id,name,id_card FROM elder ORDER BY elder_id")
         self.sql("DROP TABLE care_plan_item")
+        self.sql("DROP TABLE family_notification")
         self.sql(
             "ALTER TABLE care_plan DROP CHECK chk_pause_reason, DROP COLUMN pause_reason"
         )
@@ -151,12 +153,60 @@ class MySQLTests(unittest.TestCase):
         )
         self.assertEqual(self.sql("SELECT DATABASE() AS db")[0]["db"], self.database)
         self.assertEqual(len(self.dao.list_elders()), 24)
+        self.assertEqual(NotificationDAO(self.connect).inbox(2)["total"], 0)
         self.assertEqual(
             self.sql("SELECT pause_reason FROM care_plan WHERE plan_id=6")[0][
                 "pause_reason"
             ],
             "手动暂停",
         )
+
+    def test_reminder_delivery_persistence_deduplication_and_family_isolation(self):
+        dao = NotificationDAO(self.connect)
+        self.sql("UPDATE sys_user SET elder_id=23 WHERE user_id=2")
+        self.assertEqual(dao.send_reminder(23, 1)["created_count"], 1)
+        message = dao.inbox(2)["messages"][0]
+        self.assertIn("首次评估", message["title"])
+        self.assertEqual(dao.send_reminder(23, 1)["created_count"], 0)
+        self.assertEqual(dao.inbox(2)["total"], 1)
+        self.assertEqual(dao.inbox(3)["total"], 0)
+        with self.assertRaises(BizError):
+            dao.mark_read(message["notification_id"], 3)
+        dao.mark_read(message["notification_id"], 2)
+        read_at = dao.inbox(2)["messages"][0]["read_at"]
+        dao.mark_read(message["notification_id"], 2)
+        self.assertEqual(dao.inbox(2)["unread_count"], 0)
+        self.assertEqual(dao.inbox(2)["messages"][0]["read_at"], read_at)
+        self.sql("UPDATE sys_user SET elder_id=24 WHERE user_id=2")
+        self.assertEqual(dao.inbox(2)["total"], 0)
+        with self.assertRaises(BizError):
+            dao.mark_read(message["notification_id"], 2)
+
+    def test_reminder_concurrent_send_delivers_only_once(self):
+        self.sql("UPDATE sys_user SET elder_id=23 WHERE user_id=2")
+        barrier = threading.Barrier(2)
+        def send():
+            barrier.wait(timeout=10)
+            return NotificationDAO(self.connect).send_reminder(23, 1)["created_count"]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _: send(), range(2)))
+        self.assertEqual(sorted(results), [0, 1])
+        self.assertEqual(NotificationDAO(self.connect).inbox(2)["total"], 1)
+
+    def test_reminder_rechecks_current_assessment_and_disabled_accounts(self):
+        dao = NotificationDAO(self.connect)
+        with self.assertRaisesRegex(BizError, "绑定"):
+            dao.send_reminder(23, 1)
+        self.sql("UPDATE sys_user SET elder_id=23,status='停用' WHERE user_id=2")
+        with self.assertRaisesRegex(BizError, "绑定"):
+            dao.send_reminder(23, 1)
+        self.sql("UPDATE sys_user SET status='启用' WHERE user_id=2")
+        dao.send_reminder(23, 1)
+        self.dao.create_assessment(23, {"score": 80}, "测试评估员")
+        with self.assertRaisesRegex(BizError, "无需"):
+            dao.send_reminder(23, 1)
+        self.sql("UPDATE sys_user SET status='停用' WHERE user_id=2")
+        self.assertEqual(dao.inbox(2)["total"], 0)
 
     def test_seed_counts_and_nonduplicated_views(self):
         for table in ["elder", "assessment", "care_plan", "care_plan_item"]:
@@ -187,7 +237,18 @@ class MySQLTests(unittest.TestCase):
         self.assertEqual(self.dao.list_elders(keyword="' OR 1=1 --"), [])
         detail = self.dao.get_elder(1)
         self.assertNotIn("id_card", detail)
-        self.assertIn("********", detail["id_masked"])
+        self.assertEqual(detail["id_masked"], "*" * 18)
+        self.assertTrue(all(r["id_masked"] == "*" * 18 for r in rows))
+
+    def test_old_partial_identity_view_never_leaks_through_archive_list(self):
+        self.sql("""CREATE OR REPLACE VIEW v_elder_assessment_plan AS
+            SELECT e.elder_id,e.name,80 AS age,c.community_id,c.name AS community,
+            CONCAT(LEFT(e.id_card,6),'********',RIGHT(e.id_card,4)) AS id_masked,
+            e.special_tag,e.status AS elder_status,NULL AS ability_level,NULL AS assess_expire,
+            NULL AS assess_expired,NULL AS plan_id,NULL AS package_name,NULL AS plan_status
+            FROM elder e JOIN community c ON c.community_id=e.community_id""")
+        self.assertTrue(all(r["id_masked"] == "*" * 18 for r in self.dao.list_elders()))
+        self.assertTrue(all(r["id_masked"] == "*" * 18 for r in self.dao.list_elders(page=1)[0]))
 
     def test_reassessment_pauses_and_restores_only_automatic_plans(self):
         self.assertGreaterEqual(self.dao.pause_expired()["paused_plans"], 2)

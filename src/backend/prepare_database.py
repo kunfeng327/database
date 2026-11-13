@@ -85,6 +85,7 @@ def prepare_database(conn):
     routine_sql = (SQL_DIR / "04_procs_triggers.sql").read_text(encoding="utf-8")
     # 在任何DDL之前完整解析脚本，语法分隔错误时不开始升级。
     scripts = list(sql_statements(view_sql)) + list(sql_statements(routine_sql))
+    notification_scripts = list(sql_statements((SQL_DIR / "08_family_notifications.sql").read_text(encoding="utf-8")))
     with conn.cursor() as cur:
         cur.execute(
             "SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()"
@@ -158,11 +159,18 @@ def prepare_database(conn):
                 CONSTRAINT fk_plan_item_plan FOREIGN KEY (plan_id) REFERENCES care_plan(plan_id),
                 CONSTRAINT fk_plan_item_service FOREIGN KEY (item_id) REFERENCES service_item(item_id)) ENGINE=InnoDB"""
             )
+        cur.execute("SELECT VIEW_DEFINITION AS definition FROM information_schema.VIEWS "
+                    "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='v_elder_assessment_plan'")
+        archive_view = cur.fetchone()
+        # 旧视图保留身份证前后片段，升级为全部隐藏。
+        partial_identity = bool(archive_view and "id_card" in (archive_view["definition"] or "").lower())
         changed = (
             bool(statements)
+            or partial_identity
             or not schema_objects(view_sql) <= tables
             or not schema_objects(routine_sql) <= routines | triggers
         )
+        notifications_missing = "family_notification" not in tables
         if changed:
             for statement in statements:
                 cur.execute(statement)
@@ -173,12 +181,17 @@ def prepare_database(conn):
                 # 保持使用连接指定的库，禁止脚本USE切换到别的库（也便于独立测试库验证）。
                 if not statement.upper().startswith("USE "):
                     cur.execute(statement)
+        if notifications_missing:
+            for statement in notification_scripts:
+                if not statement.upper().startswith("USE "):
+                    cur.execute(statement)
+        if changed or notifications_missing:
             conn.commit()
         cur.execute("SELECT COUNT(*) AS n FROM sys_user")
         users = cur.fetchone()["n"]
         cur.execute("SELECT COUNT(*) AS n FROM elder")
         elders = cur.fetchone()["n"]
-    return {"upgraded": changed, "users": users, "elders": elders}
+    return {"upgraded": changed or notifications_missing, "users": users, "elders": elders}
 
 
 def main():

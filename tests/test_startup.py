@@ -17,7 +17,7 @@ from prepare_database import (
 
 
 class StartupTests(unittest.TestCase):
-    def connection(self, legacy=False, partial=False, elders=24):
+    def connection(self, legacy=False, partial=False, elders=24, partial_identity=False):
         conn = MagicMock()
         cur = conn.cursor.return_value.__enter__.return_value
         views = schema_objects((SQL_DIR / "03_views.sql").read_text())
@@ -39,7 +39,7 @@ class StartupTests(unittest.TestCase):
             [
                 {"name": n}
                 for n in BASE_TABLES
-                | (set() if legacy or partial else views | {"care_plan_item"})
+                | (set() if legacy or partial else views | {"care_plan_item", "family_notification"})
             ],
             [] if legacy else [{"name": "pause_reason"}],
             indexes,
@@ -55,7 +55,7 @@ class StartupTests(unittest.TestCase):
             ),
             [] if legacy or partial else [{"name": "chk_pause_reason"}],
         ]
-        cur.fetchone.side_effect = [{"n": 6}, {"n": elders}]
+        cur.fetchone.side_effect = [{"definition": "SELECT LEFT(e.id_card,6)" if partial_identity else "SELECT REPEAT('*',18)"}, {"n": 6}, {"n": elders}]
         return conn, cur
 
     def test_upgraded_schema_requires_no_writes(self):
@@ -78,6 +78,7 @@ class StartupTests(unittest.TestCase):
         statements = [c.args[0] for c in cur.execute.call_args_list]
         self.assertTrue(any("ADD COLUMN pause_reason" in s for s in statements))
         self.assertTrue(any("CREATE TABLE care_plan_item" in s for s in statements))
+        self.assertTrue(any("CREATE TABLE IF NOT EXISTS family_notification" in s for s in statements))
         self.assertTrue(
             any(
                 s.startswith("CREATE PROCEDURE sp_pause_expired_plans_worker")
@@ -109,6 +110,14 @@ class StartupTests(unittest.TestCase):
         self.assertNotIn("ADD INDEX", sql)
         self.assertIn("ADD CONSTRAINT chk_pause_reason", sql)
         self.assertIn("CREATE TABLE care_plan_item", sql)
+
+    def test_partial_identity_view_is_replaced_without_resetting_data(self):
+        conn, cur = self.connection(partial_identity=True)
+        self.assertTrue(prepare_database(conn)["upgraded"])
+        statements = [c.args[0] for c in cur.execute.call_args_list]
+        view = next(s for s in statements if s.startswith("CREATE OR REPLACE VIEW v_elder_assessment_plan"))
+        self.assertIn("REPEAT('*',18) AS id_masked", view)
+        self.assertFalse(any(s.startswith(("TRUNCATE", "DELETE", "DROP TABLE")) for s in statements))
 
     def test_missing_base_tables_rejected_before_ddl(self):
         conn = MagicMock()

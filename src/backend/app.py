@@ -25,6 +25,7 @@ from db import DB_CONFIG
 from errors import BizError
 from db_diagnostics import database_error_message
 from elder_dao import ElderDAO
+from notification_dao import NotificationDAO
 from werkzeug.exceptions import HTTPException
 
 app = Flask(__name__)
@@ -403,6 +404,33 @@ def elder_report(report):
     if report not in views:
         raise BizError("不存在的档案报表")
     return rows_response(query_all("SELECT * FROM " + views[report] + " ORDER BY community_id"))
+
+
+def notification_dao():
+    return NotificationDAO(get_conn)
+
+
+@app.post("/api/elders/<int:elder_id>/reminders")
+@login_required(roles=("社区管理员",))
+def send_assessment_reminder(elder_id):
+    return jsonify({"ok": True, "data": notification_dao().send_reminder(elder_id, session["uid"])})
+
+
+@app.get("/api/notifications")
+@login_required(roles=("家属",))
+def notifications():
+    raw_page = request.args.get("page", "1")
+    if not raw_page.isascii() or not raw_page.isdecimal() or len(raw_page) > 7 or not 1 <= int(raw_page) <= 1000000:
+        raise BizError("page应为有效正整数，最大1000000")
+    data = notification_dao().inbox(session["uid"], page=int(raw_page))
+    data["messages"] = [jsonable(row) for row in data["messages"]]
+    return jsonify({"ok": True, "data": data})
+
+
+@app.patch("/api/notifications/<int:notification_id>/read")
+@login_required(roles=("家属",))
+def read_notification(notification_id):
+    return jsonify({"ok": True, "data": notification_dao().mark_read(notification_id, session["uid"])})
 
 
 # ------------------------------------------------------------------ 订单

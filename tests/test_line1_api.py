@@ -22,6 +22,10 @@ class APITests(unittest.TestCase):
         self.patcher = patch.object(backend, "elder_dao", return_value=self.dao)
         self.patcher.start()
         self.addCleanup(self.patcher.stop)
+        self.notifications = MagicMock()
+        notification_patcher = patch.object(backend, "notification_dao", return_value=self.notifications)
+        notification_patcher.start()
+        self.addCleanup(notification_patcher.stop)
 
     def login_as(self, role, elder_id=1):
         with self.client.session_transaction() as session:
@@ -167,6 +171,40 @@ class APITests(unittest.TestCase):
         response = self.client.post("/api/elders", json={})
         self.assertEqual(response.status_code, 500)
         self.assertNotIn("110108", response.get_data(as_text=True))
+
+    def test_notification_roles_and_authentication(self):
+        paths = [("post", "/api/elders/1/reminders", "社区管理员"),
+                 ("get", "/api/notifications", "家属"),
+                 ("patch", "/api/notifications/1/read", "家属")]
+        for method, path, allowed_role in paths:
+            with self.client.session_transaction() as session:
+                session.clear()
+            self.assertEqual(getattr(self.client, method)(path).status_code, 401)
+            for role in ["家属", "社区管理员", "监管人员", "护工", "机构负责人"]:
+                if role == allowed_role:
+                    continue
+                self.login_as(role)
+                self.assertEqual(getattr(self.client, method)(path).status_code, 403)
+        self.assertEqual(self.notifications.method_calls, [])
+
+    def test_notification_scope_comes_from_session_not_request(self):
+        self.login_as("家属")
+        self.notifications.inbox.return_value = {"messages": [], "total": 0, "unread_count": 0}
+        self.notifications.mark_read.return_value = {"notification_id": 5}
+        response = self.client.get("/api/notifications?recipient_id=999&elder_id=999&page=2")
+        self.assertEqual(response.status_code, 200)
+        self.notifications.inbox.assert_called_once_with(1, page=2)
+        self.assertEqual(self.client.patch("/api/notifications/5/read", json={"user_id": 999}).status_code, 200)
+        self.notifications.mark_read.assert_called_once_with(5, 1)
+        for page in ["0", "-1", "x", "1000001"]:
+            self.assertEqual(self.client.get("/api/notifications?page="+page).status_code, 400)
+
+    def test_notification_sender_is_authenticated_admin(self):
+        self.login_as("社区管理员")
+        self.notifications.send_reminder.return_value = {"created_count": 1}
+        response = self.client.post("/api/elders/23/reminders", json={"sender_id": 999, "recipient_id": 88})
+        self.assertEqual(response.status_code, 200)
+        self.notifications.send_reminder.assert_called_once_with(23, 1)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ WHERE a.assessment_id = (SELECT a2.assessment_id FROM assessment a2
 CREATE OR REPLACE VIEW v_elder_assessment_plan AS
 SELECT e.elder_id,e.name,TIMESTAMPDIFF(YEAR,e.birth_date,CURDATE()) AS age,
        c.community_id,c.name AS community,
-       CONCAT(LEFT(e.id_card,6),'********',RIGHT(e.id_card,4)) AS id_masked,
+       REPEAT('*',18) AS id_masked,
        e.special_tag,e.status AS elder_status,a.ability_level,a.expire_date AS assess_expire,
        (a.expire_date<CURDATE()) AS assess_expired,
        p.plan_id,p.package_name,p.status AS plan_status

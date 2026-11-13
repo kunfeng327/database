@@ -55,6 +55,9 @@ class CursorAdapter:
         row = self.cursor.fetchone()
         return dict(row) if row else None
 
+    def fetchall(self):
+        return [dict(row) for row in self.cursor.fetchall()]
+
     @property
     def lastrowid(self):
         return self.cursor.lastrowid
@@ -64,6 +67,7 @@ class ConnectionAdapter:
     def __init__(self, path):
         self.conn = sqlite3.connect(path, detect_types=sqlite3.PARSE_DECLTYPES)
         self.conn.row_factory = sqlite3.Row
+        self.conn.create_function("REPEAT", 2, lambda value, count: value * count)
         self.conn.execute("PRAGMA foreign_keys=ON")
 
     def cursor(self):
@@ -86,12 +90,12 @@ class DAOTransactionTests(unittest.TestCase):
         self.path = str(Path(self.temp.name) / "line1.db")
         with sqlite3.connect(self.path) as conn:
             conn.executescript(
-                """CREATE TABLE community (community_id INTEGER PRIMARY KEY);
-                INSERT INTO community VALUES (1),(2);
+                """CREATE TABLE community (community_id INTEGER PRIMARY KEY, name TEXT DEFAULT '测试社区');
+                INSERT INTO community (community_id) VALUES (1),(2);
                 CREATE TABLE elder (elder_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT, id_card TEXT UNIQUE, birth_date DATE, gender TEXT,address TEXT,
                 community_id INTEGER REFERENCES community,guardian_name TEXT,guardian_phone TEXT,
-                special_tag TEXT,status TEXT DEFAULT '正常');
+                special_tag TEXT,status TEXT DEFAULT '正常',created_at TEXT DEFAULT CURRENT_TIMESTAMP);
                 CREATE TABLE care_plan (plan_id INTEGER PRIMARY KEY,elder_id INTEGER,
                 status TEXT,pause_reason TEXT);"""
             )
@@ -108,6 +112,19 @@ class DAOTransactionTests(unittest.TestCase):
         )
         self.assertEqual(len(set(ids)), 2)
         self.assertEqual(len(self.rows("elder")), 2)
+
+    def test_archive_queries_hide_every_identity_character_even_with_old_view(self):
+        eid = self.dao.create_elders([elder_body()])[0]
+        with sqlite3.connect(self.path) as conn:
+            conn.executescript("""CREATE VIEW v_elder_assessment_plan AS
+                SELECT elder_id,name,76 AS age,community_id,'测试社区' AS community,
+                id_card AS id_masked,special_tag,status AS elder_status,
+                NULL AS ability_level,NULL AS assess_expire,NULL AS assess_expired,
+                NULL AS plan_id,NULL AS package_name,NULL AS plan_status FROM elder;""")
+        for row in [self.dao.get_elder(eid), *self.dao.list_elders(), *self.dao.list_elders(page=1)[0]]:
+            self.assertEqual(row["id_masked"], "*" * 18)
+            self.assertNotIn("id_card", row)
+        self.assertEqual(self.rows("elder")[0]["id_card"], elder_body()["id_card"])
 
     def test_duplicate_second_record_rolls_back_first_insert(self):
         with self.assertRaises(sqlite3.IntegrityError):
