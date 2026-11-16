@@ -88,13 +88,7 @@ def prepare_database(conn):
     routine_sql = (SQL_DIR / "04_procs_triggers.sql").read_text(encoding="utf-8")
     # 在任何DDL之前完整解析脚本，语法分隔错误时不开始升级。
     scripts = list(sql_statements(view_sql)) + list(sql_statements(routine_sql))
-    # 站内信建表语句收录于 09_line1_all.sql §D；启动检查只执行该建表语句，
-    # 合集其余各节（一次性升级/定时事件/演示查询）不得在启动时执行。
-    notification_scripts = [
-        statement
-        for statement in sql_statements((SQL_DIR / "09_line1_all.sql").read_text(encoding="utf-8"))
-        if statement.upper().startswith("CREATE TABLE IF NOT EXISTS FAMILY_NOTIFICATION")
-    ]
+    notification_scripts = list(sql_statements((SQL_DIR / "08_family_notifications.sql").read_text(encoding="utf-8")))
     with conn.cursor() as cur:
         cur.execute(
             "SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()"
