@@ -1,0 +1,94 @@
+<mxfile host="app.diagrams.net" agent="claude" version="24.7.7">
+  <diagram id="line1-robustness" name="业务线1鲁棒图">
+    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="h1" value="边界对象（界面）" style="text;html=1;fontSize=14;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="60" y="20" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="h2" value="控制对象（业务逻辑）" style="text;html=1;fontSize=14;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="380" y="20" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="h3" value="实体对象（数据表）" style="text;html=1;fontSize=14;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="700" y="20" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" value="档案管理页" style="shape=umlBoundary;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="90" y="80" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="评估表单" style="shape=umlBoundary;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="90" y="220" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="计划编辑器" style="shape=umlBoundary;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="90" y="360" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b4" value="复评清单页" style="shape=umlBoundary;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="90" y="500" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b5" value="家属信箱" style="shape=umlBoundary;whiteSpace=wrap;html=1;fontSize=12;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="90" y="660" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" value="ElderDAO&#10;（档案/评估/计划事务）" style="shape=umlControl;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="180" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" value="NotificationDAO&#10;（提醒投递）" style="shape=umlControl;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="560" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" value="tr_dispatch_before_insert&#10;（派单触发器）" style="shape=umlControl;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="760" width="140" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="t1" value="elder 表" style="shape=umlEntity;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="720" y="60" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="assessment 表" style="shape=umlEntity;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="720" y="190" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="care_plan 表" style="shape=umlEntity;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="720" y="320" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t4" value="care_plan_item 表" style="shape=umlEntity;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="720" y="440" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" value="family_notification 表" style="shape=umlEntity;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="720" y="600" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" value="sys_user 表" style="shape=umlEntity;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="720" y="770" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" style="html=1;endArrow=classic;" edge="1" parent="1" source="b1" target="c1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r2" style="html=1;endArrow=classic;" edge="1" parent="1" source="b2" target="c1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r3" style="html=1;endArrow=classic;" edge="1" parent="1" source="b3" target="c1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r4" style="html=1;endArrow=classic;" edge="1" parent="1" source="b4" target="c2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r5" style="html=1;endArrow=classic;" edge="1" parent="1" source="b5" target="c2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r6" style="html=1;endArrow=classic;" edge="1" parent="1" source="c1" target="t1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r7" value="评估+复评恢复" style="html=1;endArrow=classic;fontSize=10;" edge="1" parent="1" source="c1" target="t2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r8" style="html=1;endArrow=classic;" edge="1" parent="1" source="c1" target="t3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r9" value="计划明细" style="html=1;endArrow=classic;fontSize=10;" edge="1" parent="1" source="c1" target="t4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r10" value="行锁老人" style="html=1;endArrow=classic;fontSize=10;" edge="1" parent="1" source="c2" target="t1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r11" value="锁最新评估" style="html=1;endArrow=classic;fontSize=10;" edge="1" parent="1" source="c2" target="t2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r12" style="html=1;endArrow=classic;" edge="1" parent="1" source="c2" target="t5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r13" value="收件人校验" style="html=1;endArrow=classic;fontSize=10;" edge="1" parent="1" source="c2" target="t6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r14" value="档案状态兜底" style="html=1;endArrow=classic;fontSize=10;" edge="1" parent="1" source="c3" target="t1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="r15" value="评估有效期兜底" style="html=1;endArrow=classic;fontSize=10;" edge="1" parent="1" source="c3" target="t2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="lg1" value="" style="shape=umlBoundary;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="90" y="900" width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1t" value="边界对象：用户界面入口，不直接读写数据库" style="text;html=1;fontSize=12;align=left;" vertex="1" parent="1">
+          <mxGeometry x="140" y="900" width="320" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" value="" style="shape=umlControl;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="480" y="900" width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2t" value="控制对象：DAO/触发器，事务与校验" style="text;html=1;fontSize=12;align=left;" vertex="1" parent="1">
+          <mxGeometry x="530" y="900" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3" value="" style="shape=umlEntity;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="90" y="950" width="40" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3t" value="实体对象：业务数据表；规则：边界不直连实体，交互必须经过控制对象" style="text;html=1;fontSize=12;align=left;" vertex="1" parent="1">
+          <mxGeometry x="140" y="950" width="480" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
