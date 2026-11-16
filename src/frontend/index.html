@@ -78,7 +78,7 @@ body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:
   padding:18px 20px; margin-bottom:18px; }
 .card h3 { font-size:14px; margin-bottom:14px; color:var(--text); font-weight:600; }
 .card h3 small { font-weight:400; color:var(--muted); margin-left:8px; }
-.stats { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:18px; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:18px; }
 .stat { background:var(--surface); border:1px solid var(--border); border-radius:8px;
   padding:16px; display:flex; gap:12px; align-items:flex-start; }
 .stat .icon { width:38px; height:38px; border-radius:8px; display:flex; align-items:center;
@@ -87,7 +87,7 @@ body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:
 .stat .label { font-size:12px; color:var(--muted); margin-top:3px; }
 .i-teal{background:var(--primary-lt);color:var(--primary-dk)} .i-blue{background:var(--blue-lt);color:var(--blue)}
 .i-yellow{background:var(--yellow-lt);color:var(--yellow)} .i-red{background:var(--red-lt);color:var(--red)}
-.i-purple{background:var(--purple-lt);color:var(--purple)}
+.i-purple{background:var(--purple-lt);color:var(--purple)} .i-orange{background:var(--orange-lt);color:var(--orange)}
 table { width:100%; border-collapse:collapse; }
 th { text-align:left; font-size:11.5px; color:var(--muted); padding:9px 10px;
   border-bottom:2px solid var(--border); white-space:nowrap; font-weight:600; }
@@ -118,8 +118,34 @@ textarea { width:100%; min-height:56px; resize:vertical; }
 #toast.err { background:var(--red); }
 #action-panel { display:none; border-left:3px solid var(--primary); }
 #action-panel .row { display:flex; gap:10px; align-items:flex-start; }
+#quality-action-panel { display:none; border-left:3px solid var(--orange); }
+#quality-action-panel .row { display:flex; gap:10px; align-items:flex-start; }
+.inline-note { color:var(--muted); font-size:12px; margin:-4px 0 12px; }
+.status-pair { display:flex; gap:5px; flex-wrap:wrap; }
+#tab-quality .card { overflow-x:auto; }
+#quality-table { min-width:1080px; }
+#quality-table td:nth-child(2) { min-width:150px; }
+#quality-table td:nth-child(8) { min-width:240px; }
 .muted { color:var(--muted); font-size:12px; }
 .hide { display:none; }
+@media (max-width:900px) {
+  .sidebar { width:190px; }
+  .main { margin-left:190px; }
+  .content { padding:18px; }
+}
+@media (max-width:680px) {
+  .sidebar { position:static; width:100%; min-height:auto; }
+  .nav { display:flex; overflow-x:auto; }
+  .nav button { width:auto; min-width:max-content; border-left:0; border-bottom:3px solid transparent; }
+  .nav button.active { border-left:0; border-bottom-color:var(--primary); }
+  .side-user { display:flex; align-items:center; gap:8px; padding:10px 14px; }
+  .side-user b { margin:0; }
+  .side-user button { width:auto; margin:0 0 0 auto; padding:6px 10px; }
+  .main { margin-left:0; }
+  .content { padding:14px; }
+  .topbar { padding:14px 18px; }
+  .card { overflow-x:auto; }
+}
 </style>
 </head>
 <body>
@@ -233,7 +259,46 @@ textarea { width:100%; min-height:56px; resize:vertical; }
           <h3>申报与拨付进度<small>视图 v_claim_progress</small></h3>
           <table id="claim-table"><thead><tr>
             <th>申报号</th><th>老人</th><th>区县</th><th>对象类别</th><th>补贴项目</th>
-            <th>账期</th><th>金额</th><th>状态</th><th>审核人</th><th id="claim-act-th">操作</th></tr></thead><tbody></tbody></table>
+            <th>账期</th><th>金额</th><th>审核状态</th><th>拨付状态</th><th>审核人</th><th id="claim-act-th">操作</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+
+      <section id="tab-quality" class="hide">
+        <div class="card" id="quality-random-card">
+          <h3>按比例随机抽查<small>从已完成且有当前派单护工的订单中抽取</small></h3>
+          <form class="inline" id="quality-random-form">
+            <div class="field"><label>抽查比例</label>
+              <input id="q-rate" type="number" min="1" max="100" value="30" style="width:110px"></div>
+            <div class="field"><label>抽查方式</label>
+              <select id="q-random-method"><option>电话回访</option><option>上门核查</option></select></div>
+            <button class="btn" type="submit">生成抽查任务</button>
+          </form>
+        </div>
+        <div class="card" id="quality-form-card">
+          <h3>录入质量抽查<small>低分或存在问题时自动进入整改</small></h3>
+          <form class="inline" id="quality-form">
+            <div class="field"><label>抽查对象</label>
+              <select id="q-target-type"><option value="order">已完成订单</option><option value="caregiver">护工</option></select></div>
+            <div class="field" id="q-order-field"><label>订单</label><select id="q-order"></select></div>
+            <div class="field hide" id="q-caregiver-field"><label>护工</label><select id="q-caregiver"></select></div>
+            <div class="field"><label>方式</label>
+              <select id="q-method"><option>电话回访</option><option>上门核查</option></select></div>
+            <div class="field"><label>评分</label><input id="q-score" type="number" min="0" max="100" style="width:100px"></div>
+            <div class="field"><label>问题标签</label><input id="q-issues" placeholder="多个问题用逗号分隔"></div>
+            <div class="field" style="flex:1;min-width:240px"><label>整改要求</label><input id="q-requirement" placeholder="无问题可留空"></div>
+            <button class="btn" type="submit">保存抽查结果</button>
+          </form>
+        </div>
+        <div class="card" id="quality-action-panel">
+          <h3 id="quality-action-title">抽查操作</h3>
+          <div id="quality-action-body"></div>
+        </div>
+        <div class="card">
+          <h3>质量抽查与整改<small>视图 v_quality_inspection_summary，未完成整改限制派单</small></h3>
+          <p class="inline-note">待整改和整改中的护工会被数据库触发器拦截，整改结果提交后才恢复接单。</p>
+          <table id="quality-table"><thead><tr>
+            <th>编号</th><th>订单 / 老人</th><th>护工</th><th>方式</th><th>评分</th>
+            <th>问题</th><th>整改状态</th><th>整改要求 / 结果</th><th>抽查人</th><th>操作</th></tr></thead><tbody></tbody></table>
         </div>
       </section>
 
@@ -266,6 +331,8 @@ textarea { width:100%; min-height:56px; resize:vertical; }
 const $ = s => document.querySelector(s);
 let ME = null;                 // 当前登录用户 {name, role, elder_id, caregiver_id}
 let elderList = [];
+let orderList = [];
+let qualityCaregivers = [];
 
 async function API(url, opts) {
   const r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...opts,
@@ -300,11 +367,11 @@ document.getElementById('lg-pass').addEventListener('keydown', e => { if(e.key==
 /* ================= 各角色导航 ================= */
 const ROLE_TABS = {
   '社区管理员': [['dashboard','总览','📊'],['orders','订单与派单','📋'],['elders','老人档案','👴'],
-                 ['subsidy','补贴申报','💰'],['ops','运维工具','🛠']],
+                 ['subsidy','补贴申报','💰'],['quality','质量整改','🔎'],['ops','运维工具','🛠']],
   '家属':       [['orders','服务订单','📋'],['elders','家庭档案','🏠']],
-  '护工':       [['orders','我的派单','🧑‍⚕️'],['schedules','我的排班','📅']],
-  '机构负责人': [['schedules','排班总览','📅']],
-  '监管人员':   [['dashboard','总览','📊'],['subsidy','补贴监管','🔍'],['elders','老人档案','👴']],
+  '护工':       [['orders','我的派单','🧑‍⚕️'],['schedules','我的排班','📅'],['quality','我的整改','🔎']],
+  '机构负责人': [['schedules','排班总览','📅'],['quality','质量整改','🔎']],
+  '监管人员':   [['dashboard','总览','📊'],['subsidy','补贴监管','💰'],['quality','质量抽查','🔎'],['elders','老人档案','👴']],
 };
 
 async function boot(){
@@ -320,7 +387,7 @@ async function boot(){
   buildNav();
   await loadItems();
   await Promise.all([loadElders(), loadOrders(), loadSchedules()]);
-  loadStats(); loadPending(); loadSubsidy(); loadOps();
+  loadStats(); loadPending(); loadSubsidy(); loadQuality(); loadOps();
 }
 
 function buildNav(){
@@ -334,6 +401,7 @@ function buildNav(){
     $('#tab-' + btn.dataset.tab).classList.remove('hide');
     $('#page-title').textContent = btn.textContent.trim().replace(/^[^\u4e00-\u9fa5]+/,'');
     loadSchedules(); // 切到排班页时刷新
+    loadQuality();
   });
   document.querySelectorAll('.content > section').forEach(s => s.classList.add('hide'));
   $('#tab-' + tabs[0][0]).classList.remove('hide');
@@ -346,6 +414,9 @@ function buildNav(){
   $('#f-channel-field').classList.toggle('hide', isFamily);
   $('#claim-form-card').classList.toggle('hide', !isAdmin);
   $('#claim-act-th').classList.toggle('hide', !isReg);
+  $('#quality-random-card').classList.toggle('hide', !isReg);
+  $('#quality-form-card').classList.toggle('hide', !isReg);
+  $('#quality-action-panel').style.display = 'none';
   $('#assess-elder-field').classList.toggle('hide', !isAdmin);
   $('#assess-form-card').classList.toggle('hide', !isAdmin);
   $('#orders-title').textContent = ME.role==='护工' ? '我的派单记录' :
@@ -353,6 +424,7 @@ function buildNav(){
   $('#order-form-title').innerHTML = isFamily
       ? '为老人下单<small>应用层校验：档案正常 + 评估在有效期内</small>'
       : '下单<small>应用层校验：档案正常 + 评估在有效期内</small>';
+  $('#q-target-type').onchange = toggleQualityTarget;
 }
 
 /* ================= 数据加载 ================= */
@@ -367,7 +439,7 @@ async function loadStats(){
   const d = r.data, cards = [
     ['elders_normal','在册正常老人','👴','i-teal'],['orders_active','进行中订单','📋','i-blue'],
     ['orders_timeout','超时未派单','⏰','i-red'],['plans_to_pause','待暂停计划','⚠️','i-yellow'],
-    ['claims_in_progress','审核中申报','💰','i-purple']];
+    ['claims_in_progress','审核中申报','💰','i-purple'],['open_rectifications','未完成整改','🔎','i-orange']];
   $('#stat-cards').innerHTML = cards.map(([k,l,i,c]) =>
     `<div class="stat"><div class="icon ${c}">${i}</div><div><div class="num">${d[k]}</div><div class="label">${l}</div></div></div>`).join('');
 }
@@ -445,6 +517,7 @@ $('#assess-form-card').onsubmit = async ev => {
 };
 async function loadOrders(){
   const r = await API('/api/orders');
+  orderList = r.data;
   const isAdmin = ME.role === '社区管理员', isWorker = ME.role === '护工';
   $('#order-table tbody').innerHTML = r.data.map(o => {
     let act = '—';
@@ -462,6 +535,9 @@ async function loadOrders(){
       <td><span class="badge ${badge}">${o.status}</span></td>
       <td>${esc(o.caregiver_name)||'—'}</td><td>${act}</td></tr>`;
   }).join('') || '<tr><td colspan="9" class="muted">暂无订单</td></tr>';
+  $('#q-order').innerHTML = orderList.filter(o => o.status === '已完成')
+    .map(o => `<option value="${o.order_id}">#${o.order_id} · ${esc(o.elder_name)} · ${esc(o.item_name)} · ${esc(o.caregiver_name || '无护工')}</option>`)
+    .join('') || '<option value="">暂无已完成订单</option>';
 }
 
 $('#order-form').onsubmit = async ev => {
@@ -537,14 +613,17 @@ async function loadSubsidy(){
   $('#claim-table tbody').innerHTML = clm.ok ? clm.data.map(c => {
     let act = '—';
     if (isReg) {
-      if (c.status === '待审核') act = `<button class="btn small" onclick="audit(${c.claim_id},'approve')">街道审核</button> <button class="btn small warn" onclick="audit(${c.claim_id},'reject')">驳回</button>`;
-      if (c.status === '街道已审') act = `<button class="btn small" onclick="audit(${c.claim_id},'pay')">确认拨付</button> <button class="btn small warn" onclick="audit(${c.claim_id},'reject')">驳回</button>`;
+      if (c.audit_status === '待审核') act = `<button class="btn small" onclick="audit(${c.claim_id},'approve')">街道审核</button> <button class="btn small warn" onclick="audit(${c.claim_id},'reject')">驳回</button>`;
+      else if (c.audit_status === '街道已审') act = `<button class="btn small" onclick="audit(${c.claim_id},'pass')">终审通过</button> <button class="btn small warn" onclick="audit(${c.claim_id},'reject')">驳回</button>`;
+      else if (c.audit_status === '通过' && c.pay_status === '未拨付') act = `<button class="btn small" onclick="audit(${c.claim_id},'pay')">确认拨付</button>`;
     }
-    const badge = {'待审核':'b-wait','街道已审':'b-disp','已拨付':'b-done','已驳回':'b-canc'}[c.status];
+    const auditBadge = {'待审核':'b-wait','街道已审':'b-disp','通过':'b-done','驳回':'b-canc'}[c.audit_status];
+    const payBadge = c.pay_status === '已拨付' ? 'b-done' : 'b-canc';
     return `<tr><td>${c.claim_id}</td><td>${esc(c.elder_name)}</td><td>${esc(c.district)}</td>
       <td><span class="tag">${esc(c.target_type)}</span></td><td>${esc(c.item_name)}</td>
       <td>${c.claim_period}</td><td>${fmtYuan(c.amount)}</td>
-      <td><span class="badge ${badge}">${c.status}</span></td><td>${esc(c.reviewer)||'—'}</td>
+      <td><span class="badge ${auditBadge}">${c.audit_status}</span></td>
+      <td><span class="badge ${payBadge}">${c.pay_status}</span></td><td>${esc(c.reviewer)||'—'}</td>
       <td class="${isReg?'':'hide'}">${act}</td></tr>`;
   }).join('') : '';
 }
@@ -558,9 +637,139 @@ $('#claim-form').onsubmit = async ev => {
 };
 async function audit(id, action){
   const r = await API(`/api/subsidy/claims/${id}/audit`, {method:'POST', body:{action}});
-  r.ok ? toast(`申报 ${id} 已流转为「${r.data.status}」`) : toast(r.msg, true);
+  r.ok ? toast(`申报 ${id}：审核「${r.data.audit_status}」，拨付「${r.data.pay_status}」`) : toast(r.msg, true);
   loadSubsidy(); loadStats();
 }
+
+/* ================= 质量抽查与整改 ================= */
+function toggleQualityTarget(){
+  const byOrder = $('#q-target-type').value === 'order';
+  $('#q-order-field').classList.toggle('hide', !byOrder);
+  $('#q-caregiver-field').classList.toggle('hide', byOrder);
+}
+
+async function loadQualityCaregivers(){
+  if (ME.role !== '监管人员') return;
+  const r = await API('/api/quality/caregivers');
+  if (!r.ok) return;
+  qualityCaregivers = r.data;
+  $('#q-caregiver').innerHTML = qualityCaregivers.map(c =>
+    `<option value="${c.caregiver_id}">${esc(c.caregiver_name)} · ${esc(c.agency)} · 均分 ${c.inspection_avg_score ?? '暂无'} · 未整改 ${c.open_rectifications}</option>`).join('');
+}
+
+async function loadQuality(){
+  if (!['社区管理员','机构负责人','监管人员','护工'].includes(ME.role)) return;
+  if ($('#tab-quality').classList.contains('hide')) return;
+  const r = await API('/api/quality/inspections');
+  const isReg = ME.role === '监管人员';
+  const canRectify = ['社区管理员','机构负责人','护工'].includes(ME.role);
+  const rectBadge = {'无需整改':'b-done','待整改':'b-red','整改中':'b-wait','已完成':'b-done'};
+  $('#quality-table tbody').innerHTML = r.ok ? r.data.map(q => {
+    let act = '—';
+    if (isReg && q.inspection_status === '待抽查') {
+      act = `<button class="btn small" onclick="openQualityResult(${q.inspection_id})">录入结果</button>`;
+    } else if (canRectify && ['待整改','整改中'].includes(q.rectification_status)
+               && (ME.role !== '护工' || q.caregiver_id === ME.caregiver_id)) {
+      act = `<button class="btn small" onclick="openRectify(${q.inspection_id})">提交整改</button>`;
+    }
+    const target = q.order_id
+      ? `#${q.order_id}<div class="muted">${esc(q.elder_name || '')} · ${esc(q.community || '')}</div>`
+      : '<span class="tag">护工专项</span>';
+    const issue = q.issue_tags ? q.issue_tags.split(',').map(x => `<span class="tag">${esc(x)}</span>`).join('') : '—';
+    const rectStatus = q.inspection_status === '待抽查'
+      ? '<span class="badge b-wait">待抽查</span>'
+      : `<span class="badge ${rectBadge[q.rectification_status] || 'b-canc'}">${q.rectification_status || '—'}</span>`;
+    const detail = q.rectification_result
+      ? `<div>${esc(q.rectification_result)}</div><div class="muted">要求：${esc(q.rectification_requirement || '—')}</div>`
+      : (q.rectification_requirement ? esc(q.rectification_requirement) : '—');
+    return `<tr><td>${q.inspection_id}</td><td>${target}</td>
+      <td>${esc(q.caregiver_name || '—')}<div class="muted">${esc(q.agency || '')}</div></td>
+      <td>${esc(q.inspection_method)}</td><td>${q.score ?? '—'}</td><td>${issue}</td>
+      <td>${rectStatus}${q.open_days > 0 ? `<div class="muted">已滞留 ${q.open_days} 天</div>` : ''}</td>
+      <td>${detail}</td><td>${esc(q.inspector)}</td><td>${act}</td></tr>`;
+  }).join('') || '<tr><td colspan="10" class="muted">暂无抽查记录</td></tr>'
+    : '<tr><td colspan="10" class="muted">加载失败</td></tr>';
+  await loadQualityCaregivers();
+}
+
+function openQualityResult(id){
+  $('#quality-action-panel').style.display = 'block';
+  $('#quality-action-title').textContent = `抽查 ${id} · 录入结果`;
+  $('#quality-action-body').innerHTML = `<form class="inline" onsubmit="submitQualityResult(event,${id})">
+    <div class="field"><label>方式</label><select id="qr-method"><option>电话回访</option><option>上门核查</option></select></div>
+    <div class="field"><label>评分</label><input id="qr-score" type="number" min="0" max="100" style="width:100px"></div>
+    <div class="field"><label>问题标签</label><input id="qr-issues" placeholder="多个问题用逗号分隔"></div>
+    <div class="field" style="flex:1;min-width:240px"><label>整改要求</label><input id="qr-requirement" placeholder="无问题可留空"></div>
+    <button class="btn" type="submit">保存结果</button>
+  </form>`;
+  $('#quality-action-panel').scrollIntoView({behavior:'smooth'});
+}
+
+async function submitQualityResult(ev, id){
+  ev.preventDefault();
+  const r = await API(`/api/quality/inspections/${id}/result`, {method:'POST', body:{
+    inspection_method:$('#qr-method').value,
+    score:parseInt($('#qr-score').value,10),
+    issue_tags:$('#qr-issues').value.trim(),
+    rectification_requirement:$('#qr-requirement').value.trim()
+  }});
+  if (r.ok) {
+    toast(`抽查结果已保存，整改状态「${r.data.rectification_status}」`);
+    $('#quality-action-panel').style.display = 'none';
+    loadQuality(); loadStats(); loadOrders();
+  } else toast(r.msg, true);
+}
+
+function openRectify(id){
+  $('#quality-action-panel').style.display = 'block';
+  $('#quality-action-title').textContent = `抽查 ${id} · 提交整改结果`;
+  $('#quality-action-body').innerHTML = `<div class="row">
+    <div style="flex:1"><textarea id="q-rect-result" placeholder="填写整改措施、证明材料与复查情况"></textarea></div>
+    <button class="btn" onclick="submitRectify(${id})">确认完成</button></div>`;
+  $('#quality-action-panel').scrollIntoView({behavior:'smooth'});
+}
+
+async function submitRectify(id){
+  const result = $('#q-rect-result').value.trim();
+  if (!result) { toast('整改结果不能为空', true); return; }
+  const r = await API(`/api/quality/inspections/${id}/rectification`, {method:'POST',
+    body:{rectification_result:result}});
+  if (r.ok) {
+    toast('整改结果已提交，护工接单限制已解除');
+    $('#quality-action-panel').style.display = 'none';
+    loadQuality(); loadStats(); loadOrders();
+  } else toast(r.msg, true);
+}
+
+$('#quality-random-form').onsubmit = async ev => {
+  ev.preventDefault();
+  const r = await API('/api/quality/inspections/random', {method:'POST', body:{
+    sample_rate:parseInt($('#q-rate').value,10),
+    inspection_method:$('#q-random-method').value
+  }});
+  r.ok ? toast(`已按 ${r.data.sample_rate}% 抽取 ${r.data.created_count} 笔，覆盖候选 ${r.data.candidate_count} 笔`)
+       : toast(r.msg, true);
+  loadQuality(); loadStats();
+};
+
+$('#quality-form').onsubmit = async ev => {
+  ev.preventDefault();
+  const targetType = $('#q-target-type').value;
+  const body = {
+    inspection_method:$('#q-method').value,
+    score:parseInt($('#q-score').value,10),
+    issue_tags:$('#q-issues').value.trim(),
+    rectification_requirement:$('#q-requirement').value.trim()
+  };
+  if (targetType === 'order') body.order_id = parseInt($('#q-order').value,10);
+  else body.caregiver_id = parseInt($('#q-caregiver').value,10);
+  const r = await API('/api/quality/inspections', {method:'POST', body});
+  if (r.ok) {
+    toast(`抽查已录入，评分 ${r.data.score}，整改状态「${r.data.rectification_status}」`);
+    $('#q-score').value = ''; $('#q-issues').value = ''; $('#q-requirement').value = '';
+    loadQuality(); loadStats();
+  } else toast(r.msg, true);
+};
 
 /* ================= 运维 / 排班 ================= */
 async function loadOps(){

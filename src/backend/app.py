@@ -22,6 +22,14 @@ import pymysql
 from flask import Flask, jsonify, request, send_file, session
 
 from db import DB_CONFIG
+from line5_dao import (
+    Line5Error,
+    complete_inspection,
+    create_manual_inspection,
+    sample_completed_orders,
+    submit_rectification,
+    transition_claim,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("APP_SECRET_KEY", "elder-care-demo-key-2026")
@@ -91,6 +99,11 @@ def handle_biz(e):
     return jsonify({"ok": False, "msg": str(e)}), 400
 
 
+@app.errorhandler(Line5Error)
+def handle_line5(e):
+    return jsonify({"ok": False, "msg": str(e)}), 400
+
+
 @app.errorhandler(Exception)
 def handle_500(e):
     if isinstance(e, pymysql.err.IntegrityError) and e.args[0] == 1062:
@@ -124,7 +137,7 @@ def login():
     username, password = body.get("username", ""), body.get("password", "")
 
     def fn(cur):
-        cur.execute("SELECT * FROM sys_user WHERE username=%s", username)
+        cur.execute("SELECT * FROM sys_user WHERE username=%s", (username,))
         u = cur.fetchone()
         generic_err = BizError("账号或密码错误")
         if not u or u["status"] != "启用":
@@ -136,12 +149,12 @@ def login():
             fails = u["failed_attempts"] + 1
             if fails >= 5:
                 cur.execute("""UPDATE sys_user SET failed_attempts=0,
-                               locked_until=NOW()+INTERVAL 10 MINUTE WHERE user_id=%s""", u["user_id"])
+                               locked_until=NOW()+INTERVAL 10 MINUTE WHERE user_id=%s""", (u["user_id"],))
                 raise BizError("密码连续错误 5 次，账号锁定 10 分钟")
             cur.execute("UPDATE sys_user SET failed_attempts=%s WHERE user_id=%s", (fails, u["user_id"]))
             raise generic_err
         cur.execute("""UPDATE sys_user SET failed_attempts=0, locked_until=NULL,
-                       last_login=NOW() WHERE user_id=%s""", u["user_id"])
+                       last_login=NOW() WHERE user_id=%s""", (u["user_id"],))
         session.permanent = True
         session.update({"uid": u["user_id"], "role": u["role"], "name": u["real_name"],
                         "elder_id": u["elder_id"], "caregiver_id": u["caregiver_id"]})
@@ -210,7 +223,10 @@ def stats():
           (SELECT COUNT(*) FROM care_plan p WHERE p.status='生效' AND
              (SELECT MAX(a.expire_date) FROM assessment a WHERE a.elder_id=p.elder_id) < CURDATE()
           ) AS plans_to_pause,
-          (SELECT COUNT(*) FROM subsidy_claim WHERE status IN ('待审核','街道已审')) AS claims_in_progress
+          (SELECT COUNT(*) FROM subsidy_claim
+            WHERE audit_status IN ('待审核','街道已审')) AS claims_in_progress,
+          (SELECT COUNT(*) FROM quality_inspection
+            WHERE rectification_status IN ('待整改','整改中')) AS open_rectifications
     """)
     return jsonify({"ok": True, "data": rows[0]})
 
@@ -284,7 +300,7 @@ def orders():
         SELECT o.order_id, e.name AS elder_name, c.name AS community,
                si.name AS item_name, si.type AS item_type, si.subsidizable,
                o.appoint_time, o.channel, o.amount, o.status, o.created_at,
-               d.dispatch_id, d.confirmed, cg.name AS caregiver_name,
+               d.dispatch_id, d.caregiver_id, d.confirmed, cg.name AS caregiver_name,
                d.arrive_time, d.leave_time, d.service_note
         FROM service_order o
         JOIN elder e ON e.elder_id = o.elder_id
@@ -521,26 +537,80 @@ def create_claim():
 @app.post("/api/subsidy/claims/<int:claim_id>/audit")
 @login_required(roles=("监管人员",))
 def audit_claim(claim_id):
-    """审核流转（街道/民政视角）：待审核→街道已审→已拨付，或任意状态→已驳回。"""
+    """审核与拨付分离：待审核→街道已审→通过；通过后方可拨付。"""
     action = request.get_json(force=True)["action"]
-    flow = {"approve": ("待审核", "街道已审"), "pay": ("街道已审", "已拨付"),
-            "reject": (None, "已驳回")}
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: transition_claim(cur, claim_id, action, session["name"])
+    )})
 
-    def fn(cur):
-        cur.execute("SELECT status FROM subsidy_claim WHERE claim_id=%s", claim_id)
-        row = cur.fetchone()
-        if not row:
-            raise BizError("申报不存在")
-        if action not in flow:
-            raise BizError("action 只能是 approve / pay / reject")
-        frm, to = flow[action]
-        if frm and row["status"] != frm:
-            raise BizError(f"当前状态「{row['status']}」，不能执行 {action}（应从「{frm}」流转）")
-        cur.execute("""UPDATE subsidy_claim SET status=%s, reviewer=%s
-                        WHERE claim_id=%s""", (to, session["name"], claim_id))
-        return {"claim_id": claim_id, "status": to}
 
-    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+# ------------------------------------------------------------------ 质量监管
+@app.get("/api/quality/inspections")
+@login_required(roles=("社区管理员", "机构负责人", "监管人员", "护工"))
+def quality_inspections():
+    """质量抽查列表；护工只能查看与本人相关的抽查和整改任务。"""
+    sql = "SELECT * FROM v_quality_inspection_summary"
+    args = ()
+    if session["role"] == "护工":
+        sql += " WHERE caregiver_id=%s"
+        args = (session["caregiver_id"],)
+    return jsonify({"ok": True, "data": query_all(
+        sql + " ORDER BY inspection_id DESC", args
+    )})
+
+
+@app.get("/api/quality/caregivers")
+@login_required(roles=("社区管理员", "监管人员"))
+def quality_caregivers():
+    """Provide caregiver-level targets for manual inspections."""
+    return jsonify({"ok": True, "data": query_all(
+        """SELECT caregiver_id, caregiver_name, agency, official_rating,
+                  inspected_count, inspection_avg_score, open_rectifications
+             FROM v_caregiver_quality_score
+            ORDER BY open_rectifications DESC, caregiver_name"""
+    )})
+
+
+@app.post("/api/quality/inspections")
+@login_required(roles=("监管人员",))
+def create_quality_inspection():
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: create_manual_inspection(cur, body, session["name"])
+    )})
+
+
+@app.post("/api/quality/inspections/random")
+@login_required(roles=("监管人员",))
+def random_quality_inspections():
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: sample_completed_orders(cur, body, session["name"])
+    )})
+
+
+@app.post("/api/quality/inspections/<int:inspection_id>/result")
+@login_required(roles=("监管人员",))
+def record_quality_result(inspection_id):
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: complete_inspection(cur, inspection_id, body)
+    )})
+
+
+@app.post("/api/quality/inspections/<int:inspection_id>/rectification")
+@login_required(roles=("社区管理员", "机构负责人", "护工"))
+def record_rectification(inspection_id):
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: submit_rectification(
+            cur,
+            inspection_id,
+            body.get("rectification_result", ""),
+            session["role"],
+            session.get("caregiver_id"),
+        )
+    )})
 
 
 # ------------------------------------------------------------------ 运维（存储过程）

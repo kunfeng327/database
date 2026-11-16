@@ -41,6 +41,7 @@ BEGIN
   DECLARE v_booked INT; DECLARE v_capacity INT;
   DECLARE v_on_duty VARCHAR(10); DECLARE v_cert_expire DATE;
   DECLARE v_order_status VARCHAR(10);
+  DECLARE v_open_rectifications INT;
 
   SELECT status INTO v_order_status FROM service_order WHERE order_id = NEW.order_id;
   IF v_order_status NOT IN ('待派单','已派单') THEN
@@ -54,6 +55,15 @@ BEGIN
   END IF;
   IF v_cert_expire < DATE(NOW()) THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '派单失败：护工证书已过期';
+  END IF;
+
+  SELECT COUNT(*) INTO v_open_rectifications
+    FROM quality_inspection
+   WHERE caregiver_id = NEW.caregiver_id
+     AND rectification_status IN ('待整改','整改中');
+  IF v_open_rectifications > 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = '派单失败：该护工存在未完成整改，暂限制接单';
   END IF;
 
   SELECT s.booked, s.capacity INTO v_booked, v_capacity
