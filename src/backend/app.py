@@ -513,6 +513,45 @@ def create_order():
     return jsonify({"ok": True, "data": run_in_transaction(fn)})
 
 
+@app.post("/api/orders/<int:order_id>/cancel")
+@login_required(roles=("家属", "社区管理员"))
+def cancel_order(order_id):
+    """取消订单（下单后反悔）：仅待派单/已派单可取消，服务已开始不可取消。
+    已派单订单取消时作废当前派单记录（保留历史与原因）并释放护工当班排班余量；
+    家属只能取消自家老人的订单。补贴核算只统计已完成订单，取消后自动不参与申报。"""
+    def fn(cur):
+        cur.execute("SELECT elder_id, status FROM service_order WHERE order_id=%s FOR UPDATE",
+                    order_id)
+        order = cur.fetchone()
+        if not order:
+            raise BizError("订单不存在")
+        if session["role"] == "家属" and order["elder_id"] != session["elder_id"]:
+            raise BizError("无权限：只能取消自家老人的订单")
+        if order["status"] not in ("待派单", "已派单"):
+            raise BizError(f"订单当前状态为「{order['status']}」，只有待派单或已派单订单可以取消")
+
+        released = False
+        cur.execute("""SELECT dispatch_id, caregiver_id FROM dispatch
+                        WHERE order_id=%s AND is_current=1""", order_id)
+        d = cur.fetchone()
+        if d:
+            cur.execute("""UPDATE dispatch SET is_current=0, reassign_reason='订单取消'
+                            WHERE dispatch_id=%s""", d["dispatch_id"])
+            # 释放该护工当班接单量（与改派逻辑对应）
+            cur.execute("""UPDATE schedule s
+                              JOIN service_order o ON o.order_id=%s
+                               SET s.booked = s.booked - 1
+                             WHERE s.caregiver_id = %s
+                               AND s.work_date = DATE(o.appoint_time)
+                               AND s.shift = (CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END)""",
+                        (order_id, d["caregiver_id"]))
+            released = True
+        cur.execute("UPDATE service_order SET status='已取消' WHERE order_id=%s", order_id)
+        return {"order_id": order_id, "released_dispatch": released}
+
+    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+
 # ------------------------------------------------------------------ 派单
 @app.get("/api/orders/<int:order_id>/recommend")
 @login_required(roles=("社区管理员",))

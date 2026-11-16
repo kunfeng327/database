@@ -937,12 +937,17 @@ async function loadOrders(){
   const isAdmin = ME.role === '社区管理员', isWorker = ME.role === '护工';
   $('#order-table tbody').innerHTML = r.data.map(o => {
     let act = '—';
+    const cancellable = o.status === '待派单' || o.status === '已派单';
+    const cancelBtn = cancellable && (isAdmin || ME.role === '家属')
+      ? ` <button class="btn small ghost" onclick="openCancel(${o.order_id})">取消</button>` : '';
     if (isAdmin) {
-      if (o.status === '待派单') act = `<button class="btn small" onclick="openRecommend(${o.order_id})">推荐护工</button>`;
-      else if (o.status === '已派单' && o.dispatch_id) act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">完成确认</button> <button class="btn small ghost" onclick="openReassign(${o.dispatch_id})">改派</button>`;
+      if (o.status === '待派单') act = `<button class="btn small" onclick="openRecommend(${o.order_id})">推荐护工</button>` + cancelBtn;
+      else if (o.status === '已派单' && o.dispatch_id) act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">完成确认</button> <button class="btn small ghost" onclick="openReassign(${o.dispatch_id})">改派</button>` + cancelBtn;
       else if (o.status === '服务中' && o.dispatch_id) act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">完成确认</button>`;
     } else if (isWorker && o.dispatch_id && o.status === '已派单') {
       act = `<button class="btn small" onclick="openComplete(${o.dispatch_id},${o.order_id})">上门服务 · 完成确认</button>`;
+    } else if (cancellable && ME.role === '家属') {
+      act = cancelBtn.trim();
     }
     const badge = {'待派单':'b-wait','已派单':'b-disp','服务中':'b-serv','已完成':'b-done','已取消':'b-canc'}[o.status];
     const note = o.service_note ? `<div class="muted" style="margin-top:3px">${esc(o.service_note)}</div>` : '';
@@ -1011,6 +1016,19 @@ async function doReassign(dispatchId){
   r.ok ? toast('已改派，订单回到待派单，可重新推荐护工') : toast(r.msg, true);
   $('#action-panel').style.display = 'none';
   loadOrders(); loadStats(); loadSchedules();
+}
+function openCancel(orderId){
+  $('#action-panel').style.display = 'block';
+  $('#action-title').textContent = `订单 ${orderId} · 取消（仅待派单/已派单可取消）`;
+  $('#action-body').innerHTML = `<p class="muted">取消后订单不再派单或服务；已派单订单会同时作废当前派单并释放护工当班排班余量，服务中/已完成订单不可取消。</p>
+    <button class="btn warn" onclick="doCancel(${orderId})">确认取消</button>`;
+  $('#action-panel').scrollIntoView({behavior:'smooth'});
+}
+async function doCancel(orderId){
+  const r = await API(`/api/orders/${orderId}/cancel`, {method:'POST', body:{}});
+  r.ok ? toast('订单已取消') : toast(r.msg, true);
+  $('#action-panel').style.display = 'none';
+  loadOrders(); loadPending(); loadStats(); loadSchedules();
 }
 
 /* ================= 补贴 ================= */
