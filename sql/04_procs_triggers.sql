@@ -7,6 +7,8 @@ DROP PROCEDURE IF EXISTS sp_pause_expired_plans;
 DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
+DROP TRIGGER IF EXISTS tr_vital_sign_before_insert;
+DROP TRIGGER IF EXISTS tr_emergency_before_update;
 
 -- ---------------------------------------------------------------------
 -- 存储过程：评估到期自动暂停照护计划（任务书示例场景）
@@ -112,4 +114,60 @@ BEGIN
   END IF;
 END$$
 
+-- ---------------------------------------------------------------------
+-- 触发器4 体征数据入库自动标记（BEFORE INSERT ON vital_sign）：
+--   按指标类型分别校验阈值，超阈值自动标记为「待确认」，供人工复核确认
+--   阈值口径：收缩压 90-140 / 舒张压 60-90 / 心率 60-100 /
+--            血氧 95-100 / 体温 36.0-37.3 / 血糖 3.9-6.1
+-- ---------------------------------------------------------------------
+DELIMITER $$
+CREATE TRIGGER tr_vital_sign_before_insert
+BEFORE INSERT ON vital_sign
+FOR EACH ROW
+BEGIN
+  SET NEW.abnormal_flag = CASE NEW.metric_type
+    WHEN '收缩压' THEN IF(NEW.metric_value BETWEEN 90 AND 140, '正常', '待确认')
+    WHEN '舒张压' THEN IF(NEW.metric_value BETWEEN 60 AND 90,  '正常', '待确认')
+    WHEN '心率'   THEN IF(NEW.metric_value BETWEEN 60 AND 100, '正常', '待确认')
+    WHEN '血氧'   THEN IF(NEW.metric_value BETWEEN 95 AND 100, '正常', '待确认')
+    WHEN '体温'   THEN IF(NEW.metric_value BETWEEN 36.0 AND 37.3, '正常', '待确认')
+    WHEN '血糖'   THEN IF(NEW.metric_value BETWEEN 3.9 AND 6.1, '正常', '待确认')
+    ELSE '正常'
+  END;
+END$$
+
+-- ---------------------------------------------------------------------
+-- 触发器5 应急事件自动升级（BEFORE UPDATE ON emergency）：
+--   待响应事件被更新（回填响应人/到场时间）时，若已超过该等级响应时限，
+--   自动把等级升级一档（一般→紧急→危急）并打上 escalated 标记；危急不再升级
+-- ---------------------------------------------------------------------
+DELIMITER $$
+CREATE TRIGGER tr_emergency_before_update
+BEFORE UPDATE ON emergency
+FOR EACH ROW
+BEGIN
+  DECLARE v_deadline INT;
+  DECLARE v_elapsed  INT;
+  DECLARE v_next     VARCHAR(10);
+
+  SET v_deadline = CASE OLD.event_level WHEN '一般' THEN 60 WHEN '紧急' THEN 30 ELSE 15 END;
+  SET v_elapsed  = TIMESTAMPDIFF(MINUTE, OLD.occur_time, COALESCE(NEW.arrive_time, NOW()));
+
+  -- 超时未响应 → 自动升级上报
+  IF OLD.status = '待响应' AND v_elapsed > v_deadline AND OLD.event_level <> '危急' THEN
+    SET v_next = CASE OLD.event_level WHEN '一般' THEN '紧急' ELSE '危急' END;
+    SET NEW.event_level = v_next;
+    SET NEW.escalated   = 1;
+  END IF;
+
+  -- 回填响应人 → 状态推进为已响应
+  IF OLD.status = '待响应' AND NEW.responder IS NOT NULL AND NEW.responder <> '' THEN
+    SET NEW.status = '已响应';
+  END IF;
+
+  -- 回填处置结果且已到场 → 处置闭环
+  IF NEW.result IS NOT NULL AND NEW.result <> '' AND NEW.arrive_time IS NOT NULL THEN
+    SET NEW.status = '已处置';
+  END IF;
+END$$
 DELIMITER ;

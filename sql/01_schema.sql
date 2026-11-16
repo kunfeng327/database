@@ -208,7 +208,63 @@ CREATE TABLE quality_inspection (
   INDEX idx_quality_inspected (inspected_at)
 );
 
--- ------------------------- 13 系统用户（登录与RBAC） -------------------------
+-- ------------------------- 13 监测设备 -------------------------
+-- 一台设备同一时段只绑定一位老人（elder_id 单值）；解绑后保留原归属（unbind_time 记录，历史数据见 vital_sign/emergency 的快照字段）
+CREATE TABLE device (
+  device_id        INT PRIMARY KEY AUTO_INCREMENT COMMENT '设备编号',
+  elder_id         INT NOT NULL COMMENT '绑定/最近绑定老人(解绑后保留原归属)',
+  device_type      ENUM('血压计','心电贴','跌倒雷达','一键呼叫') NOT NULL COMMENT '设备类型',
+  install_location VARCHAR(100) NOT NULL COMMENT '安装位置',
+  bind_time        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '绑定时间',
+  unbind_time      DATETIME NULL COMMENT '解绑时间',
+  status           ENUM('绑定','解绑') NOT NULL DEFAULT '绑定' COMMENT '设备状态',
+  CONSTRAINT fk_device_elder FOREIGN KEY (elder_id) REFERENCES elder(elder_id),
+  CONSTRAINT chk_device_state CHECK (
+    (status = '绑定' AND unbind_time IS NULL) OR (status = '解绑' AND unbind_time IS NOT NULL)
+  ),
+  INDEX idx_device_elder (elder_id, status),
+  INDEX idx_device_type (device_type)
+);
+
+-- ------------------------- 14 体征数据 -------------------------
+-- 按指标类型分别校验阈值（见 tr_vital_sign_before_insert），超阈值自动标记为「待确认」
+CREATE TABLE vital_sign (
+  vital_id      INT PRIMARY KEY AUTO_INCREMENT COMMENT '数据编号',
+  device_id     INT NOT NULL COMMENT '设备编号',
+  elder_id      INT NOT NULL COMMENT '档案编号(采集时归属快照，解绑后仍保留)',
+  collect_time  DATETIME NOT NULL COMMENT '采集时间',
+  metric_type   ENUM('收缩压','舒张压','心率','血氧','体温','血糖') NOT NULL COMMENT '指标类型',
+  metric_value  DECIMAL(6,2) NOT NULL COMMENT '指标值',
+  abnormal_flag ENUM('正常','待确认','异常') NOT NULL DEFAULT '正常' COMMENT '异常标记(待确认=超阈值自动标记)',
+  data_source   ENUM('自动采集','人工录入') NOT NULL DEFAULT '自动采集' COMMENT '数据来源',
+  CONSTRAINT fk_vital_device FOREIGN KEY (device_id) REFERENCES device(device_id),
+  CONSTRAINT fk_vital_elder   FOREIGN KEY (elder_id)  REFERENCES elder(elder_id),
+  INDEX idx_vital_elder_time (elder_id, collect_time),
+  INDEX idx_vital_abnormal   (abnormal_flag, collect_time),
+  INDEX idx_vital_device     (device_id)
+);
+
+-- ------------------------- 15 应急事件 -------------------------
+-- 事件等级对应响应时限（分钟）：一般=60 / 紧急=30 / 危急=15；未按时限响应由触发器自动升级
+CREATE TABLE emergency (
+  event_id       INT PRIMARY KEY AUTO_INCREMENT COMMENT '事件编号',
+  elder_id       INT NOT NULL COMMENT '档案编号',
+  trigger_source ENUM('设备告警','家属呼叫','主动上报') NOT NULL COMMENT '触发来源',
+  event_level    ENUM('一般','紧急','危急') NOT NULL DEFAULT '一般' COMMENT '事件等级',
+  occur_time     DATETIME NOT NULL COMMENT '发生时间',
+  responder      VARCHAR(30) NULL COMMENT '响应人',
+  arrive_time    DATETIME NULL COMMENT '到场时间',
+  result         VARCHAR(200) NULL COMMENT '处置结果',
+  status         ENUM('待响应','已响应','已处置') NOT NULL DEFAULT '待响应' COMMENT '处置状态',
+  escalated      TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已自动升级(超时未响应)',
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_emergency_elder FOREIGN KEY (elder_id) REFERENCES elder(elder_id),
+  INDEX idx_emergency_status (status, event_level),
+  INDEX idx_emergency_elder  (elder_id, occur_time),
+  INDEX idx_emergency_occur  (occur_time)
+);
+
+-- ------------------------- 16 系统用户（登录与RBAC） -------------------------
 CREATE TABLE sys_user (
   user_id        INT PRIMARY KEY AUTO_INCREMENT,
   username       VARCHAR(30) NOT NULL UNIQUE COMMENT '登录名',

@@ -3,11 +3,15 @@
 -- =====================================================================
 USE elder_care;
 SET NAMES utf8mb4;
--- 先删触发器：种子里的历史派单（改派/取消）本就不满足派单校验，导入完由 04 脚本重建
+-- 先删触发器：种子里的历史派单（改派/取消）本就不满足派单校验，导入完由 04 脚本重建；
+-- 线4 的体征/应急触发器同样在种子阶段删除，以便直接写入带指定异常标记/等级的测试数据
 DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
+DROP TRIGGER IF EXISTS tr_vital_sign_before_insert;
+DROP TRIGGER IF EXISTS tr_emergency_before_update;
 SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE emergency;     TRUNCATE vital_sign;     TRUNCATE device;
 TRUNCATE quality_inspection;
 TRUNCATE subsidy_claim; TRUNCATE subsidy_policy; TRUNCATE schedule;
 TRUNCATE dispatch;     TRUNCATE service_order;  TRUNCATE service_item;
@@ -15,14 +19,30 @@ TRUNCATE care_plan;    TRUNCATE assessment;     TRUNCATE elder;
 TRUNCATE caregiver;    TRUNCATE community;      TRUNCATE sys_user;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- 社区
+-- 社区（20 条）
 INSERT INTO community (community_id, name, district, service_radius_km) VALUES
 (1,'幸福社区','海淀区',2.5),
 (2,'阳光社区','海淀区',3.0),
 (3,'梧桐社区','朝阳区',2.0),
-(4,'滨江社区','西城区',4.0);
+(4,'滨江社区','西城区',4.0),
+(5,'花园路社区','海淀区',2.5),
+(6,'安贞社区','朝阳区',3.0),
+(7,'月坛社区','西城区',3.5),
+(8,'东直门社区','东城区',2.0),
+(9,'和平里社区','东城区',3.0),
+(10,'建国门社区','东城区',2.5),
+(11,'丰台桥南社区','丰台区',3.5),
+(12,'方庄社区','丰台区',3.0),
+(13,'石景山古城社区','石景山区',3.0),
+(14,'鲁谷社区','石景山区',2.5),
+(15,'万寿路社区','海淀区',2.5),
+(16,'八里庄社区','朝阳区',2.5),
+(17,'甘家口社区','海淀区',3.0),
+(18,'天坛社区','东城区',2.0),
+(19,'永外社区','东城区',3.0),
+(20,'金顶街社区','石景山区',3.0);
 
--- 护工（8 号证书已过期、9 号离职，用于演示约束拦截）
+-- 护工（20 条；8 号证书已过期、9 号离职，用于演示约束拦截）
 INSERT INTO caregiver (caregiver_id, name, agency, cert_type, cert_level, cert_expire, service_regions, on_duty, rating) VALUES
 (1,'王秀兰','安康护理服务有限公司','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'幸福社区,阳光社区','在岗',4.9),
 (2,'李建国','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 1 YEAR),'幸福社区,滨江社区','在岗',4.7),
@@ -32,7 +52,18 @@ INSERT INTO caregiver (caregiver_id, name, agency, cert_type, cert_level, cert_e
 (6,'赵春梅','康源康复中心','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 1 YEAR),'幸福社区,梧桐社区','在岗',4.5),
 (7,'孙丽华','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 100 DAY),'阳光社区,滨江社区','在岗',4.4),
 (8,'周德海','乐龄养老服务社','养老护理员','四级', DATE_SUB(CURDATE(), INTERVAL 30 DAY),'幸福社区','在岗',4.2),
-(9,'吴美琴','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'阳光社区','离职',4.0);
+(9,'吴美琴','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'阳光社区','离职',4.0),
+(10,'马桂香','安康护理服务有限公司','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'花园路社区,万寿路社区','在岗',4.7),
+(11,'周志明','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 400 DAY),'甘家口社区,月坛社区','在岗',4.3),
+(12,'郑丽娟','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 3 YEAR),'安贞社区,八里庄社区','在岗',4.5),
+(13,'冯国庆','乐龄养老服务社','护士','护士', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'东直门社区,和平里社区','在岗',4.8),
+(14,'蒋秀珍','康源康复中心','康复师','中级', DATE_ADD(CURDATE(), INTERVAL 700 DAY),'建国门社区,天坛社区','在岗',4.9),
+(15,'韩丽','康源康复中心','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 1 YEAR),'丰台桥南社区,方庄社区','在岗',4.4),
+(16,'董文','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 300 DAY),'石景山古城社区,鲁谷社区','在岗',4.2),
+(17,'苏芳','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 600 DAY),'永外社区,金顶街社区','在岗',4.1),
+(18,'沈国梁','康源康复中心','康复师','初级', DATE_ADD(CURDATE(), INTERVAL 800 DAY),'花园路社区,八里庄社区','在岗',4.6),
+(19,'姚桂芝','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 150 DAY),'方庄社区,月坛社区','在岗',4.0),
+(20,'曹秀兰','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'和平里社区,天坛社区','在岗',4.5);
 
 -- 老人（14 位，11/12 号档案暂停服务）
 INSERT INTO elder (elder_id, name, id_card, birth_date, gender, address, community_id, guardian_name, guardian_phone, special_tag, status) VALUES
@@ -49,7 +80,13 @@ INSERT INTO elder (elder_id, name, id_card, birth_date, gender, address, communi
 (11,'郑国栋','110102194906115537','1949-06-11','男','滨江社区南里6号楼',4,'郑好','13800000011','失能','暂停服务'),
 (12,'冯秀云','110108195303286625','1953-03-28','女','幸福社区2号楼4单元202',1,'冯博','13800000012','高龄','暂停服务'),
 (13,'高崇礼','110105194410081130','1944-10-08','男','阳光社区1栋502',2,'高远','13800000013','高龄,独居','正常'),
-(14,'林淑仪','11010219570522442X','1957-05-22','女','滨江社区北里8号楼',4,'林峰','13800000014','','正常');
+(14,'林淑仪','11010219570522442X','1957-05-22','女','滨江社区北里8号楼',4,'林峰','13800000014','','正常'),
+(15,'徐桂兰','110108194903052245','1949-03-05','女','花园路社区6号楼3单元201',5,'徐强','13800000015','独居,高龄','正常'),
+(16,'钱守诚','110108195004162233','1950-04-16','男','万寿路社区12号楼1单元403',15,'钱芳','13800000016','高龄','正常'),
+(17,'孙玉珍','110101195112082467','1951-12-08','女','和平里社区3号楼601',9,'孙磊','13800000017','失能,高龄','正常'),
+(18,'李桂英','110106195308193345','1953-08-19','女','方庄社区5号楼2单元1102',12,'李娜','13800000018','低保','正常'),
+(19,'周凤兰','110107195411262348','1954-11-26','女','石景山古城社区2号楼404',13,'周杰','13800000019','独居','正常'),
+(20,'吴国华','110108195611302254','1956-11-30','男','甘家口社区7号楼2单元803',17,'吴静','13800000020','高龄','正常');
 
 -- 能力评估（4、13 号评估已过期 → 触发"暂停派单"演示）
 INSERT INTO assessment (assessment_id, elder_id, scale, score, ability_level, assessor, assess_date, expire_date) VALUES
@@ -65,7 +102,14 @@ INSERT INTO assessment (assessment_id, elder_id, scale, score, ability_level, as
 (10,9,'ADL',85,'能力完好','评估员小马', DATE_SUB(CURDATE(), INTERVAL 45 DAY),  DATE_ADD(CURDATE(), INTERVAL 320 DAY)),
 (11,10,'ADL',72,'中度失能','评估员小周', DATE_SUB(CURDATE(), INTERVAL 420 DAY), DATE_SUB(CURDATE(), INTERVAL 55 DAY)),
 (12,13,'ADL',55,'中度失能','评估员小马', DATE_SUB(CURDATE(), INTERVAL 380 DAY), DATE_SUB(CURDATE(), INTERVAL 15 DAY)),
-(13,14,'ADL',93,'能力完好','评估员小周', DATE_SUB(CURDATE(), INTERVAL 70 DAY),  DATE_ADD(CURDATE(), INTERVAL 295 DAY));
+(13,14,'ADL',93,'能力完好','评估员小周', DATE_SUB(CURDATE(), INTERVAL 70 DAY),  DATE_ADD(CURDATE(), INTERVAL 295 DAY)),
+(14,15,'ADL',88,'能力完好','评估员小马', DATE_SUB(CURDATE(), INTERVAL 60 DAY), DATE_ADD(CURDATE(), INTERVAL 305 DAY)),
+(15,16,'ADL',78,'轻度失能','评估员小周', DATE_SUB(CURDATE(), INTERVAL 50 DAY), DATE_ADD(CURDATE(), INTERVAL 315 DAY)),
+(16,17,'ADL',40,'重度失能','评估员小马', DATE_SUB(CURDATE(), INTERVAL 40 DAY), DATE_ADD(CURDATE(), INTERVAL 325 DAY)),
+(17,18,'ADL',82,'轻度失能','评估员小周', DATE_SUB(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 335 DAY)),
+(18,19,'ADL',90,'能力完好','评估员小马', DATE_SUB(CURDATE(), INTERVAL 25 DAY), DATE_ADD(CURDATE(), INTERVAL 340 DAY)),
+(19,20,'ADL',75,'轻度失能','评估员小周', DATE_SUB(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 345 DAY)),
+(20,5,'简易智能状态',70,'中度失能','评估员小马', DATE_SUB(CURDATE(), INTERVAL 45 DAY), DATE_ADD(CURDATE(), INTERVAL 320 DAY));
 
 -- 照护计划（6 号计划已手动暂停）
 INSERT INTO care_plan (plan_id, elder_id, package_name, frequency, start_date, end_date, caregiver_id, status) VALUES
@@ -77,7 +121,18 @@ INSERT INTO care_plan (plan_id, elder_id, package_name, frequency, start_date, e
 (6,7,'助餐关怀包','每日1餐送餐上门',     DATE_SUB(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 330 DAY),2,'暂停'),
 (7,8,'探访关爱包','每周2次电话+1次上门', DATE_SUB(CURDATE(), INTERVAL 70 DAY), DATE_ADD(CURDATE(), INTERVAL 290 DAY),6,'生效'),
 (8,2,'助浴助洁包','每周1次助浴',         DATE_SUB(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 340 DAY),1,'生效'),
-(9,10,'康复助行包','每周2次康复训练',     DATE_SUB(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 350 DAY),5,'生效');
+(9,10,'康复助行包','每周2次康复训练',     DATE_SUB(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 350 DAY),5,'生效'),
+(10,9,'探访关爱包','每周2次电话+1次上门', DATE_SUB(CURDATE(), INTERVAL 40 DAY), DATE_ADD(CURDATE(), INTERVAL 320 DAY),6,'生效'),
+(11,13,'助餐关怀包','每日1餐送餐上门',     DATE_SUB(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 330 DAY),NULL,'暂停'),
+(12,14,'助洁关怀包','每周1次保洁+2次探访', DATE_SUB(CURDATE(), INTERVAL 25 DAY), DATE_ADD(CURDATE(), INTERVAL 340 DAY),3,'生效'),
+(13,15,'助餐保障包','每日1餐送餐上门',     DATE_SUB(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 330 DAY),10,'生效'),
+(14,16,'康复助行包','每周2次康复训练',     DATE_SUB(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 340 DAY),14,'生效'),
+(15,17,'重度照护包','每日2次上门护理',     DATE_SUB(CURDATE(), INTERVAL 25 DAY), DATE_ADD(CURDATE(), INTERVAL 335 DAY),13,'生效'),
+(16,18,'助餐关怀包','每日1餐送餐上门',     DATE_SUB(CURDATE(), INTERVAL 15 DAY), DATE_ADD(CURDATE(), INTERVAL 345 DAY),15,'生效'),
+(17,19,'探访关爱包','每周2次电话+1次上门', DATE_SUB(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 350 DAY),16,'生效'),
+(18,20,'助浴助洁包','每周1次助浴',         DATE_SUB(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 330 DAY),11,'生效'),
+(19,2,'助洁关怀包','每周1次保洁',         DATE_SUB(CURDATE(), INTERVAL 400 DAY), DATE_SUB(CURDATE(), INTERVAL 100 DAY),1,'结束'),
+(20,3,'失能照护包','每日助浴',             DATE_SUB(CURDATE(), INTERVAL 380 DAY), DATE_SUB(CURDATE(), INTERVAL 80 DAY),4,'结束');
 
 -- 服务项目
 INSERT INTO service_item (item_id, name, type, unit, guide_price, std_hours, subsidizable) VALUES
@@ -88,7 +143,19 @@ INSERT INTO service_item (item_id, name, type, unit, guide_price, std_hours, sub
 (5,'康复训练指导','康复护理','次',90.00,1.0,1),
 (6,'失能老人翻身护理','康复护理','次',50.00,0.5,1),
 (7,'代购代办','家政','次',25.00,1.0,0),
-(8,'心理疏导陪聊','家政','小时',35.00,1.0,0);
+(8,'心理疏导陪聊','家政','小时',35.00,1.0,0),
+(9,'夜间陪护服务','康复护理','小时',70.00,8.0,1),
+(10,'上门理发','家政','次',30.00,0.5,1),
+(11,'营养助餐套餐','助餐','次',25.00,1.0,1),
+(12,'失禁护理','康复护理','次',55.00,1.0,1),
+(13,'陪诊代取药','陪诊','次',40.00,1.5,1),
+(14,'擦浴护理','助浴','次',50.00,1.0,1),
+(15,'康复理疗','康复护理','次',120.00,1.5,1),
+(16,'情感陪伴','家政','小时',35.00,1.0,0),
+(17,'换季整理收纳','家政','次',45.00,2.0,0),
+(18,'用药提醒','康复护理','次',15.00,0.5,0),
+(19,'助行训练','康复护理','次',60.00,1.0,1),
+(20,'节日聚餐配送','助餐','次',35.00,1.0,0);
 
 -- 订单（22 条：7 条已完成（上月，供补贴核算）、4 条待派单、5 条已派单、2 条服务中、2 条已取消、2 条今天待服务）
 INSERT INTO service_order (order_id, elder_id, item_id, appoint_time, address, channel, amount, status, created_at) VALUES
@@ -132,7 +199,11 @@ INSERT INTO dispatch (dispatch_id, order_id, caregiver_id, dispatch_time, arrive
 (13,17,4, DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_SUB(NOW(), INTERVAL 2 HOUR),NULL,NULL,0,1,NULL),
 (14,18,6, DATE_SUB(NOW(), INTERVAL 4 HOUR), DATE_SUB(NOW(), INTERVAL 1 HOUR),NULL,NULL,0,1,NULL),
 (15,9,9, DATE_SUB(NOW(), INTERVAL 85 MINUTE), NULL,NULL,NULL,0,0,'原护工离职，改派'),
-(16,19,3, DATE_SUB(NOW(), INTERVAL 5 DAY), NULL,NULL,NULL,0,0,'家属临时取消订单');
+(16,19,3, DATE_SUB(NOW(), INTERVAL 5 DAY), NULL,NULL,NULL,0,0,'家属临时取消订单'),
+(17,2,4, DATE_SUB(NOW(), INTERVAL 27 DAY), NULL,NULL,NULL,0,0,'护工临时调整，改派'),
+(18,5,2, DATE_SUB(NOW(), INTERVAL 21 DAY), NULL,NULL,NULL,0,0,'机构内部调配'),
+(19,15,5, DATE_SUB(NOW(), INTERVAL 20 HOUR), NULL,NULL,NULL,0,0,'护工请假，改派'),
+(20,14,2, DATE_SUB(NOW(), INTERVAL 22 HOUR), NULL,NULL,NULL,0,0,'班次冲突，改派');
 
 -- 排班：每位在岗护工未来 7 天，上午/下午各一班
 INSERT INTO schedule (caregiver_id, work_date, shift, capacity, booked, status)
@@ -152,7 +223,21 @@ INSERT INTO subsidy_policy (policy_id, district, target_type, item_id, standard,
 (3,'朝阳区','高龄',3,50.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
 (4,'西城区','失能',6,30.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
 (5,'西城区','高龄',1,10.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
-(6,'海淀区','高龄',4,100.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR));
+(6,'海淀区','高龄',4,100.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(7,'朝阳区','低保',1,15.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(8,'东城区','失能',2,40.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(9,'西城区','独居',4,80.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(10,'海淀区','独居',5,60.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(11,'丰台区','低保',1,12.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(12,'石景山区','高龄',3,45.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(13,'东城区','高龄',4,90.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(14,'朝阳区','失能',6,30.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(15,'海淀区','失能',2,38.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(16,'西城区','低保',1,14.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(17,'丰台区','失能',6,28.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(18,'石景山区','失能',2,36.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(19,'东城区','低保',1,13.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
+(20,'朝阳区','高龄',3,48.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR));
 
 -- 补贴申报（20 条，覆盖 3 个历史账期；审核状态与拨付状态分离）
 INSERT INTO subsidy_claim
@@ -222,4 +307,98 @@ INSERT INTO sys_user (username, password_hash, salt, real_name, role, elder_id, 
 ('jiashu2', SHA2(CONCAT('s@lt!jiashu2', '123456'),256), 's@lt!jiashu2', '李强(李淑珍之子)', '家属', 3, NULL),
 ('hugong',  SHA2(CONCAT('s@lt!hugong',  '123456'),256), 's@lt!hugong',  '王秀兰', '护工', NULL, 1),
 ('jigou',   SHA2(CONCAT('s@lt!jigou',   '123456'),256), 's@lt!jigou',   '安康护理负责人', '机构负责人', NULL, NULL),
-('jianguan',SHA2(CONCAT('s@lt!jianguan','123456'),256), 's@lt!jianguan','街道张监管', '监管人员', NULL, NULL);
+('jianguan',SHA2(CONCAT('s@lt!jianguan','123456'),256), 's@lt!jianguan','街道张监管', '监管人员', NULL, NULL),
+('jiashu03',SHA2(CONCAT('s@lt!js03','123456'),256),'s@lt!js03','王芳(王守义之女)','家属',2,NULL),
+('jiashu04',SHA2(CONCAT('s@lt!js04','123456'),256),'s@lt!js04','张莉(张德福之女)','家属',4,NULL),
+('jiashu05',SHA2(CONCAT('s@lt!js05','123456'),256),'s@lt!js05','刘洋(刘玉梅之子)','家属',5,NULL),
+('jiashu06',SHA2(CONCAT('s@lt!js06','123456'),256),'s@lt!js06','杨帆(杨振邦之子)','家属',6,NULL),
+('jiashu07',SHA2(CONCAT('s@lt!js07','123456'),256),'s@lt!js07','赵刚(赵凤兰之子)','家属',7,NULL),
+('jiashu08',SHA2(CONCAT('s@lt!js08','123456'),256),'s@lt!js08','孙军(孙桂英之子)','家属',8,NULL),
+('jiashu09',SHA2(CONCAT('s@lt!js09','123456'),256),'s@lt!js09','周雪(周连生之女)','家属',9,NULL),
+('jiashu10',SHA2(CONCAT('s@lt!js10','123456'),256),'s@lt!js10','吴斌(吴桂芳之子)','家属',10,NULL),
+('hugong2',SHA2(CONCAT('s@lt!hg2','123456'),256),'s@lt!hg2','李建国','护工',NULL,2),
+('hugong3',SHA2(CONCAT('s@lt!hg3','123456'),256),'s@lt!hg3','张桂英','护工',NULL,3),
+('hugong4',SHA2(CONCAT('s@lt!hg4','123456'),256),'s@lt!hg4','刘晓芬','护工',NULL,4),
+('hugong5',SHA2(CONCAT('s@lt!hg5','123456'),256),'s@lt!hg5','陈志强','护工',NULL,5),
+('hugong6',SHA2(CONCAT('s@lt!hg6','123456'),256),'s@lt!hg6','赵春梅','护工',NULL,6),
+('jianguan2',SHA2(CONCAT('s@lt!jg2','123456'),256),'s@lt!jg2','区级王监管','监管人员',NULL,NULL);
+
+-- =====================================================================
+-- 线4 健康监测与应急响应 测试数据（设备 20 / 体征 25 / 应急事件 22）
+-- =====================================================================
+
+-- 监测设备（20 条：18 条绑定 + 2 条解绑，解绑后保留原归属与时间）
+INSERT INTO device (device_id, elder_id, device_type, install_location, bind_time, unbind_time, status) VALUES
+(1, 1,'血压计','卧室床头',  DATE_SUB(NOW(), INTERVAL 100 DAY), NULL, '绑定'),
+(2, 1,'一键呼叫','床边随身',  DATE_SUB(NOW(), INTERVAL 100 DAY), NULL, '绑定'),
+(3, 3,'心电贴','胸前贴片',  DATE_SUB(NOW(), INTERVAL 80 DAY),  NULL, '绑定'),
+(4, 5,'跌倒雷达','客厅顶部',  DATE_SUB(NOW(), INTERVAL 70 DAY),  NULL, '绑定'),
+(5, 2,'血压计','卧室床头',  DATE_SUB(NOW(), INTERVAL 90 DAY),  NULL, '绑定'),
+(6, 4,'一键呼叫','床头',      DATE_SUB(NOW(), INTERVAL 60 DAY),  NULL, '绑定'),
+(7, 6,'心电贴','胸前贴片',  DATE_SUB(NOW(), INTERVAL 50 DAY),  NULL, '绑定'),
+(8, 8,'跌倒雷达','卫生间顶部', DATE_SUB(NOW(), INTERVAL 65 DAY),  NULL, '绑定'),
+(9, 7,'血压计','客厅',      DATE_SUB(NOW(), INTERVAL 55 DAY),  NULL, '绑定'),
+(10,10,'跌倒雷达','卧室顶部',  DATE_SUB(NOW(), INTERVAL 45 DAY),  NULL, '绑定'),
+(11,13,'一键呼叫','随身',      DATE_SUB(NOW(), INTERVAL 40 DAY),  NULL, '绑定'),
+(12,17,'心电贴','胸前贴片',  DATE_SUB(NOW(), INTERVAL 35 DAY),  NULL, '绑定'),
+(13,15,'血压计','卧室',      DATE_SUB(NOW(), INTERVAL 30 DAY),  NULL, '绑定'),
+(14,16,'一键呼叫','床头',      DATE_SUB(NOW(), INTERVAL 28 DAY),  NULL, '绑定'),
+(15,18,'血压计','卧室',      DATE_SUB(NOW(), INTERVAL 25 DAY),  NULL, '绑定'),
+(16,19,'跌倒雷达','客厅',      DATE_SUB(NOW(), INTERVAL 20 DAY),  NULL, '绑定'),
+(17,14,'血压计','卧室',      DATE_SUB(NOW(), INTERVAL 120 DAY), DATE_SUB(NOW(), INTERVAL 20 DAY), '解绑'),
+(18,12,'一键呼叫','床头',      DATE_SUB(NOW(), INTERVAL 130 DAY), DATE_SUB(NOW(), INTERVAL 30 DAY), '解绑'),
+(19,20,'心电贴','胸前贴片',  DATE_SUB(NOW(), INTERVAL 15 DAY),  NULL, '绑定'),
+(20, 9,'跌倒雷达','客厅顶部',  DATE_SUB(NOW(), INTERVAL 12 DAY),  NULL, '绑定');
+
+-- 体征数据（25 条；异常标记为种子直接指定，运行期由 tr_vital_sign_before_insert 自动判定）
+INSERT INTO vital_sign (vital_id, device_id, elder_id, collect_time, metric_type, metric_value, abnormal_flag, data_source) VALUES
+(1, 1,1,  DATE_SUB(NOW(), INTERVAL 2 HOUR), '收缩压', 128, '正常',  '自动采集'),
+(2, 1,1,  DATE_SUB(NOW(), INTERVAL 2 HOUR), '舒张压', 82,  '正常',  '自动采集'),
+(3, 1,1,  DATE_SUB(NOW(), INTERVAL 1 HOUR), '收缩压', 168, '异常',  '自动采集'),
+(4, 1,1,  DATE_SUB(NOW(), INTERVAL 1 HOUR), '舒张压', 96,  '待确认','自动采集'),
+(5, 3,3,  DATE_SUB(NOW(), INTERVAL 3 HOUR), '心率',   96,  '正常',  '自动采集'),
+(6, 3,3,  DATE_SUB(NOW(), INTERVAL 3 HOUR), '血氧',   92,  '待确认','自动采集'),
+(7, 4,5,  DATE_SUB(NOW(), INTERVAL 30 MINUTE),'心率', 55,  '待确认','自动采集'),
+(8, 2,1,  DATE_SUB(NOW(), INTERVAL 10 MINUTE),'体温', 38.5,'待确认','自动采集'),
+(9, 5,2,  DATE_SUB(NOW(), INTERVAL 4 HOUR), '收缩压', 135, '正常',  '自动采集'),
+(10,6,4,  DATE_SUB(NOW(), INTERVAL 5 HOUR), '血氧',   97,  '正常',  '自动采集'),
+(11,7,6,  DATE_SUB(NOW(), INTERVAL 6 HOUR), '心率',   110, '待确认','自动采集'),
+(12,8,8,  DATE_SUB(NOW(), INTERVAL 2 HOUR), '血氧',   94,  '待确认','自动采集'),
+(13,9,7,  DATE_SUB(NOW(), INTERVAL 7 HOUR), '血糖',   5.2, '正常',  '人工录入'),
+(14,10,10,DATE_SUB(NOW(), INTERVAL 8 HOUR), '血糖',   8.5, '待确认','自动采集'),
+(15,11,13,DATE_SUB(NOW(), INTERVAL 1 HOUR), '心率',   88,  '正常',  '自动采集'),
+(16,12,17,DATE_SUB(NOW(), INTERVAL 30 MINUTE),'收缩压',155,'待确认','自动采集'),
+(17,13,15,DATE_SUB(NOW(), INTERVAL 2 HOUR), '体温',   36.8,'正常',  '自动采集'),
+(18,14,16,DATE_SUB(NOW(), INTERVAL 3 HOUR), '收缩压', 120, '正常',  '自动采集'),
+(19,15,18,DATE_SUB(NOW(), INTERVAL 4 HOUR), '舒张压', 88,  '正常',  '自动采集'),
+(20,16,19,DATE_SUB(NOW(), INTERVAL 5 HOUR), '血氧',   98,  '正常',  '自动采集'),
+(21,3,3,  DATE_SUB(NOW(), INTERVAL 1 DAY),  '心率',   78,  '正常',  '自动采集'),
+(22,1,1,  DATE_SUB(NOW(), INTERVAL 1 DAY),  '收缩压', 142, '异常',  '自动采集'),
+(23,17,14,DATE_SUB(NOW(), INTERVAL 2 DAY),  '收缩压', 130, '正常',  '自动采集'),
+(24,18,12,DATE_SUB(NOW(), INTERVAL 3 DAY),  '血氧',   96,  '正常',  '自动采集'),
+(25,2,1,  DATE_SUB(NOW(), INTERVAL 1 DAY),  '体温',   39.1,'异常',  '自动采集');
+
+-- 应急事件（22 条；待响应/已响应/已处置闭环，等级对应响应时限 60/30/15 分钟）
+INSERT INTO emergency (event_id, elder_id, trigger_source, event_level, occur_time, responder, arrive_time, result, status, escalated) VALUES
+(1, 3,'设备告警','紧急', DATE_SUB(NOW(), INTERVAL 10 MINUTE), NULL, NULL, NULL, '待响应', 0),
+(2, 1,'家属呼叫','一般', DATE_SUB(NOW(), INTERVAL 70 MINUTE), NULL, NULL, NULL, '待响应', 0),
+(3, 5,'设备告警','危急', DATE_SUB(NOW(), INTERVAL 5 MINUTE),  NULL, NULL, NULL, '待响应', 0),
+(4, 6,'主动上报','一般', DATE_SUB(NOW(), INTERVAL 40 MINUTE), NULL, NULL, NULL, '待响应', 0),
+(5, 8,'设备告警','一般', DATE_SUB(NOW(), INTERVAL 90 MINUTE), NULL, NULL, NULL, '待响应', 0),
+(6,17,'设备告警','紧急', DATE_SUB(NOW(), INTERVAL 45 MINUTE), NULL, NULL, NULL, '待响应', 0),
+(7,13,'家属呼叫','一般', DATE_SUB(NOW(), INTERVAL 20 MINUTE), NULL, NULL, NULL, '待响应', 0),
+(8,19,'设备告警','危急', DATE_SUB(NOW(), INTERVAL 8 MINUTE),  NULL, NULL, NULL, '待响应', 0),
+(9,20,'主动上报','一般', DATE_SUB(NOW(), INTERVAL 15 MINUTE), NULL, NULL, NULL, '待响应', 0),
+(10,4,'主动上报','紧急', DATE_SUB(NOW(), INTERVAL 2 DAY), '社区李干事', DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 15 MINUTE, NULL, '已响应', 0),
+(11,2,'设备告警','一般', DATE_SUB(NOW(), INTERVAL 3 DAY), '社区李干事', DATE_SUB(NOW(), INTERVAL 3 DAY) + INTERVAL 20 MINUTE, '血压偏高，已通知家属服药', '已处置', 0),
+(12,7,'家属呼叫','一般', DATE_SUB(NOW(), INTERVAL 4 DAY), '护工王秀兰', DATE_SUB(NOW(), INTERVAL 4 DAY) + INTERVAL 25 MINUTE, '代取药并上门探望', '已处置', 0),
+(13,10,'设备告警','紧急', DATE_SUB(NOW(), INTERVAL 1 DAY), '护工刘晓芬', DATE_SUB(NOW(), INTERVAL 1 DAY) + INTERVAL 12 MINUTE, NULL, '已响应', 0),
+(14,15,'主动上报','一般', DATE_SUB(NOW(), INTERVAL 1 DAY), '社区李干事', DATE_SUB(NOW(), INTERVAL 1 DAY) + INTERVAL 30 MINUTE, '轻微不适，观察无碍', '已处置', 0),
+(15,1,'设备告警','危急', DATE_SUB(NOW(), INTERVAL 6 DAY), '护工刘晓芬', DATE_SUB(NOW(), INTERVAL 6 DAY) + INTERVAL 10 MINUTE, '紧急送医，已脱险', '已处置', 0),
+(16,6,'主动上报','一般', DATE_SUB(NOW(), INTERVAL 5 DAY), '护工张桂英', DATE_SUB(NOW(), INTERVAL 5 DAY) + INTERVAL 18 MINUTE, '协助翻身护理完成', '已处置', 0),
+(17,12,'家属呼叫','一般', DATE_SUB(NOW(), INTERVAL 7 DAY), '社区李干事', DATE_SUB(NOW(), INTERVAL 7 DAY) + INTERVAL 22 MINUTE, '安抚并转介社区', '已处置', 0),
+(18,16,'设备告警','一般', DATE_SUB(NOW(), INTERVAL 2 DAY), '护工郑丽娟', DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 15 MINUTE, '血压正常，误报解除', '已处置', 0),
+(19,9,'主动上报','紧急', DATE_SUB(NOW(), INTERVAL 3 DAY), '护工冯国庆', DATE_SUB(NOW(), INTERVAL 3 DAY) + INTERVAL 14 MINUTE, '突发不适，陪同就医', '已处置', 0),
+(20,14,'设备告警','一般', DATE_SUB(NOW(), INTERVAL 8 DAY), '护工刘晓芬', DATE_SUB(NOW(), INTERVAL 8 DAY) + INTERVAL 20 MINUTE, '设备故障，已更换', '已处置', 0),
+(21,3,'设备告警','紧急', DATE_SUB(NOW(), INTERVAL 100 MINUTE), NULL, NULL, NULL, '待响应', 1),
+(22,5,'家属呼叫','危急', DATE_SUB(NOW(), INTERVAL 20 MINUTE), NULL, NULL, NULL, '待响应', 1);
