@@ -1,0 +1,14 @@
+[
+  {"name":"孙世昌","id_card":"110108194104230530","birth_date":"1941-04-23","gender":"男","address":"幸福社区7号楼2单元401","community_id":1,"guardian_name":"孙志远","guardian_phone":"15810880001","special_tag":["独居","高龄"]},
+  {"name":"何秀英","id_card":"110108194311020464","birth_date":"1943-11-02","gender":"女","address":"幸福社区6号楼1单元203","community_id":1,"guardian_name":"何建军","guardian_phone":"15810880002","special_tag":["高龄"]},
+  {"name":"马长顺","id_card":"110108194607182710","birth_date":"1946-07-18","gender":"男","address":"阳光社区9栋704","community_id":2,"guardian_name":"马丽","guardian_phone":"15810880003","special_tag":["失能"]},
+  {"name":"宋丽华","id_card":"110108194902140126","birth_date":"1949-02-14","gender":"女","address":"阳光社区4栋1103","community_id":2,"guardian_name":"宋涛","guardian_phone":"15810880004","special_tag":[]},
+  {"name":"田丰年","id_card":"110105195208095332","birth_date":"1952-08-09","gender":"男","address":"梧桐社区丙区3号院","community_id":3,"guardian_name":"田雨欣","guardian_phone":"15810880005","special_tag":["低保","独居"]},
+  {"name":"白如雪","id_card":"110105195505300646","birth_date":"1955-05-30","gender":"女","address":"梧桐社区丙区5号院","community_id":3,"guardian_name":"白雪松","guardian_phone":"15810880006"},
+  {"name":"石开山","id_card":"110102193812051258","birth_date":"1938-12-05","gender":"男","address":"滨江社区新里2号楼","community_id":4,"guardian_name":"石磊","guardian_phone":"15810880007","special_tag":["高龄","失能","低保"]},
+  {"name":"顾婉珍","id_card":"110102194006272368","birth_date":"1940-06-27","gender":"女","address":"滨江社区新里5号楼","community_id":4,"guardian_name":"顾春生","guardian_phone":"15810880008","special_tag":["独居","高龄"]},
+  {"name":"范同庆","id_card":"110108195801161571","birth_date":"1958-01-16","gender":"男","address":"幸福社区11号楼3单元602","community_id":1,"guardian_name":"范晓东","guardian_phone":"15810880009","special_tag":[]},
+  {"name":"蒋素芳","id_card":"110108196110080080","birth_date":"1961-10-08","gender":"女","address":"阳光社区7栋305","community_id":2,"guardian_name":"蒋伟","guardian_phone":"15810880010","special_tag":[]},
+  {"name":"雷正明","id_card":"110105195403250190","birth_date":"1954-03-25","gender":"男","address":"梧桐社区丁区1号院","community_id":3,"guardian_name":"雷婷","guardian_phone":"15810880011","special_tag":["低保"]},
+  {"name":"侯桂兰","id_card":"110102194709091205","birth_date":"1947-09-09","gender":"女","address":"滨江社区南里9号楼","community_id":4,"guardian_name":"侯亮","guardian_phone":"15810880012","special_tag":["高龄"]}
+]

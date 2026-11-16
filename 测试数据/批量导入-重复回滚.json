@@ -1,0 +1,7 @@
+[
+  {"name":"崔洪波","id_card":"110108195003123319","birth_date":"1950-03-12","gender":"男","address":"幸福社区8号楼2单元101","community_id":1,"guardian_name":"崔建平","guardian_phone":"15810880101","special_tag":["独居"]},
+  {"name":"潘玉洁","id_card":"110108195307214025","birth_date":"1953-07-21","gender":"女","address":"阳光社区3栋806","community_id":2,"guardian_name":"潘婷婷","guardian_phone":"15810880102","special_tag":["高龄"]},
+  {"name":"严家兴","id_card":"110105194805061638","birth_date":"1948-05-06","gender":"男","address":"梧桐社区乙区6号院","community_id":3,"guardian_name":"严明","guardian_phone":"15810880103","special_tag":["失能","高龄"]},
+  {"name":"邵佩琳","id_card":"11010219560917274X","birth_date":"1956-09-17","gender":"女","address":"滨江社区西里7号楼","community_id":4,"guardian_name":"邵强","guardian_phone":"15810880104","special_tag":["低保"]},
+  {"name":"崔洪波","id_card":"110108195003123319","birth_date":"1950-03-12","gender":"男","address":"幸福社区8号楼2单元101","community_id":1,"guardian_name":"崔建平","guardian_phone":"15810880101","special_tag":["独居"]}
+]
