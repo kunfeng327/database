@@ -36,18 +36,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src/backend"))
 
 from db import DB_CONFIG, transaction
-from line1_all import (
+from db_diagnostics import database_error_message
+from demo_family_accounts import create_missing_family_accounts
+from demo_server import URL, run_demo
+from elder_dao import ElderDAO, ability_level
+from errors import BizError
+from notification_dao import NotificationDAO
+from prepare_database import (
     BASE_TABLES,
     SQL_DIR,
-    BizError,
-    ElderDAO,
-    NotificationDAO,
-    URL,
-    ability_level,
-    create_missing_family_accounts,
-    database_error_message,
     prepare_database,
-    run_demo,
     schema_objects,
     sql_statements,
 )
@@ -760,7 +758,7 @@ class DemoServerTests(unittest.TestCase):
         for error in (OSError("address in use"), SystemExit(1)):
             with (
                 self.subTest(error=type(error)),
-                patch("line1_all.threading.Timer") as timer,
+                patch("demo_server.threading.Timer") as timer,
                 patch("builtins.print"),
             ):
                 factory = MagicMock(side_effect=error)
@@ -778,7 +776,7 @@ class DemoServerTests(unittest.TestCase):
             events.append("bind")
             return server
 
-        with patch("line1_all.threading.Timer") as timer, patch("builtins.print"):
+        with patch("demo_server.threading.Timer") as timer, patch("builtins.print"):
             timer.return_value.start.side_effect = lambda: events.append("browser")
             server.serve_forever.side_effect = lambda: events.append("serve")
             self.assertEqual(run_demo(app, open_browser=True, server_factory=bind), 0)
@@ -790,7 +788,7 @@ class DemoServerTests(unittest.TestCase):
     def test_manual_start_and_interrupt_close_server_without_browser(self):
         server = MagicMock()
         server.serve_forever.side_effect = KeyboardInterrupt
-        with patch("line1_all.threading.Timer") as timer, patch("builtins.print"):
+        with patch("demo_server.threading.Timer") as timer, patch("builtins.print"):
             self.assertEqual(
                 run_demo(object(), server_factory=MagicMock(return_value=server)), 0
             )
@@ -1144,7 +1142,7 @@ class MySQLTests(unittest.TestCase):
         return data
 
     def test_startup_upgrades_legacy_schema_and_preserves_archives(self):
-        from line1_all import prepare_database
+        from prepare_database import prepare_database
 
         before = self.sql("SELECT elder_id,name,id_card FROM elder ORDER BY elder_id")
         self.sql("DROP TABLE care_plan_item")

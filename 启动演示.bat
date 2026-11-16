@@ -44,7 +44,7 @@ if /i "%RESET%"=="y" (
 )
 
 echo 正在检查数据库，必要时升级结构并保留已有数据...
-python src\backend\line1_all.py --prepare
+python src\backend\prepare_database.py
 if errorlevel 1 (
   echo [错误] 数据库尚未就绪，已停止启动。请根据上方提示处理后重试。
   pause & exit /b 1
