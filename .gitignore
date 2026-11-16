@@ -20,3 +20,4 @@ src/backend/config_local.py
 
 # Python 运行产物
 *.log
+tmp/
