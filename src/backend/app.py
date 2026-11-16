@@ -22,10 +22,12 @@ import pymysql
 from flask import Flask, jsonify, request, send_file, session
 
 from db import DB_CONFIG
-from errors import BizError
-from db_diagnostics import database_error_message
-from elder_dao import ElderDAO
-from notification_dao import NotificationDAO
+from line1_all import (
+    BizError,
+    ElderDAO,
+    NotificationDAO,
+    database_error_message,
+)
 from line5_dao import (
     Line5Error,
     complete_inspection,
@@ -833,6 +835,6 @@ def pause_expired_plans():
 
 if __name__ == "__main__":
     import sys
-    from demo_server import run_demo
+    from line1_all import run_demo
 
     raise SystemExit(run_demo(app, open_browser="--open-browser" in sys.argv))
