@@ -20,8 +20,8 @@ class StartupTests(unittest.TestCase):
     def connection(self, legacy=False, partial=False, elders=24, partial_identity=False):
         conn = MagicMock()
         cur = conn.cursor.return_value.__enter__.return_value
-        views = schema_objects((SQL_DIR / "03_views.sql").read_text())
-        objects = schema_objects((SQL_DIR / "04_procs_triggers.sql").read_text())
+        views = schema_objects((SQL_DIR / "03_views.sql").read_text(encoding="utf-8"))
+        objects = schema_objects((SQL_DIR / "04_procs_triggers.sql").read_text(encoding="utf-8"))
         indexes = [
             dict(table_name="care_plan", name="idx_plan_elder", column_name=c)
             for c in (
@@ -157,7 +157,7 @@ SELECT 1;
         self.assertEqual(statements[2], "SELECT 1")
 
     def test_actual_sql_scripts_have_expected_objects(self):
-        source = (SQL_DIR / "04_procs_triggers.sql").read_text()
+        source = (SQL_DIR / "04_procs_triggers.sql").read_text(encoding="utf-8")
         statements = list(sql_statements(source))
         self.assertEqual(sum(s.startswith("CREATE PROCEDURE") for s in statements), 2)
         self.assertEqual(sum(s.startswith("CREATE TRIGGER") for s in statements), 3)
