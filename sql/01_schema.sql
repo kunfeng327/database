@@ -145,6 +145,24 @@ CREATE TABLE schedule (
   INDEX idx_sched_date (work_date, status)
 );
 
+-- ------------------------- 9.1 工时记录（线3补充） -------------------------
+CREATE TABLE work_hour (
+  work_hour_id     INT PRIMARY KEY AUTO_INCREMENT COMMENT '工时编号',
+  caregiver_id     INT NOT NULL COMMENT '护工编号',
+  dispatch_id      INT NOT NULL UNIQUE COMMENT '派单编号(一笔派单对应一条工时)',
+  checkin_time     DATETIME NOT NULL COMMENT '签到时间',
+  checkout_time    DATETIME NULL COMMENT '签退时间',
+  checkin_location VARCHAR(100) NOT NULL COMMENT '签到位置(经纬度或地址描述)',
+  fence_result     ENUM('通过','围栏外异常') NOT NULL DEFAULT '通过' COMMENT '电子围栏校验结果',
+  valid_hours      DECIMAL(4,2) NOT NULL DEFAULT 0.00 COMMENT '有效工时(小时)',
+  review_status    ENUM('自动认定','待人工复核','复核通过','复核驳回') NOT NULL DEFAULT '自动认定' COMMENT '工时认定状态',
+  CONSTRAINT fk_wh_caregiver FOREIGN KEY (caregiver_id) REFERENCES caregiver(caregiver_id),
+  CONSTRAINT fk_wh_dispatch  FOREIGN KEY (dispatch_id)  REFERENCES dispatch(dispatch_id),
+  CONSTRAINT chk_wh_time     CHECK (checkout_time IS NULL OR checkout_time >= checkin_time),
+  CONSTRAINT chk_wh_hours    CHECK (valid_hours >= 0),
+  INDEX idx_wh_caregiver_time (caregiver_id, checkin_time),
+  INDEX idx_wh_review (review_status, fence_result)
+);
 -- ------------------------- 10 补贴政策 -------------------------
 CREATE TABLE subsidy_policy (
   policy_id      INT PRIMARY KEY AUTO_INCREMENT COMMENT '政策编号',

@@ -7,12 +7,14 @@ SET NAMES utf8mb4;
 DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
+DROP TRIGGER IF EXISTS tr_work_hour_before_update;
+DROP TRIGGER IF EXISTS tr_work_hour_before_insert;
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE quality_inspection;
 TRUNCATE subsidy_claim; TRUNCATE subsidy_policy; TRUNCATE schedule;
 TRUNCATE dispatch;     TRUNCATE service_order;  TRUNCATE service_item;
 TRUNCATE care_plan;    TRUNCATE assessment;     TRUNCATE elder;
-TRUNCATE caregiver;    TRUNCATE community;      TRUNCATE sys_user;
+TRUNCATE caregiver;    TRUNCATE community;      TRUNCATE sys_user; TRUNCATE work_hour;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 社区
@@ -33,6 +35,19 @@ INSERT INTO caregiver (caregiver_id, name, agency, cert_type, cert_level, cert_e
 (7,'孙丽华','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 100 DAY),'阳光社区,滨江社区','在岗',4.4),
 (8,'周德海','乐龄养老服务社','养老护理员','四级', DATE_SUB(CURDATE(), INTERVAL 30 DAY),'幸福社区','在岗',4.2),
 (9,'吴美琴','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'阳光社区','离职',4.0);
+
+INSERT INTO caregiver (caregiver_id, name, agency, cert_type, cert_level, cert_expire, service_regions, on_duty, rating) VALUES
+(10,'马桂兰','安康护理服务有限公司','养老护理员','三级', DATE_ADD(CURDATE(), INTERVAL 12 DAY),'幸福社区,阳光社区','在岗',4.8),
+(11,'林建军','康源康复中心','康复师','中级', DATE_ADD(CURDATE(), INTERVAL 25 DAY),'梧桐社区,滨江社区','在岗',4.7),
+(12,'何秀英','乐龄养老服务社','家政服务员','高级', DATE_ADD(CURDATE(), INTERVAL 5 DAY),'幸福社区,梧桐社区','在岗',4.6),
+(13,'高明远','安康护理服务有限公司','护士','主管护师', DATE_ADD(CURDATE(), INTERVAL 400 DAY),'海淀片区,幸福社区','在岗',4.9),
+(14,'徐丽娜','康源康复中心','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 600 DAY),'阳光社区,滨江社区','在岗',4.5),
+(15,'宋志刚','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 320 DAY),'梧桐社区','在岗',4.3),
+(16,'唐玉珍','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 180 DAY),'幸福社区,阳光社区','在岗',4.6),
+(17,'董文博','康源康复中心','康复师','初级', DATE_ADD(CURDATE(), INTERVAL 720 DAY),'滨江社区','在岗',4.7),
+(18,'韩梅梅','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 210 DAY),'阳光社区,梧桐社区','在岗',4.4),
+(19,'曹建华','安康护理服务有限公司','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 510 DAY),'幸福社区','在岗',4.8),
+(20,'沈翠花','康源康复中心','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 150 DAY),'滨江社区,幸福社区','离职',4.1);
 
 -- 老人（14 位，11/12 号档案暂停服务）
 INSERT INTO elder (elder_id, name, id_card, birth_date, gender, address, community_id, guardian_name, guardian_phone, special_tag, status) VALUES
@@ -115,6 +130,18 @@ INSERT INTO service_order (order_id, elder_id, item_id, appoint_time, address, c
 (21,14,8, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 1 DAY), INTERVAL 10 HOUR),'滨江社区北里8号楼','家属端',35.00,'待派单', DATE_SUB(NOW(), INTERVAL 10 MINUTE)),
 (22,9,7, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 2 DAY), INTERVAL 9 HOUR),'阳光社区6栋803','电话',25.00,'待派单', DATE_SUB(NOW(), INTERVAL 5 MINUTE));
 
+INSERT INTO service_order (order_id, elder_id, item_id, appoint_time, address, channel, amount, status, created_at) VALUES
+(23, 1, 1, DATE_SUB(NOW(), INTERVAL 14 DAY), '幸福社区3号楼2单元101', '家属端',     20.00, '已完成', DATE_SUB(NOW(), INTERVAL 16 DAY)),
+(24, 2, 4, DATE_SUB(NOW(), INTERVAL 13 DAY), '幸福社区5号楼1单元302', '电话',       80.00, '已完成', DATE_SUB(NOW(), INTERVAL 15 DAY)),
+(25, 3, 2, DATE_SUB(NOW(), INTERVAL 12 DAY), '阳光社区8栋601',       '社区代下单', 60.00, '已完成', DATE_SUB(NOW(), INTERVAL 14 DAY)),
+(26, 5, 5, DATE_SUB(NOW(), INTERVAL 11 DAY), '梧桐社区甲区9号院',     '家属端',     90.00, '已完成', DATE_SUB(NOW(), INTERVAL 13 DAY)),
+(27, 6, 6, DATE_SUB(NOW(), INTERVAL 10 DAY), '滨江社区东里11号楼',   '社区代下单', 50.00, '已完成', DATE_SUB(NOW(), INTERVAL 12 DAY)),
+(28, 7, 3, DATE_SUB(NOW(), INTERVAL 9 DAY),  '滨江社区西里4号楼',     '家属端',     80.00, '已完成', DATE_SUB(NOW(), INTERVAL 11 DAY)),
+(29, 8, 1, DATE_SUB(NOW(), INTERVAL 8 DAY),  '幸福社区9号楼5单元501', '电话',       20.00, '已完成', DATE_SUB(NOW(), INTERVAL 10 DAY)),
+(30, 1, 4, DATE_SUB(NOW(), INTERVAL 7 DAY),  '幸福社区3号楼2单元101', '家属端',     80.00, '已完成', DATE_SUB(NOW(), INTERVAL 9 DAY)),
+(31, 4, 1, DATE_SUB(NOW(), INTERVAL 6 DAY),  '阳光社区2栋1204',       '电话',       20.00, '已完成', DATE_SUB(NOW(), INTERVAL 8 DAY)),
+(32, 5, 5, DATE_SUB(NOW(), INTERVAL 5 DAY),  '梧桐社区甲区9号院',     '社区代下单', 90.00, '已完成', DATE_SUB(NOW(), INTERVAL 7 DAY)),
+(33, 6, 2, DATE_SUB(NOW(), INTERVAL 4 DAY),  '滨江社区东里11号楼',   '家属端',     60.00, '已完成', DATE_SUB(NOW(), INTERVAL 6 DAY));
 -- 派单记录（17/18 服务中；历史改单 9 号订单曾派给离职护工后取消）
 INSERT INTO dispatch (dispatch_id, order_id, caregiver_id, dispatch_time, arrive_time, leave_time, service_note, confirmed, is_current, reassign_reason) VALUES
 (1,1,4, DATE_SUB(NOW(), INTERVAL 29 DAY), DATE_SUB(NOW(), INTERVAL 28 DAY), DATE_SUB(NOW(), INTERVAL 28 DAY) + INTERVAL 90 MINUTE,'助浴完成，老人状态良好',1,1,NULL),
@@ -134,6 +161,19 @@ INSERT INTO dispatch (dispatch_id, order_id, caregiver_id, dispatch_time, arrive
 (15,9,9, DATE_SUB(NOW(), INTERVAL 85 MINUTE), NULL,NULL,NULL,0,0,'原护工离职，改派'),
 (16,19,3, DATE_SUB(NOW(), INTERVAL 5 DAY), NULL,NULL,NULL,0,0,'家属临时取消订单');
 
+INSERT INTO dispatch (dispatch_id, order_id, caregiver_id, dispatch_time, arrive_time, leave_time, service_note, confirmed, is_current, reassign_reason) VALUES
+(17, 23, 1,  DATE_SUB(NOW(), INTERVAL 15 DAY), DATE_SUB(NOW(), INTERVAL 14 DAY), DATE_SUB(NOW(), INTERVAL 14 DAY) + INTERVAL 60 MINUTE,  '准时送餐，家属签收', 1, 1, NULL),
+(18, 24, 6,  DATE_SUB(NOW(), INTERVAL 14 DAY), DATE_SUB(NOW(), INTERVAL 13 DAY), DATE_SUB(NOW(), INTERVAL 13 DAY) + INTERVAL 120 MINUTE, '全屋保洁完成',       1, 1, NULL),
+(19, 25, 4,  DATE_SUB(NOW(), INTERVAL 13 DAY), DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 12 DAY) + INTERVAL 90 MINUTE,  '助浴完成，状态平稳', 1, 1, NULL),
+(20, 26, 5,  DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 11 DAY), DATE_SUB(NOW(), INTERVAL 11 DAY) + INTERVAL 60 MINUTE,  '下肢康复指导完成',   1, 1, NULL),
+(21, 27, 4,  DATE_SUB(NOW(), INTERVAL 11 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY) + INTERVAL 45 MINUTE,  '翻身及皮肤护理完成', 1, 1, NULL),
+(22, 28, 2,  DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 9 DAY),  DATE_SUB(NOW(), INTERVAL 9 DAY)  + INTERVAL 180 MINUTE, '陪同取药复诊完成',   1, 1, NULL),
+(23, 29, 10, DATE_SUB(NOW(), INTERVAL 9 DAY),  DATE_SUB(NOW(), INTERVAL 8 DAY),  DATE_SUB(NOW(), INTERVAL 8 DAY)  + INTERVAL 60 MINUTE,  '午餐配送完成',       1, 1, NULL),
+(24, 30, 12, DATE_SUB(NOW(), INTERVAL 8 DAY),  DATE_SUB(NOW(), INTERVAL 7 DAY),  DATE_SUB(NOW(), INTERVAL 7 DAY)  + INTERVAL 120 MINUTE, '玻璃及厨房保洁完成', 1, 1, NULL),
+(25, 31, 14, DATE_SUB(NOW(), INTERVAL 7 DAY),  DATE_SUB(NOW(), INTERVAL 6 DAY),  DATE_SUB(NOW(), INTERVAL 6 DAY)  + INTERVAL 60 MINUTE,  '送餐上门完成',       1, 1, NULL),
+(26, 32, 11, DATE_SUB(NOW(), INTERVAL 6 DAY),  DATE_SUB(NOW(), INTERVAL 5 DAY),  DATE_SUB(NOW(), INTERVAL 5 DAY)  + INTERVAL 60 MINUTE,  '关节活动度训练完成', 1, 1, NULL),
+(27, 33, 16, DATE_SUB(NOW(), INTERVAL 5 DAY),  DATE_SUB(NOW(), INTERVAL 4 DAY),  DATE_SUB(NOW(), INTERVAL 4 DAY)  + INTERVAL 90 MINUTE,  '协助沐浴完成',       1, 1, NULL);
+
 -- 排班：每位在岗护工未来 7 天，上午/下午各一班
 INSERT INTO schedule (caregiver_id, work_date, shift, capacity, booked, status)
 SELECT cg.caregiver_id,
@@ -145,6 +185,30 @@ CROSS JOIN (SELECT 0 n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT
 CROSS JOIN (SELECT '上午' shift UNION SELECT '下午') s
 WHERE cg.on_duty = '在岗';
 
+-- 工时记录（20 条：对应已有派单 + 历史模拟派单记录，含围栏异常与未签退状态）
+INSERT INTO work_hour (work_hour_id, caregiver_id, dispatch_id, checkin_time, checkout_time, checkin_location, fence_result, valid_hours, review_status) VALUES
+(1, 4, 1,  DATE_SUB(NOW(), INTERVAL 28 DAY), DATE_SUB(NOW(), INTERVAL 28 DAY) + INTERVAL 90 MINUTE,  '阳光社区8栋601楼下(116.312,39.981)', '通过', 1.50, '自动认定'),
+(2, 4, 2,  DATE_SUB(NOW(), INTERVAL 26 DAY), DATE_SUB(NOW(), INTERVAL 26 DAY) + INTERVAL 40 MINUTE,  '阳光社区8栋601楼下(116.312,39.981)', '通过', 0.67, '自动认定'),
+(3, 1, 3,  DATE_SUB(NOW(), INTERVAL 25 DAY), DATE_SUB(NOW(), INTERVAL 25 DAY) + INTERVAL 60 MINUTE,  '阳光社区2栋1204门前(116.314,39.982)', '通过', 1.00, '自动认定'),
+(4, 1, 4,  DATE_SUB(NOW(), INTERVAL 24 DAY), DATE_SUB(NOW(), INTERVAL 24 DAY) + INTERVAL 60 MINUTE,  '阳光社区2栋1204门前(116.314,39.982)', '通过', 1.00, '自动认定'),
+(5, 2, 5,  DATE_SUB(NOW(), INTERVAL 20 DAY), DATE_SUB(NOW(), INTERVAL 20 DAY) + INTERVAL 60 MINUTE,  '滨江社区西里4号楼(116.351,39.912)',   '通过', 1.00, '自动认定'),
+(6, 4, 6,  DATE_SUB(NOW(), INTERVAL 18 DAY), DATE_SUB(NOW(), INTERVAL 18 DAY) + INTERVAL 180 MINUTE, '滨江社区西里4号楼(116.351,39.912)',   '通过', 3.00, '自动认定'),
+(7, 3, 7,  DATE_SUB(NOW(), INTERVAL 15 DAY), DATE_SUB(NOW(), INTERVAL 15 DAY) + INTERVAL 150 MINUTE, '幸福社区3号楼2单元(116.305,39.990)',  '围栏外异常', 0.00, '待人工复核'),
+(8, 4, 13, DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL,                                                 '滨江社区东里11号楼(116.353,39.914)', '通过', 0.00, '自动认定'),
+(9, 6, 14, DATE_SUB(NOW(), INTERVAL 1 HOUR), NULL,                                                 '幸福社区3号楼2单元(116.305,39.990)',  '通过', 0.00, '自动认定');
+
+INSERT INTO work_hour (work_hour_id, caregiver_id, dispatch_id, checkin_time, checkout_time, checkin_location, fence_result, valid_hours, review_status) VALUES
+(10, 1,  17, DATE_SUB(NOW(), INTERVAL 14 DAY), DATE_SUB(NOW(), INTERVAL 14 DAY) + INTERVAL 60 MINUTE,  '幸福社区3号楼2单元(116.305,39.990)', '通过',       1.00, '自动认定'),
+(11, 6,  18, DATE_SUB(NOW(), INTERVAL 13 DAY), DATE_SUB(NOW(), INTERVAL 13 DAY) + INTERVAL 120 MINUTE, '幸福社区5号楼1单元(116.306,39.991)', '通过',       2.00, '自动认定'),
+(12, 4,  19, DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 12 DAY) + INTERVAL 90 MINUTE,  '阳光社区8栋601楼下(116.312,39.981)', '通过',       1.50, '自动认定'),
+(13, 5,  20, DATE_SUB(NOW(), INTERVAL 11 DAY), DATE_SUB(NOW(), INTERVAL 11 DAY) + INTERVAL 60 MINUTE,  '梧桐社区甲区9号院(116.412,39.931)',   '通过',       1.00, '自动认定'),
+(14, 4,  21, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY) + INTERVAL 45 MINUTE,  '滨江社区东里11号楼(116.353,39.914)', '通过',       0.75, '自动认定'),
+(15, 2,  22, DATE_SUB(NOW(), INTERVAL 9 DAY),  DATE_SUB(NOW(), INTERVAL 9 DAY)  + INTERVAL 180 MINUTE, '滨江社区西里4号楼(116.351,39.912)',   '围栏外异常', 3.00, '复核通过'),
+(16, 10, 23, DATE_SUB(NOW(), INTERVAL 8 DAY),  DATE_SUB(NOW(), INTERVAL 8 DAY)  + INTERVAL 60 MINUTE,  '幸福社区9号楼5单元(116.308,39.993)', '通过',       1.00, '自动认定'),
+(17, 12, 24, DATE_SUB(NOW(), INTERVAL 7 DAY),  DATE_SUB(NOW(), INTERVAL 7 DAY)  + INTERVAL 120 MINUTE, '幸福社区3号楼2单元(116.305,39.990)', '通过',       2.00, '自动认定'),
+(18, 14, 25, DATE_SUB(NOW(), INTERVAL 6 DAY),  DATE_SUB(NOW(), INTERVAL 6 DAY)  + INTERVAL 60 MINUTE,  '阳光社区2栋1204门前(116.314,39.982)', '通过',       1.00, '自动认定'),
+(19, 11, 26, DATE_SUB(NOW(), INTERVAL 5 DAY),  DATE_SUB(NOW(), INTERVAL 5 DAY)  + INTERVAL 60 MINUTE,  '梧桐社区甲区9号院(116.412,39.931)',   '围栏外异常', 0.00, '待人工复核'),
+(20, 16, 27, DATE_SUB(NOW(), INTERVAL 4 DAY),  DATE_SUB(NOW(), INTERVAL 4 DAY)  + INTERVAL 90 MINUTE,  '滨江社区东里11号楼(116.353,39.914)', '通过',       1.50, '自动认定');
 -- 补贴政策
 INSERT INTO subsidy_policy (policy_id, district, target_type, item_id, standard, period, effective_from, effective_to) VALUES
 (1,'海淀区','低保',1,15.00,'月', DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 1 YEAR)),
