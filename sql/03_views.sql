@@ -196,3 +196,44 @@ LEFT JOIN quality_inspection qi
        ON qi.caregiver_id = cg.caregiver_id
       AND qi.inspection_status = '已抽查'
 GROUP BY cg.caregiver_id, cg.name, cg.agency, cg.rating;
+
+-- 视图9 护工与排班业务线：证书到期预警视图（已过期 + 30天内即将到期）
+CREATE OR REPLACE VIEW v_caregiver_cert_warning AS
+SELECT cg.caregiver_id,
+       cg.name AS caregiver_name,
+       cg.agency,
+       cg.cert_type,
+       cg.cert_level,
+       cg.cert_expire,
+       DATEDIFF(cg.cert_expire, CURDATE()) AS days_remaining,
+       CASE WHEN cg.cert_expire < CURDATE() THEN '已过期(禁止派单)'
+            WHEN DATEDIFF(cg.cert_expire, CURDATE()) <= 30 THEN '30天内临期预警'
+            ELSE '正常' END AS cert_status,
+       cg.on_duty
+FROM caregiver cg
+WHERE cg.on_duty = '在岗'
+  AND DATEDIFF(cg.cert_expire, CURDATE()) <= 30
+ORDER BY days_remaining ASC;
+
+-- 视图10 护工与排班业务线：跨区接单与异常工时核查视图
+CREATE OR REPLACE VIEW v_work_hour_audit AS
+SELECT wh.work_hour_id,
+       cg.caregiver_id,
+       cg.name AS caregiver_name,
+       cg.service_regions AS allowed_regions,
+       c.name AS order_community,
+       FIND_IN_SET(c.name, cg.service_regions) > 0 AS is_in_region,
+       d.dispatch_id,
+       o.order_id,
+       wh.checkin_time,
+       wh.checkout_time,
+       wh.checkin_location,
+       wh.fence_result,
+       wh.valid_hours,
+       wh.review_status
+FROM work_hour wh
+JOIN caregiver cg    ON cg.caregiver_id = wh.caregiver_id
+JOIN dispatch d      ON d.dispatch_id = wh.dispatch_id
+JOIN service_order o ON o.order_id = d.order_id
+JOIN elder e         ON e.elder_id = o.elder_id
+JOIN community c     ON c.community_id = e.community_id;
