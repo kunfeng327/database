@@ -237,3 +237,59 @@ JOIN dispatch d      ON d.dispatch_id = wh.dispatch_id
 JOIN service_order o ON o.order_id = d.order_id
 JOIN elder e         ON e.elder_id = o.elder_id
 JOIN community c     ON c.community_id = e.community_id;
+
+-- 视图11 健康监测业务线：当日异常体征（待确认 + 已确认异常）
+CREATE OR REPLACE VIEW v_daily_abnormal_vitals AS
+SELECT vs.vital_id,
+       vs.elder_id,
+       e.name AS elder_name,
+       c.name AS community,
+       vs.device_id,
+       d.device_type,
+       vs.metric_type,
+       vs.metric_value,
+       vs.abnormal_flag,
+       vs.data_source,
+       vs.collect_time
+FROM vital_sign vs
+JOIN device d    ON d.device_id = vs.device_id
+JOIN elder e     ON e.elder_id  = vs.elder_id
+JOIN community c ON c.community_id = e.community_id
+WHERE vs.abnormal_flag IN ('待确认','异常')
+  AND DATE(vs.collect_time) = CURDATE();
+
+-- 视图12 健康监测业务线：待响应应急事件（含等待时长、响应时限与超时/升级标志）
+CREATE OR REPLACE VIEW v_pending_emergencies AS
+SELECT em.event_id,
+       em.elder_id,
+       e.name AS elder_name,
+       c.name AS community,
+       em.trigger_source,
+       em.event_level,
+       em.occur_time,
+       TIMESTAMPDIFF(MINUTE, em.occur_time, NOW()) AS waited_min,
+       CASE em.event_level WHEN '一般' THEN 60 WHEN '紧急' THEN 30 ELSE 15 END AS deadline_min,
+       CASE WHEN TIMESTAMPDIFF(MINUTE, em.occur_time, NOW())
+                 > (CASE em.event_level WHEN '一般' THEN 60 WHEN '紧急' THEN 30 ELSE 15 END)
+            THEN '超时' ELSE '正常' END AS timeout_flag,
+       em.escalated
+FROM emergency em
+JOIN elder e     ON e.elder_id = em.elder_id
+JOIN community c ON c.community_id = e.community_id
+WHERE em.status = '待响应';
+
+-- 视图13 健康监测业务线：设备绑定状态（含已绑定天数）
+CREATE OR REPLACE VIEW v_device_binding_status AS
+SELECT d.device_id,
+       d.device_type,
+       d.install_location,
+       d.status,
+       d.bind_time,
+       d.unbind_time,
+       d.elder_id,
+       e.name AS elder_name,
+       c.name AS community,
+       DATEDIFF(COALESCE(d.unbind_time, NOW()), d.bind_time) AS bound_days
+FROM device d
+JOIN elder e     ON e.elder_id = d.elder_id
+JOIN community c ON c.community_id = e.community_id;
