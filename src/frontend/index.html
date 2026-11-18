@@ -269,7 +269,7 @@ textarea { width:100%; min-height:56px; resize:vertical; }
             <form class="inline" id="care-plan-form">
               <input type="hidden" id="p-id">
               <div class="field"><label>老人</label><select id="p-elder" required></select></div>
-              <div class="field"><label>服务包名称</label><input id="p-package" maxlength="50" required></div>
+              <div class="field"><label>服务包名称</label><select id="p-package" required></select></div>
               <div class="field"><label>服务频次</label><input id="p-frequency" maxlength="50" placeholder="例如：每周3次" required></div>
               <div class="field"><label>开始日期</label><input id="p-start" type="date" required></div>
               <div class="field"><label>结束日期</label><input id="p-end" type="date" required></div>
@@ -576,6 +576,13 @@ async function loadCarePlanCaregivers(){
   $('#p-caregiver').innerHTML = '<option value="">无指定护工</option>' +
     r.data.map(c => `<option value="${c.caregiver_id}">${esc(c.name)}（${esc(c.agency)}）</option>`).join('');
 }
+async function loadCarePlanPackages(){
+  if (ME.role !== '社区管理员') return;
+  const r = await API('/api/care-plans/packages');
+  if (!r.ok) return;
+  $('#p-package').innerHTML = r.data
+    .map(name => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+}
 function resetCarePlanForm(){
   $('#care-plan-form').reset();
   $('#p-id').value = '';
@@ -619,6 +626,7 @@ async function loadCarePlans(){
   if (ME.role === '社区管理员') {
     $('#p-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
       .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}）</option>`).join('');
+    await loadCarePlanPackages();
     await loadCarePlanCaregivers();
   }
 }

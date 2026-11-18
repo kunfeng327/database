@@ -24,6 +24,7 @@ from flask import Flask, jsonify, request, send_file, session
 from db import DB_CONFIG
 from care_plan_dao import (
     CarePlanError,
+    PACKAGE_NAMES,
     create_care_plan,
     list_care_plans,
     update_care_plan,
@@ -341,6 +342,12 @@ def care_plan_caregivers():
            FROM caregiver WHERE on_duty='在岗'
            ORDER BY name"""
     )})
+
+
+@app.get("/api/care-plans/packages")
+@login_required(roles=("社区管理员",))
+def care_plan_packages():
+    return jsonify({"ok": True, "data": list(PACKAGE_NAMES)})
 
 
 @app.post("/api/care-plans")

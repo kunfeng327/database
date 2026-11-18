@@ -220,7 +220,7 @@ def test_07_care_plan_dao_crud():
             elder_id = dao.create_elder(cur, _new_elder_payload())["elder_id"]
             created = care_plan_dao.create_care_plan(cur, {
                 "elder_id": elder_id,
-                "package_name": "测试基础照护",
+                "package_name": "助洁关怀包",
                 "frequency": "每周3次",
                 "start_date": "2026-11-18",
                 "end_date": "2027-02-18",
@@ -241,7 +241,15 @@ def test_07_care_plan_dao_crud():
             with pytest.raises(care_plan_dao.CarePlanError):
                 care_plan_dao.create_care_plan(cur, {
                     "elder_id": elder_id,
-                    "package_name": "非法日期计划",
+                    "package_name": "自定义服务包",
+                    "frequency": "每周1次",
+                    "start_date": "2026-11-01",
+                    "end_date": "2026-12-01",
+                })
+            with pytest.raises(care_plan_dao.CarePlanError, match="结束日期不能早于开始日期"):
+                care_plan_dao.create_care_plan(cur, {
+                    "elder_id": elder_id,
+                    "package_name": "助洁关怀包",
                     "frequency": "每周1次",
                     "start_date": "2026-12-01",
                     "end_date": "2026-11-01",

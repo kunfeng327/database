@@ -8,6 +8,16 @@ class CarePlanError(Exception):
 
 
 STATUSES = ("生效", "暂停", "结束")
+PACKAGE_NAMES = (
+    "助洁关怀包",
+    "失能照护包",
+    "助餐保障包",
+    "康复助行包",
+    "重度照护包",
+    "助餐关怀包",
+    "探访关爱包",
+    "助浴助洁包",
+)
 
 
 def _text(value, name, max_len=50):
@@ -17,6 +27,13 @@ def _text(value, name, max_len=50):
     if len(text) > max_len:
         raise CarePlanError(f"{name}长度不能超过 {max_len} 字")
     return text
+
+
+def _package_name(value):
+    name = _text(value, "服务包名称")
+    if name not in PACKAGE_NAMES:
+        raise CarePlanError("服务包名称必须从预设服务包中选择")
+    return name
 
 
 def _date(value, name):
@@ -84,7 +101,7 @@ def get_care_plan(cur, plan_id):
 def create_care_plan(cur, payload):
     elder_id = int(payload.get("elder_id", 0))
     _require_elder(cur, elder_id)
-    package_name = _text(payload.get("package_name"), "服务包名称")
+    package_name = _package_name(payload.get("package_name"))
     frequency = _text(payload.get("frequency"), "服务频次")
     start_date = _date(payload.get("start_date"), "开始日期")
     end_date = _date(payload.get("end_date"), "结束日期")
@@ -115,7 +132,7 @@ def update_care_plan(cur, plan_id, payload):
         args.append(elder_id)
     if "package_name" in payload:
         fields.append("package_name=%s")
-        args.append(_text(payload["package_name"], "服务包名称"))
+        args.append(_package_name(payload["package_name"]))
     if "frequency" in payload:
         fields.append("frequency=%s")
         args.append(_text(payload["frequency"], "服务频次"))
