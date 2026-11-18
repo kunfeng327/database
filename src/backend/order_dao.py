@@ -141,8 +141,9 @@ def reassign_dispatch(cur, dispatch_id, reason):
     return {"order_id": dispatch["order_id"]}
 
 
-def checkin_dispatch(cur, dispatch_id, checkin_time, location, role, caregiver_id):
-    """护工上门签到：写工时记录(work_hour)、回填派单 arrive_time、订单转「服务中」。
+def checkin_dispatch(cur, dispatch_id, checkin_time, location, caregiver_id):
+    """护工上门签到（仅本人，到场凭证不可代办）：
+    写工时记录(work_hour)、回填派单 arrive_time、订单转「服务中」。
 
     与 line3_dao.checkin_work_hour 的区别：本函数游标注入、可参与路由事务，
     并同步订单状态机（已派单 → 服务中），供页面演示完整闭环。
@@ -155,8 +156,8 @@ def checkin_dispatch(cur, dispatch_id, checkin_time, location, role, caregiver_i
         raise OrderError("派单不存在")
     if d["is_current"] != 1:
         raise OrderError("该派单已不是当前派单（可能已改派）")
-    if role == "护工" and d["caregiver_id"] != caregiver_id:
-        raise OrderError("无权限：该派单不属于当前护工")
+    if d["caregiver_id"] != caregiver_id:
+        raise OrderError("无权限：签到是到场凭证，只能由该派单护工本人操作")
     if d["status"] not in ("已派单", "服务中"):
         raise OrderError(f"订单当前状态为「{d['status']}」，只有已派单订单可以签到")
     cur.execute("SELECT work_hour_id FROM work_hour WHERE dispatch_id=%s", (dispatch_id,))
@@ -178,8 +179,8 @@ def checkin_dispatch(cur, dispatch_id, checkin_time, location, role, caregiver_i
     return {"work_hour_id": work_hour_id, "order_id": d["order_id"], "status": "服务中"}
 
 
-def checkout_dispatch(cur, dispatch_id, checkout_time, fence_result, note, role, caregiver_id):
-    """护工离场签退：触发器自动按分钟差结算有效工时（围栏异常转人工复核），
+def checkout_dispatch(cur, dispatch_id, checkout_time, fence_result, note, caregiver_id):
+    """护工离场签退（仅本人）：触发器自动按分钟差结算有效工时（围栏异常转人工复核），
     派单确认完成 → 触发器回写订单「已完成」。"""
     cur.execute("""SELECT d.caregiver_id, d.order_id, d.is_current, d.confirmed, o.status
                      FROM dispatch d JOIN service_order o ON o.order_id = d.order_id
@@ -189,8 +190,8 @@ def checkout_dispatch(cur, dispatch_id, checkout_time, fence_result, note, role,
         raise OrderError("派单不存在")
     if d["is_current"] != 1:
         raise OrderError("该派单已不是当前派单（可能已改派）")
-    if role == "护工" and d["caregiver_id"] != caregiver_id:
-        raise OrderError("无权限：该派单不属于当前护工")
+    if d["caregiver_id"] != caregiver_id:
+        raise OrderError("无权限：签退只能由该派单护工本人操作")
     if d["confirmed"] == 1:
         raise OrderError("该派单已确认完成，不能重复签退")
     cur.execute("""SELECT work_hour_id FROM work_hour

@@ -399,19 +399,19 @@ def _svc_time(body, key):
 
 
 @app.post("/api/dispatches/<int:dispatch_id>/checkin")
-@login_required(roles=("护工", "社区管理员"))
+@login_required(roles=("护工",))
 def checkin_dispatch(dispatch_id):
-    """护工上门签到：写工时记录 + 回填到场时间，订单转「服务中」。"""
+    """护工上门签到（仅本人，到场凭证不可代办）：写工时记录 + 回填到场时间，订单转「服务中」。"""
     body = request.get_json(force=True)
     t = _svc_time(body, "checkin_time")
     return jsonify({"ok": True, "data": run_in_transaction(lambda cur: dao_checkin_dispatch(
-        cur, dispatch_id, t, body.get("location"), session["role"], session.get("caregiver_id")))})
+        cur, dispatch_id, t, body.get("location"), session.get("caregiver_id")))})
 
 
 @app.post("/api/dispatches/<int:dispatch_id>/checkout")
-@login_required(roles=("护工", "社区管理员"))
+@login_required(roles=("护工",))
 def checkout_dispatch(dispatch_id):
-    """护工签退：触发器自动按分钟差结算有效工时（围栏异常转人工复核），订单转「已完成」。"""
+    """护工签退（仅本人）：触发器自动按分钟差结算有效工时（围栏异常转人工复核），订单转「已完成」。"""
     body = request.get_json(force=True)
     fence = body.get("fence_result", "通过")
     if fence not in ("通过", "围栏外异常"):
@@ -419,7 +419,7 @@ def checkout_dispatch(dispatch_id):
     t = _svc_time(body, "checkout_time")
     return jsonify({"ok": True, "data": run_in_transaction(lambda cur: dao_checkout_dispatch(
         cur, dispatch_id, t, fence, body.get("service_note"),
-        session["role"], session.get("caregiver_id")))})
+        session.get("caregiver_id")))})
 
 
 @app.get("/api/work-hours")
@@ -618,21 +618,15 @@ def health_unbind_device(device_id):
 @app.get("/api/health/vitals")
 @login_required(roles=("社区管理员", "家属"))
 def health_vitals():
-    """当日异常体征（视图，含待确认/已确认）+ 最近体征记录；家属只看自家老人。"""
+    """当日异常体征（视图，含待确认/已确认）；家属只看自家老人。"""
     def fn(cur):
-        scope = "WHERE vs.elder_id=%s" if session["role"] == "家属" else ""
-        args = (session["elder_id"],) if scope else ()
-        cur.execute(f"""SELECT vs.*, e.name AS elder_name FROM v_daily_abnormal_vitals vs
-                        JOIN elder e ON e.elder_id = vs.elder_id {scope}
-                        ORDER BY vs.collect_time DESC LIMIT 50""", args)
-        abnormal = cur.fetchall()
-        cur.execute(f"""SELECT v.vital_id, e.name AS elder_name, v.metric_type, v.metric_value,
-                               v.abnormal_flag, v.data_source, v.collect_time
-                        FROM vital_sign v JOIN elder e ON e.elder_id = v.elder_id {scope}
-                        ORDER BY v.vital_id DESC LIMIT 20""", args)
-        recent = cur.fetchall()
-        return {"abnormal": [jsonable(r) for r in abnormal],
-                "recent": [jsonable(r) for r in recent]}
+        is_family = session["role"] == "家属"
+        scope = "WHERE v.elder_id=%s" if is_family else ""
+        args = (session["elder_id"],) if is_family else ()
+        cur.execute(f"""SELECT v.*, e.name AS elder_name FROM v_daily_abnormal_vitals v
+                        JOIN elder e ON e.elder_id = v.elder_id {scope}
+                        ORDER BY v.collect_time DESC LIMIT 50""", args)
+        return {"abnormal": [jsonable(r) for r in cur.fetchall()]}
     return jsonify({"ok": True, "data": run_in_transaction(fn)})
 
 
@@ -656,22 +650,27 @@ def health_confirm_vital(vital_id):
 @app.get("/api/health/emergencies")
 @login_required(roles=("社区管理员", "家属"))
 def health_emergencies():
-    """待响应事件（含等待时长/超时标志）+ 最近事件；家属只看自家老人。"""
+    """待响应事件（含等待时长/超时标志）+ 已处置事件（闭环归档）；家属只看自家老人。"""
     def fn(cur):
-        scope = "WHERE em.elder_id=%s" if session["role"] == "家属" else ""
-        args = (session["elder_id"],) if scope else ()
+        is_family = session["role"] == "家属"
+        scope = "WHERE em.elder_id=%s" if is_family else ""
+        args = (session["elder_id"],) if is_family else ()
         cur.execute(f"""SELECT em.*, e.name AS elder_name FROM v_pending_emergencies em
                         JOIN elder e ON e.elder_id = em.elder_id {scope}
                         ORDER BY em.waited_min DESC""", args)
         pending = cur.fetchall()
-        cur.execute(f"""SELECT em.event_id, e.name AS elder_name, em.trigger_source, em.event_level,
+        closed_scope = ("WHERE em.status='已处置' AND em.elder_id=%s" if is_family
+                        else "WHERE em.status='已处置'")
+        closed_args = (session["elder_id"],) if is_family else ()
+        cur.execute(f"""SELECT em.event_id, em.elder_id, e.name AS elder_name, em.trigger_source, em.event_level,
                                em.occur_time, em.responder, em.arrive_time, em.result,
                                em.status, em.escalated
-                        FROM emergency em JOIN elder e ON e.elder_id = em.elder_id {scope}
-                        ORDER BY em.event_id DESC LIMIT 20""", args)
-        recent = cur.fetchall()
+                        FROM emergency em JOIN elder e ON e.elder_id = em.elder_id
+                        {closed_scope}
+                        ORDER BY em.event_id DESC LIMIT 20""", closed_args)
+        closed = cur.fetchall()
         return {"pending": [jsonable(r) for r in pending],
-                "recent": [jsonable(r) for r in recent]}
+                "closed": [jsonable(r) for r in closed]}
     return jsonify({"ok": True, "data": run_in_transaction(fn)})
 
 
