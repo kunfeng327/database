@@ -76,6 +76,7 @@ body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:
 /* ---------------- 通用组件 ---------------- */
 .card { background:var(--surface); border:1px solid var(--border); border-radius:8px;
   padding:18px 20px; margin-bottom:18px; }
+.card.edit-highlight { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-lt); }
 .card h3 { font-size:14px; margin-bottom:14px; color:var(--text); font-weight:600; }
 .card h3 small { font-weight:400; color:var(--muted); margin-left:8px; }
 .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:18px; }
@@ -597,7 +598,10 @@ function editCarePlan(planId){
   $('#care-plan-title').textContent = `编辑照护计划：#${p.plan_id}`;
   $('#p-submit').textContent = '保存计划';
   $('#p-cancel').style.display = '';
-  $('#care-plan-card').scrollIntoView({behavior:'smooth', block:'center'});
+  $('#care-plan-form-wrap').scrollIntoView({behavior:'smooth', block:'start'});
+  $('#care-plan-card').classList.add('edit-highlight');
+  setTimeout(() => $('#care-plan-card').classList.remove('edit-highlight'), 1200);
+  setTimeout(() => $('#p-package').focus({preventScroll:true}), 350);
 }
 async function loadCarePlans(){
   const r = await API('/api/care-plans');
