@@ -43,6 +43,42 @@ JOIN community c    ON c.community_id = e.community_id
 JOIN service_item si ON si.item_id = o.item_id
 WHERE o.status = '待派单';
 
+-- 视图2A 派单业务线：改派历史追溯
+-- 每一条记录对应一次派单尝试；is_current=0 表示后来被改派，保留原因便于审计。
+CREATE OR REPLACE VIEW v_dispatch_reassign_history AS
+SELECT d.dispatch_id,
+       d.order_id,
+       o.status AS order_status,
+       e.elder_id,
+       e.name AS elder_name,
+       si.name AS item_name,
+       cg.caregiver_id,
+       cg.name AS caregiver_name,
+       d.dispatch_time,
+       d.arrive_time,
+       d.leave_time,
+       d.confirmed,
+       d.is_current,
+       d.reassign_reason
+FROM dispatch d
+JOIN service_order o ON o.order_id=d.order_id
+JOIN elder e ON e.elder_id=o.elder_id
+JOIN service_item si ON si.item_id=o.item_id
+JOIN caregiver cg ON cg.caregiver_id=d.caregiver_id
+WHERE d.is_current=0 OR d.reassign_reason IS NOT NULL;
+
+-- 视图2B 派单业务线：各渠道订单构成
+-- 统计订单总量、已完成量和金额，比较电话、家属端、社区代下单三种渠道。
+CREATE OR REPLACE VIEW v_order_channel_summary AS
+SELECT o.channel,
+       COUNT(*) AS order_count,
+       SUM(o.status='已完成') AS completed_count,
+       SUM(o.status='已取消') AS cancelled_count,
+       ROUND(SUM(o.amount),2) AS total_amount,
+       ROUND(AVG(o.amount),2) AS average_amount
+FROM service_order o
+GROUP BY o.channel;
+
 -- 视图3 补贴业务线：申报与拨付进度视图
 CREATE OR REPLACE VIEW v_claim_progress AS
 SELECT cl.claim_id,
