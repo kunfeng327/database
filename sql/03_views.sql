@@ -43,6 +43,42 @@ JOIN community c    ON c.community_id = e.community_id
 JOIN service_item si ON si.item_id = o.item_id
 WHERE o.status = '待派单';
 
+-- 视图2A 派单业务线：改派历史追溯
+-- 每一条记录对应一次派单尝试；is_current=0 表示后来被改派，保留原因便于审计。
+CREATE OR REPLACE VIEW v_dispatch_reassign_history AS
+SELECT d.dispatch_id,
+       d.order_id,
+       o.status AS order_status,
+       e.elder_id,
+       e.name AS elder_name,
+       si.name AS item_name,
+       cg.caregiver_id,
+       cg.name AS caregiver_name,
+       d.dispatch_time,
+       d.arrive_time,
+       d.leave_time,
+       d.confirmed,
+       d.is_current,
+       d.reassign_reason
+FROM dispatch d
+JOIN service_order o ON o.order_id=d.order_id
+JOIN elder e ON e.elder_id=o.elder_id
+JOIN service_item si ON si.item_id=o.item_id
+JOIN caregiver cg ON cg.caregiver_id=d.caregiver_id
+WHERE d.is_current=0 OR d.reassign_reason IS NOT NULL;
+
+-- 视图2B 派单业务线：各渠道订单构成
+-- 统计订单总量、已完成量和金额，比较电话、家属端、社区代下单三种渠道。
+CREATE OR REPLACE VIEW v_order_channel_summary AS
+SELECT o.channel,
+       COUNT(*) AS order_count,
+       SUM(o.status='已完成') AS completed_count,
+       SUM(o.status='已取消') AS cancelled_count,
+       ROUND(SUM(o.amount),2) AS total_amount,
+       ROUND(AVG(o.amount),2) AS average_amount
+FROM service_order o
+GROUP BY o.channel;
+
 -- 视图3 补贴业务线：申报与拨付进度视图
 CREATE OR REPLACE VIEW v_claim_progress AS
 SELECT cl.claim_id,
@@ -161,7 +197,48 @@ LEFT JOIN quality_inspection qi
       AND qi.inspection_status = '已抽查'
 GROUP BY cg.caregiver_id, cg.name, cg.agency, cg.rating;
 
--- 视图9 健康监测业务线：当日异常体征（待确认 + 已确认异常）
+-- 视图9 护工与排班业务线：证书到期预警视图（已过期 + 30天内即将到期）
+CREATE OR REPLACE VIEW v_caregiver_cert_warning AS
+SELECT cg.caregiver_id,
+       cg.name AS caregiver_name,
+       cg.agency,
+       cg.cert_type,
+       cg.cert_level,
+       cg.cert_expire,
+       DATEDIFF(cg.cert_expire, CURDATE()) AS days_remaining,
+       CASE WHEN cg.cert_expire < CURDATE() THEN '已过期(禁止派单)'
+            WHEN DATEDIFF(cg.cert_expire, CURDATE()) <= 30 THEN '30天内临期预警'
+            ELSE '正常' END AS cert_status,
+       cg.on_duty
+FROM caregiver cg
+WHERE cg.on_duty = '在岗'
+  AND DATEDIFF(cg.cert_expire, CURDATE()) <= 30
+ORDER BY days_remaining ASC;
+
+-- 视图10 护工与排班业务线：跨区接单与异常工时核查视图
+CREATE OR REPLACE VIEW v_work_hour_audit AS
+SELECT wh.work_hour_id,
+       cg.caregiver_id,
+       cg.name AS caregiver_name,
+       cg.service_regions AS allowed_regions,
+       c.name AS order_community,
+       FIND_IN_SET(c.name, cg.service_regions) > 0 AS is_in_region,
+       d.dispatch_id,
+       o.order_id,
+       wh.checkin_time,
+       wh.checkout_time,
+       wh.checkin_location,
+       wh.fence_result,
+       wh.valid_hours,
+       wh.review_status
+FROM work_hour wh
+JOIN caregiver cg    ON cg.caregiver_id = wh.caregiver_id
+JOIN dispatch d      ON d.dispatch_id = wh.dispatch_id
+JOIN service_order o ON o.order_id = d.order_id
+JOIN elder e         ON e.elder_id = o.elder_id
+JOIN community c     ON c.community_id = e.community_id;
+
+-- 视图11 健康监测业务线：当日异常体征（待确认 + 已确认异常）
 CREATE OR REPLACE VIEW v_daily_abnormal_vitals AS
 SELECT vs.vital_id,
        vs.elder_id,
@@ -181,7 +258,7 @@ JOIN community c ON c.community_id = e.community_id
 WHERE vs.abnormal_flag IN ('待确认','异常')
   AND DATE(vs.collect_time) = CURDATE();
 
--- 视图10 健康监测业务线：待响应应急事件（含等待时长、响应时限与超时/升级标志）
+-- 视图12 健康监测业务线：待响应应急事件（含等待时长、响应时限与超时/升级标志）
 CREATE OR REPLACE VIEW v_pending_emergencies AS
 SELECT em.event_id,
        em.elder_id,
@@ -201,7 +278,7 @@ JOIN elder e     ON e.elder_id = em.elder_id
 JOIN community c ON c.community_id = e.community_id
 WHERE em.status = '待响应';
 
--- 视图11 健康监测业务线：设备绑定状态（含已绑定天数）
+-- 视图13 健康监测业务线：设备绑定状态（含已绑定天数）
 CREATE OR REPLACE VIEW v_device_binding_status AS
 SELECT d.device_id,
        d.device_type,

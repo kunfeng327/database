@@ -30,6 +30,15 @@ from line5_dao import (
     submit_rectification,
     transition_claim,
 )
+from order_dao import (
+    OrderError,
+    complete_dispatch as dao_complete_dispatch,
+    create_order as dao_create_order,
+    dispatch_order as dao_dispatch_order,
+    list_orders as dao_list_orders,
+    recommend_caregivers,
+    reassign_dispatch,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("APP_SECRET_KEY", "elder-care-demo-key-2026")
@@ -101,6 +110,11 @@ def handle_biz(e):
 
 @app.errorhandler(Line5Error)
 def handle_line5(e):
+    return jsonify({"ok": False, "msg": str(e)}), 400
+
+
+@app.errorhandler(OrderError)
+def handle_order_error(e):
     return jsonify({"ok": False, "msg": str(e)}), 400
 
 
@@ -296,26 +310,9 @@ def create_assessment(elder_id):
 @login_required()
 def orders():
     """家属只见自家老人订单；护工只见派给自己的订单；其余角色看全部。"""
-    sql = """
-        SELECT o.order_id, e.name AS elder_name, c.name AS community,
-               si.name AS item_name, si.type AS item_type, si.subsidizable,
-               o.appoint_time, o.channel, o.amount, o.status, o.created_at,
-               d.dispatch_id, d.caregiver_id, d.confirmed, cg.name AS caregiver_name,
-               d.arrive_time, d.leave_time, d.service_note
-        FROM service_order o
-        JOIN elder e ON e.elder_id = o.elder_id
-        JOIN community c ON c.community_id = e.community_id
-        JOIN service_item si ON si.item_id = o.item_id
-        LEFT JOIN dispatch d ON d.order_id = o.order_id AND d.is_current = 1
-        LEFT JOIN caregiver cg ON cg.caregiver_id = d.caregiver_id"""
-    args = ()
-    if session["role"] == "家属":
-        sql += " WHERE o.elder_id=%s"
-        args = (session["elder_id"],)
-    elif session["role"] == "护工":
-        sql += " WHERE d.caregiver_id=%s"
-        args = (session["caregiver_id"],)
-    return jsonify({"ok": True, "data": query_all(sql + " ORDER BY o.order_id DESC", args)})
+    rows = run_in_transaction(lambda cur: dao_list_orders(
+        cur, session["role"], session.get("elder_id"), session.get("caregiver_id")))
+    return jsonify({"ok": True, "data": [jsonable(r) for r in rows]})
 
 
 @app.post("/api/orders")
@@ -332,39 +329,8 @@ def create_order():
     appoint_time, channel = body["appoint_time"], body.get("channel", "社区代下单")
     if session["role"] == "家属" and channel not in ("家属端",):
         channel = "家属端"
-    try:
-        dt.datetime.strptime(appoint_time, "%Y-%m-%d %H:%M")
-    except ValueError:
-        raise BizError("预约时间格式应为 YYYY-MM-DD HH:MM")
-
     def fn(cur):
-        cur.execute("SELECT status, address FROM elder WHERE elder_id=%s", elder_id)
-        elder = cur.fetchone()
-        if not elder:
-            raise BizError("老人档案不存在")
-        if elder["status"] != "正常":
-            raise BizError(f"档案状态为「{elder['status']}」，不允许下单")
-
-        cur.execute("""SELECT MAX(expire_date) AS exp FROM assessment WHERE elder_id=%s""",
-                    elder_id)
-        row = cur.fetchone()
-        if not row or not row["exp"]:
-            raise BizError("该老人尚未做能力评估，请先安排评估")
-        if row["exp"] < dt.date.today():
-            raise BizError(f"能力评估已于 {row['exp'].strftime('%Y-%m-%d')} 过期，须复评后才可下单")
-
-        cur.execute("""SELECT guide_price, std_hours, unit FROM service_item WHERE item_id=%s""",
-                    item_id)
-        item = cur.fetchone()
-        if not item:
-            raise BizError("服务项目不存在")
-        amount = round(float(item["guide_price"]) *
-                       (float(item["std_hours"]) if item["unit"] == "小时" else 1), 2)
-
-        cur.execute("""INSERT INTO service_order (elder_id, item_id, appoint_time, address, channel, amount)
-                       VALUES (%s,%s,%s,%s,%s,%s)""",
-                    (elder_id, item_id, appoint_time, elder["address"], channel, amount))
-        return {"order_id": cur.lastrowid, "amount": amount}
+        return dao_create_order(cur, elder_id, item_id, appoint_time, channel, session["role"])
 
     return jsonify({"ok": True, "data": run_in_transaction(fn)})
 
@@ -374,21 +340,8 @@ def create_order():
 @login_required(roles=("社区管理员",))
 def recommend(order_id):
     """推荐护工：在岗 + 证书有效 + 服务区域覆盖老人社区 + 当天该班次有余量。"""
-    return jsonify({"ok": True, "data": query_all("""
-        SELECT cg.caregiver_id, cg.name, cg.agency, cg.cert_type, cg.rating,
-               s.schedule_id, s.shift, s.booked, s.capacity
-        FROM service_order o
-        JOIN elder e ON e.elder_id = o.elder_id
-        JOIN community c ON c.community_id = e.community_id
-        JOIN schedule s ON s.work_date = DATE(o.appoint_time)
-                      AND s.shift = (CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END)
-                      AND s.status='开放' AND s.booked < s.capacity
-        JOIN caregiver cg ON cg.caregiver_id = s.caregiver_id
-        WHERE o.order_id = %s
-          AND cg.on_duty='在岗' AND cg.cert_expire >= DATE(o.appoint_time)
-          AND FIND_IN_SET(c.name, REPLACE(cg.service_regions,' ','')) > 0
-        ORDER BY cg.rating DESC, s.booked ASC
-        LIMIT 6""", order_id)})
+    rows = run_in_transaction(lambda cur: recommend_caregivers(cur, order_id))
+    return jsonify({"ok": True, "data": [jsonable(r) for r in rows]})
 
 
 @app.post("/api/orders/<int:order_id>/dispatch")
@@ -396,22 +349,8 @@ def recommend(order_id):
 def dispatch_order(order_id):
     """派单：事务内锁定订单 → 插入派单记录（触发器做容量/资质兜底校验）→ 回写订单状态。"""
     caregiver_id = request.get_json(force=True)["caregiver_id"]
-
-    def fn(cur):
-        cur.execute("""SELECT status FROM service_order WHERE order_id=%s FOR UPDATE""",
-                    order_id)
-        order = cur.fetchone()
-        if not order:
-            raise BizError("订单不存在")
-        if order["status"] != "待派单":
-            raise BizError(f"订单当前状态为「{order['status']}」，只有待派单订单可以派单")
-        cur.execute("""INSERT INTO dispatch (order_id, caregiver_id) VALUES (%s,%s)""",
-                    (order_id, caregiver_id))  # 触发器校验容量/资质，不通过则整体回滚
-        dispatch_id = cur.lastrowid  # 须在 INSERT 后立即取，后续语句会覆盖该值
-        cur.execute("""UPDATE service_order SET status='已派单' WHERE order_id=%s""", order_id)
-        return {"dispatch_id": dispatch_id}
-
-    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: dao_dispatch_order(cur, order_id, caregiver_id))})
 
 
 @app.post("/api/dispatches/<int:dispatch_id>/complete")
@@ -419,25 +358,8 @@ def dispatch_order(order_id):
 def complete_dispatch(dispatch_id):
     """服务完成：回填时间与服务记录、家属确认 → 触发器自动把订单置为已完成。"""
     note = request.get_json(force=True).get("service_note", "")
-
-    def fn(cur):
-        cur.execute("SELECT caregiver_id FROM dispatch WHERE dispatch_id=%s", dispatch_id)
-        d = cur.fetchone()
-        if not d:
-            raise BizError("派单不存在")
-        if session["role"] == "护工" and d["caregiver_id"] != session["caregiver_id"]:
-            raise BizError("无权限：该派单不属于当前护工")
-        cur.execute("""UPDATE dispatch
-                          SET arrive_time = COALESCE(arrive_time, NOW() - INTERVAL 90 MINUTE),
-                              leave_time  = NOW(),
-                              service_note = %s,
-                              confirmed   = 1
-                        WHERE dispatch_id=%s AND confirmed=0""", (note, dispatch_id))
-        if cur.rowcount == 0:
-            raise BizError("派单不存在或此前已确认完成")
-        return {"dispatch_id": dispatch_id}
-
-    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+    return jsonify({"ok": True, "data": run_in_transaction(lambda cur: dao_complete_dispatch(
+        cur, dispatch_id, note, session["role"], session.get("caregiver_id")))})
 
 
 @app.post("/api/dispatches/<int:dispatch_id>/reassign")
@@ -445,28 +367,8 @@ def complete_dispatch(dispatch_id):
 def reassign(dispatch_id):
     """改派：保留原派单记录与原因，订单回到待派单，排班余量释放。"""
     reason = request.get_json(force=True).get("reason", "")
-
-    def fn(cur):
-        cur.execute("""SELECT order_id FROM dispatch WHERE dispatch_id=%s AND is_current=1""",
-                    dispatch_id)
-        d = cur.fetchone()
-        if not d:
-            raise BizError("派单不存在或已不是当前派单")
-        cur.execute("""UPDATE dispatch SET is_current=0, reassign_reason=%s
-                        WHERE dispatch_id=%s""", (reason or "未注明原因", dispatch_id))
-        cur.execute("""UPDATE service_order SET status='待派单'
-                        WHERE order_id=%s AND status='已派单'""", d["order_id"])
-        # 释放该护工当班接单量（与 tr_dispatch_after_insert 对应）
-        cur.execute("""UPDATE schedule s
-                          JOIN service_order o ON o.order_id=%s
-                           SET s.booked = s.booked - 1
-                         WHERE s.caregiver_id = (SELECT caregiver_id FROM dispatch WHERE dispatch_id=%s)
-                           AND s.work_date = DATE(o.appoint_time)
-                           AND s.shift = (CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END)""",
-                    (d["order_id"], dispatch_id))
-        return {"order_id": d["order_id"]}
-
-    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: reassign_dispatch(cur, dispatch_id, reason))})
 
 
 # ------------------------------------------------------------------ 补贴

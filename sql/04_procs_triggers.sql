@@ -7,9 +7,9 @@ DROP PROCEDURE IF EXISTS sp_pause_expired_plans;
 DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
+DROP TRIGGER IF EXISTS tr_work_hour_before_update;
 DROP TRIGGER IF EXISTS tr_vital_sign_before_insert;
 DROP TRIGGER IF EXISTS tr_emergency_before_update;
-
 -- ---------------------------------------------------------------------
 -- 存储过程：评估到期自动暂停照护计划（任务书示例场景）
 -- 规则：老人最新一次评估已过期 → 其"生效"状态的照护计划全部置为"暂停"
@@ -168,6 +168,32 @@ BEGIN
   -- 回填处置结果且已到场 → 处置闭环
   IF NEW.result IS NOT NULL AND NEW.result <> '' AND NEW.arrive_time IS NOT NULL THEN
     SET NEW.status = '已处置';
+  END IF;
+END$$
+DELIMITER ;
+
+-- ---------------------------------------------------------------------
+-- 触发器4 工时签退结算（BEFORE UPDATE ON work_hour）：
+--   护工签退时（checkout_time 由 NULL 变为非空）：
+--   ① 若围栏校验为'通过'，自动按分钟差折算 valid_hours（保留2位小数），状态置为'自动认定'
+--   ② 若围栏校验为'围栏外异常'，有效工时暂记 0.00，状态自动转为'待人工复核'
+-- ---------------------------------------------------------------------
+DELIMITER $$
+CREATE TRIGGER tr_work_hour_before_update
+BEFORE UPDATE ON work_hour
+FOR EACH ROW
+BEGIN
+  IF NEW.checkout_time IS NOT NULL AND OLD.checkout_time IS NULL THEN
+    IF NEW.checkout_time < NEW.checkin_time THEN
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '签退失败：签退时间不能早于签到时间';
+    END IF;
+    IF NEW.fence_result = '通过' THEN
+      SET NEW.valid_hours = ROUND(TIMESTAMPDIFF(MINUTE, NEW.checkin_time, NEW.checkout_time) / 60.0, 2);
+      SET NEW.review_status = '自动认定';
+    ELSE
+      SET NEW.valid_hours = 0.00;
+      SET NEW.review_status = '待人工复核';
+    END IF;
   END IF;
 END$$
 DELIMITER ;
