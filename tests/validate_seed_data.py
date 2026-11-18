@@ -59,7 +59,8 @@ def main():
     print(f"{'表名':<{width}}{'行数':>6}  状态")
     print("-" * (width + 14))
     for table, n, ok in rows:
-        print(f"{table:<{width}}{n:>6}  {'✅ 达标' if ok else '❌ 不足'}")
+        # 不用 emoji：Windows 默认 GBK 控制台会 UnicodeEncodeError
+        print(f"{table:<{width}}{n:>6}  {'[OK] 达标' if ok else '[NG] 不足'}")
     print("-" * (width + 14))
     total_ok = len(TABLES) - len(failed)
     print(f"共 {len(TABLES)} 张表，达标 {total_ok} 张，不足 {len(failed)} 张。")

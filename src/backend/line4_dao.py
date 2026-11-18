@@ -115,12 +115,14 @@ def record_vital_sign(cur, payload):
            VALUES (%s,%s,%s,%s,%s,%s)""",
         (device_id, device["elder_id"], collect_time, metric_type, value, source),
     )
+    # lastrowid 必须在 INSERT 后立即保存：再执行 SELECT 后它会失效（变为 None）
+    vital_id = cur.lastrowid
     cur.execute(
-        "SELECT abnormal_flag FROM vital_sign WHERE vital_id=%s", (cur.lastrowid,)
+        "SELECT abnormal_flag FROM vital_sign WHERE vital_id=%s", (vital_id,)
     )
     flag = cur.fetchone()["abnormal_flag"]
     return {
-        "vital_id": cur.lastrowid,
+        "vital_id": vital_id,
         "elder_id": device["elder_id"],
         "abnormal_flag": flag,
     }
