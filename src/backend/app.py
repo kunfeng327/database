@@ -22,6 +22,12 @@ import pymysql
 from flask import Flask, jsonify, request, send_file, session
 
 from db import DB_CONFIG
+from care_plan_dao import (
+    CarePlanError,
+    create_care_plan,
+    list_care_plans,
+    update_care_plan,
+)
 from elder_dao import (
     ElderError,
     create_elder as dao_create_elder,
@@ -125,6 +131,11 @@ def handle_order_error(e):
 
 @app.errorhandler(ElderError)
 def handle_elder_error(e):
+    return jsonify({"ok": False, "msg": str(e)}), 400
+
+
+@app.errorhandler(CarePlanError)
+def handle_care_plan_error(e):
     return jsonify({"ok": False, "msg": str(e)}), 400
 
 
@@ -310,6 +321,44 @@ def elder_update(elder_id):
         return dao_update_elder(cur, elder_id, body)
 
     return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+
+# ------------------------------------------------------------------ 照护计划
+@app.get("/api/care-plans")
+@login_required()
+def care_plans():
+    elder_id = session["elder_id"] if session["role"] == "家属" else None
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: [jsonable(row) for row in list_care_plans(cur, elder_id)]
+    )})
+
+
+@app.get("/api/care-plans/caregivers")
+@login_required(roles=("社区管理员",))
+def care_plan_caregivers():
+    return jsonify({"ok": True, "data": query_all(
+        """SELECT caregiver_id, name, agency
+           FROM caregiver WHERE on_duty='在岗'
+           ORDER BY name"""
+    )})
+
+
+@app.post("/api/care-plans")
+@login_required(roles=("社区管理员",))
+def care_plan_create():
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: create_care_plan(cur, body)
+    )})
+
+
+@app.patch("/api/care-plans/<int:plan_id>")
+@login_required(roles=("社区管理员",))
+def care_plan_update(plan_id):
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: update_care_plan(cur, plan_id, body)
+    )})
 
 
 # ------------------------------------------------------------------ 能力评估

@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 
 import db as dbmod  # noqa: E402
 import elder_dao as dao  # noqa: E402
+import care_plan_dao  # noqa: E402
 
 
 TEST_ID_BASE = dt.date.today().strftime("110101%y%m%d")  # 每日变化，避免残留脏数据
@@ -206,4 +207,50 @@ def test_06_new_views_return_data():
                     + (row["level_moderate"] or 0) + (row["level_severe"] or 0)
                 assert levels + (row["unassessed"] or 0) == row["total_elders"]
     finally:
+        conn.close()
+
+
+def test_07_care_plan_dao_crud():
+    """照护计划：建档后可创建、修改状态、查询列表并校验日期。"""
+    conn = _connect()
+    elder_id = None
+    plan_id = None
+    try:
+        with conn.cursor() as cur:
+            elder_id = dao.create_elder(cur, _new_elder_payload())["elder_id"]
+            created = care_plan_dao.create_care_plan(cur, {
+                "elder_id": elder_id,
+                "package_name": "测试基础照护",
+                "frequency": "每周3次",
+                "start_date": "2026-11-18",
+                "end_date": "2027-02-18",
+                "caregiver_id": 1,
+                "status": "生效",
+            })
+            plan_id = created["plan_id"]
+            result = care_plan_dao.update_care_plan(cur, plan_id, {
+                "frequency": "每周2次",
+                "status": "暂停",
+            })
+            assert result["updated"] == 1
+            plans = care_plan_dao.list_care_plans(cur, elder_id)
+            assert len(plans) == 1
+            assert plans[0]["frequency"] == "每周2次"
+            assert plans[0]["status"] == "暂停"
+
+            with pytest.raises(care_plan_dao.CarePlanError):
+                care_plan_dao.create_care_plan(cur, {
+                    "elder_id": elder_id,
+                    "package_name": "非法日期计划",
+                    "frequency": "每周1次",
+                    "start_date": "2026-12-01",
+                    "end_date": "2026-11-01",
+                })
+        conn.commit()
+    finally:
+        with conn.cursor() as cur:
+            if plan_id:
+                cur.execute("DELETE FROM care_plan WHERE plan_id=%s", (plan_id,))
+        _cleanup(conn, elder_ids=[elder_id])
+        conn.commit()
         conn.close()

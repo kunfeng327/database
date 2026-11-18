@@ -262,6 +262,27 @@ textarea { width:100%; min-height:56px; resize:vertical; }
             <button class="btn ghost" type="button" id="e-cancel" style="display:none" onclick="resetElderForm()">取消编辑</button>
           </form>
         </div>
+        <div class="card" id="care-plan-card">
+          <h3 id="care-plan-title">照护计划</h3>
+          <div id="care-plan-form-wrap">
+            <form class="inline" id="care-plan-form">
+              <input type="hidden" id="p-id">
+              <div class="field"><label>老人</label><select id="p-elder" required></select></div>
+              <div class="field"><label>服务包名称</label><input id="p-package" maxlength="50" required></div>
+              <div class="field"><label>服务频次</label><input id="p-frequency" maxlength="50" placeholder="例如：每周3次" required></div>
+              <div class="field"><label>开始日期</label><input id="p-start" type="date" required></div>
+              <div class="field"><label>结束日期</label><input id="p-end" type="date" required></div>
+              <div class="field"><label>责任护工</label><select id="p-caregiver"><option value="">无指定护工</option></select></div>
+              <div class="field"><label>状态</label><select id="p-status"><option>生效</option><option>暂停</option><option>结束</option></select></div>
+              <button class="btn" type="submit" id="p-submit">新建计划</button>
+              <button class="btn ghost" type="button" id="p-cancel" style="display:none" onclick="resetCarePlanForm()">取消编辑</button>
+            </form>
+          </div>
+          <table style="margin-top:14px"><thead><tr>
+            <th>计划号</th><th>老人</th><th>服务包</th><th>频次</th><th>开始日期</th><th>结束日期</th>
+            <th>责任护工</th><th>状态</th><th id="care-plan-action-th">操作</th></tr></thead>
+            <tbody id="care-plan-table"></tbody></table>
+        </div>
         <div class="card">
           <h3 id="assess-title">能力评估记录<small id="assess-sub">评估结果一年有效，到期须复评，逾期自动暂停派单</small></h3>
           <div id="assess-alert"></div>
@@ -433,6 +454,7 @@ let elderList = [];
 let orderList = [];
 let qualityCaregivers = [];
 let communityList = [];
+let carePlanList = [];
 
 async function API(url, opts) {
   const r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...opts,
@@ -486,7 +508,7 @@ async function boot(){
   $('#role-badge').textContent = ME.role;
   buildNav();
   await loadItems();
-  await Promise.all([loadCommunities(), loadElders(), loadOrders(), loadSchedules()]);
+  await Promise.all([loadCommunities(), loadElders(), loadOrders(), loadSchedules(), loadCarePlans()]);
   loadStats(); loadPending(); loadSubsidy(); loadQuality(); loadLine5Overview(); loadOps();
 }
 
@@ -522,6 +544,8 @@ function buildNav(){
   $('#assess-form-card').classList.toggle('hide', !isAdmin);
   $('#elder-form-card').classList.toggle('hide', !isAdmin);
   $('#elder-action-th').classList.toggle('hide', !isAdmin);
+  $('#care-plan-form-wrap').classList.toggle('hide', !isAdmin);
+  $('#care-plan-action-th').classList.toggle('hide', !isAdmin);
   $('#orders-title').textContent = ME.role==='护工' ? '我的派单记录' :
       isFamily ? '家庭服务订单' : '服务订单';
   $('#order-form-title').innerHTML = isFamily
@@ -543,6 +567,56 @@ async function loadCommunities(){
   communityList = r.data;
   $('#e-community').innerHTML = communityList.map(c =>
     `<option value="${c.community_id}">${esc(c.name)}（${esc(c.district)}）</option>`).join('');
+}
+async function loadCarePlanCaregivers(){
+  if (ME.role !== '社区管理员') return;
+  const r = await API('/api/care-plans/caregivers');
+  if (!r.ok) return;
+  $('#p-caregiver').innerHTML = '<option value="">无指定护工</option>' +
+    r.data.map(c => `<option value="${c.caregiver_id}">${esc(c.name)}（${esc(c.agency)}）</option>`).join('');
+}
+function resetCarePlanForm(){
+  $('#care-plan-form').reset();
+  $('#p-id').value = '';
+  $('#p-status').value = '生效';
+  $('#care-plan-title').textContent = '照护计划';
+  $('#p-submit').textContent = '新建计划';
+  $('#p-cancel').style.display = 'none';
+}
+function editCarePlan(planId){
+  const p = carePlanList.find(x => x.plan_id === planId);
+  if (!p) return;
+  $('#p-id').value = p.plan_id;
+  $('#p-elder').value = p.elder_id;
+  $('#p-package').value = p.package_name;
+  $('#p-frequency').value = p.frequency;
+  $('#p-start').value = p.start_date;
+  $('#p-end').value = p.end_date;
+  $('#p-caregiver').value = p.caregiver_id || '';
+  $('#p-status').value = p.status;
+  $('#care-plan-title').textContent = `编辑照护计划：#${p.plan_id}`;
+  $('#p-submit').textContent = '保存计划';
+  $('#p-cancel').style.display = '';
+  $('#care-plan-card').scrollIntoView({behavior:'smooth', block:'center'});
+}
+async function loadCarePlans(){
+  const r = await API('/api/care-plans');
+  if (!r.ok) return;
+  carePlanList = r.data;
+  $('#care-plan-table').innerHTML = r.data.map(p => `<tr>
+    <td>${p.plan_id}</td><td>${esc(p.elder_name)}</td><td>${esc(p.package_name)}</td>
+    <td>${esc(p.frequency)}</td><td>${p.start_date}</td><td>${p.end_date}</td>
+    <td>${esc(p.caregiver_name) || '<span class="muted">未指定</span>'}</td>
+    <td>${p.status==='生效'?'<span class="badge b-done">生效</span>'
+      :p.status==='暂停'?'<span class="badge b-wait">暂停</span>':'<span class="badge b-canc">结束</span>'}</td>
+    ${ME.role==='社区管理员'?`<td><button class="btn small ghost" onclick="editCarePlan(${p.plan_id})">编辑</button></td>`:''}
+  </tr>`).join('')
+    || '<tr><td colspan="9" class="muted">暂无照护计划</td></tr>';
+  if (ME.role === '社区管理员') {
+    $('#p-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
+      .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}）</option>`).join('');
+    await loadCarePlanCaregivers();
+  }
 }
 function resetElderForm(){
   $('#elder-form').reset();
@@ -612,6 +686,10 @@ async function loadElders(){
     ${ME.role==='社区管理员'?`<td><button class="btn small ghost" onclick="editElder(${e.elder_id})">编辑</button></td>`:''}</tr>`).join('');
   $('#f-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
     .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}${e.assess_expired?'，评估已过期':''}）</option>`).join('');
+  if (ME.role === '社区管理员') {
+    $('#p-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
+      .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}）</option>`).join('');
+  }
   const t = new Date(Date.now() + 26*3600e3);
   $('#f-time').value = t.toISOString().slice(0,16);
   // 评估卡片：家属自动绑定自家老人，管理员可选
@@ -650,6 +728,28 @@ $('#elder-form').onsubmit = async ev => {
   if (!r.ok) { toast(r.msg, true); return; }
   toast(elderId ? '老人档案已修改' : `老人档案创建成功：编号 ${r.data.elder_id}`);
   resetElderForm();
+  await loadElders();
+  loadStats();
+};
+
+$('#care-plan-form').onsubmit = async ev => {
+  ev.preventDefault();
+  const planId = +$('#p-id').value;
+  const body = {
+    elder_id: +$('#p-elder').value,
+    package_name: $('#p-package').value,
+    frequency: $('#p-frequency').value,
+    start_date: $('#p-start').value,
+    end_date: $('#p-end').value,
+    caregiver_id: $('#p-caregiver').value ? +$('#p-caregiver').value : null,
+    status: $('#p-status').value
+  };
+  const r = await API(planId ? `/api/care-plans/${planId}` : '/api/care-plans',
+    {method: planId ? 'PATCH' : 'POST', body});
+  if (!r.ok) { toast(r.msg, true); return; }
+  toast(planId ? '照护计划已修改' : '照护计划创建成功');
+  resetCarePlanForm();
+  await loadCarePlans();
   await loadElders();
   loadStats();
 };
