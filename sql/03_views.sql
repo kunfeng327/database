@@ -271,7 +271,11 @@ SELECT em.event_id,
        CASE em.event_level WHEN '一般' THEN 60 WHEN '紧急' THEN 30 ELSE 15 END AS deadline_min,
        CASE WHEN TIMESTAMPDIFF(MINUTE, em.occur_time, NOW())
                  > (CASE em.event_level WHEN '一般' THEN 60 WHEN '紧急' THEN 30 ELSE 15 END)
-            THEN '超时' ELSE '正常' END AS timeout_flag,
+            THEN '超时'
+            WHEN TIMESTAMPDIFF(MINUTE, em.occur_time, NOW())
+                 >= 0.8 * (CASE em.event_level WHEN '一般' THEN 60 WHEN '紧急' THEN 30 ELSE 15 END)
+            THEN '临近超时'
+            ELSE '正常' END AS timeout_flag,
        em.escalated
 FROM emergency em
 JOIN elder e     ON e.elder_id = em.elder_id

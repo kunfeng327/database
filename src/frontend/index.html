@@ -936,7 +936,9 @@ async function loadHealth(){
     <td>${e.event_id}</td><td>${esc(e.elder_name)}</td><td>${esc(e.community)}</td><td>${esc(e.trigger_source)}</td>
     <td>${levelBadge(e.event_level)}</td><td>${e.occur_time}</td><td>${e.waited_min} 分钟</td>
     <td>${e.deadline_min} 分钟</td>
-    <td>${e.timeout_flag==='超时' ? '<span class="badge b-red">已超时·响应即升级</span>' : '<span class="badge b-done">时限内</span>'}</td>
+    <td>${e.timeout_flag==='超时' ? '<span class="badge b-red">已超时</span>'
+        : e.timeout_flag==='临近超时' ? '<span class="badge b-wait">临近超时</span>'
+        : '<span class="badge b-done">时限内</span>'}</td>
     <td>${ME.role==='社区管理员'
       ? `<button class="btn small" onclick="doRespond(${e.event_id})">响应</button>` : '—'}</td></tr>`).join('')
     || '<tr><td colspan="10" class="muted">暂无待响应事件</td></tr>';
