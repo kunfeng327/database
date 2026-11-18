@@ -914,7 +914,7 @@ async function loadHealth(){
     <td>${d.device_id}</td><td>${esc(d.elder_name)}</td><td>${esc(d.community)}</td><td>${esc(d.device_type)}</td>
     <td>${d.status==='绑定'?'<span class="badge b-done">绑定</span>':'<span class="badge b-canc">解绑</span>'}</td>
     <td>${d.bound_days} 天</td><td>${d.bind_time}</td>
-    <td>${d.status==='绑定'
+    <td>${d.status==='绑定' && ME.role==='社区管理员'
       ? `<button class="btn small ghost" onclick="doUnbind(${d.device_id})">解绑</button>`
       : '—'}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">暂无设备</td></tr>';
   const flagBadge = f => f==='异常' ? '<span class="badge b-red">异常</span>'
