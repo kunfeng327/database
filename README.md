@@ -82,7 +82,7 @@ tests/  test_line5_integration.py   # 补贴审核、随机抽查、整改限制
 | 成员 | 业务线 | 横向职责 | 分支 |
 |---|---|---|---|
 | A（组长，kunfeng327） | 线1 老人档案与能力评估 | 全局 E-R 整合、安全策略、统筹 | feature/xxx-档案评估 |
-| B（qianqiankk） | 线2 服务下单与派单 | 持久层框架统一、代码评审 | feature/qianqiankk-order-dispatch |
+| B（qianyikk） | 线2 服务下单与派单 | 持久层框架统一、代码评审 | feature/qianyikk-order-dispatch |
 | C | 线3 护工与排班 | SQL 测试与索引优化 | feature/xxx-护工排班 |
 | D | 线4 健康监测与应急响应 | 测试数据总装 | feature/xxx-健康监测 |
 | E | 线5 补贴核算与质量监管 | 报告主笔、PPT、答辩录像 | feature/xxx-补贴监管 |
@@ -114,3 +114,4 @@ git push origin feature/你的名字拼音-功能
 然后到 GitHub 网页上开 PR（自己的分支 → main），**由组长或另一位队员审完再合并，不许自己合自己的 PR**。
 
 > ⚠️ **.docx 文件无法合并冲突**：每个 Word 文档只由它的负责人一人修改，其他人提意见、不要直接改文件。
+
