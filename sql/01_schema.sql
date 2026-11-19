@@ -26,6 +26,7 @@ CREATE TABLE caregiver (
   service_regions VARCHAR(100) NOT NULL COMMENT '可服务区域(社区名,逗号分隔)',
   on_duty        ENUM('在岗','离职') NOT NULL DEFAULT '在岗',
   rating         DECIMAL(2,1) NOT NULL DEFAULT 5.0 COMMENT '评分',
+  total_hours     DECIMAL(8,2)  NOT NULL DEFAULT 0.00 COMMENT '累计有效服务时长(小时)',
   CONSTRAINT chk_rating CHECK (rating BETWEEN 0 AND 5),
   INDEX idx_caregiver_region (service_regions(20)),
   INDEX idx_caregiver_cert (cert_expire)
@@ -163,6 +164,18 @@ CREATE TABLE work_hour (
   INDEX idx_wh_caregiver_time (caregiver_id, checkin_time),
   INDEX idx_wh_review (review_status, fence_result)
 );
+
+-- 护工可承接服务项目关联表 (M:N 中间表)
+DROP TABLE IF EXISTS caregiver_item;
+CREATE TABLE caregiver_item (
+    caregiver_id  INT         NOT NULL COMMENT '护工编号',
+    item_id       INT         NOT NULL COMMENT '服务项目编号',
+    cert_verified TINYINT(1)  NOT NULL DEFAULT 1 COMMENT '专项资质是否核验通过(1是/0否)',
+    PRIMARY KEY (caregiver_id, item_id),
+    CONSTRAINT fk_ci_caregiver FOREIGN KEY (caregiver_id) REFERENCES caregiver(caregiver_id) ON DELETE CASCADE,
+    CONSTRAINT fk_ci_item      FOREIGN KEY (item_id)      REFERENCES service_item(item_id)   ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='护工可服务项目承接关系表';
+
 -- ------------------------- 10 补贴政策 -------------------------
 CREATE TABLE subsidy_policy (
   policy_id      INT PRIMARY KEY AUTO_INCREMENT COMMENT '政策编号',
