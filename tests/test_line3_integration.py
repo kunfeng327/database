@@ -1,10 +1,9 @@
-# tests/test_line3_integration.py
-# 线3 持久层与数据库触发器集成测试（覆盖正常签退算工时、围栏异常转复核、时间倒挂拦截与回滚）
+# 线3 持久层与数据库触发器集成测试（正常签退算工时、围栏异常转复核、时间倒挂回滚、跨班次互斥、批量排班）
 import os
 import sys
 import pytest
 import pymysql
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 # 将 src/backend 加入模块搜索路径
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/backend")))
@@ -24,17 +23,11 @@ def _cleanup_test_dispatch(dispatch_id=9999):
 
 
 def _prepare_test_dispatch(dispatch_id=9999, order_id=8, caregiver_id=12):
-    """临时插入一条当天排班与测试派单供签到签退测试（使用无违规整改的12号护工）"""
+    """临时插入一条测试派单（12号护工在种子数据中已有未来7天开放排班及4号项目资质）"""
     _cleanup_test_dispatch(dispatch_id)
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            # 确保该护工当天存在开放排班，满足派单触发器校验
-            cur.execute("""
-                INSERT INTO schedule (caregiver_id, work_date, shift, capacity, booked, status)
-                VALUES (%s, CURDATE(), '全天', 5, 0, '开放')
-                ON DUPLICATE KEY UPDATE status = '开放', capacity = 5
-            """, (caregiver_id,))
             cur.execute("""
                 INSERT INTO dispatch (dispatch_id, order_id, caregiver_id, dispatch_time, is_current)
                 VALUES (%s, %s, %s, NOW(), 1)
@@ -45,7 +38,7 @@ def _prepare_test_dispatch(dispatch_id=9999, order_id=8, caregiver_id=12):
 
 
 def test_01_normal_checkin_and_checkout_auto_hours():
-    """测试1：正常签到 -> 围栏通过签退，验证触发器自动折算 valid_hours = 1.50"""
+    """测试1：正常签到 -> 围栏通过签退，验证触发器自动折算 valid_hours = 1.50 并累加至护工总时长"""
     _prepare_test_dispatch(9999, order_id=8, caregiver_id=12)
     try:
         t_in = datetime.now().replace(microsecond=0)
@@ -82,7 +75,7 @@ def test_03_invalid_checkout_time_triggers_rollback():
     _prepare_test_dispatch(9999, order_id=8, caregiver_id=12)
     try:
         t_in = datetime.now().replace(microsecond=0)
-        t_bad_out = t_in - timedelta(minutes=30)  # 签退时间早于签到时间
+        t_bad_out = t_in - timedelta(minutes=30)
 
         wh_id = Line3DAO.checkin_work_hour(12, 9999, t_in, "幸福社区3号楼测试定位")
 
@@ -94,13 +87,38 @@ def test_03_invalid_checkout_time_triggers_rollback():
         _cleanup_test_dispatch(9999)
 
 
-def test_04_views_and_summary_queries():
-    """测试4：验证排班余量视图、证书预警视图及月度工时汇总查询正常返回"""
+def test_04_schedule_overlap_blocked_and_batch_create():
+    """测试4：验证同日'上午+全天'排班冲突触发器拦截，以及未来空余日期批量排班存储过程"""
+    # 1) 12号护工今天已有上午/下午排班，再排全天应被触发器拦截
+    with pytest.raises(pymysql.MySQLError) as exc_info:
+        Line3DAO.create_schedule(12, date.today().isoformat(), "全天", capacity=4)
+    assert "排班冲突" in str(exc_info.value)
+
+    # 2) 测试未来第20~21天批量排班（共2天），测完清理
+    d1 = (date.today() + timedelta(days=20)).isoformat()
+    d2 = (date.today() + timedelta(days=21)).isoformat()
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM schedule WHERE caregiver_id = 12 AND work_date BETWEEN %s AND %s", (d1, d2))
+        conn.commit()
+
+        created = Line3DAO.batch_create_schedule(12, d1, d2, shift="全天", capacity=4)
+        assert created == 2
+    finally:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM schedule WHERE caregiver_id = 12 AND work_date BETWEEN %s AND %s", (d1, d2))
+        conn.commit()
+        conn.close()
+
+
+def test_05_views_and_summary_queries():
+    """测试5：验证排班余量视图、证书预警视图及月度工时汇总查询正常返回"""
     schedules = Line3DAO.list_schedule_capacity()
     assert isinstance(schedules, list) and len(schedules) > 0
 
     warnings = Line3DAO.list_cert_warnings()
-    assert isinstance(warnings, list) and len(warnings) > 0  # 种子数据中有临期与过期护工
+    assert isinstance(warnings, list) and len(warnings) > 0
 
     summary = Line3DAO.get_monthly_work_summary()
     assert isinstance(summary, list) and len(summary) > 0

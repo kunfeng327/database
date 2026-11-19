@@ -1,8 +1,8 @@
 # src/backend/line3_dao.py
 # 线3（护工与排班）数据库持久层 DAO
 import pymysql
-import pymysql
 from db import DB_CONFIG
+
 
 def get_conn():
     return pymysql.connect(**DB_CONFIG)
@@ -40,7 +40,7 @@ class Line3DAO:
 
     @staticmethod
     def create_schedule(caregiver_id, work_date, shift, capacity=4):
-        """3. 机构负责人新增排班（受唯一约束 uk_sched 保护，事务提交）"""
+        """3. 机构负责人新增排班（受唯一约束 uk_sched 与跨班次触发器保护，事务提交）"""
         conn = get_conn()
         try:
             with conn.cursor() as cur:
@@ -60,11 +60,10 @@ class Line3DAO:
 
     @staticmethod
     def checkin_work_hour(caregiver_id, dispatch_id, checkin_time, checkin_location):
-        """4. 护工上门签到（写入 work_hour 初始记录，同时将派单到达时间与订单状态同步）"""
+        """4. 护工上门签到（写入 work_hour 初始记录，同时将派单到达时间同步）"""
         conn = get_conn()
         try:
             with conn.cursor() as cur:
-                # 写入工时签到记录
                 sql_wh = """
                     INSERT INTO work_hour (caregiver_id, dispatch_id, checkin_time, checkin_location, fence_result, valid_hours, review_status)
                     VALUES (%s, %s, %s, %s, '通过', 0.00, '自动认定')
@@ -72,7 +71,6 @@ class Line3DAO:
                 cur.execute(sql_wh, (caregiver_id, dispatch_id, checkin_time, checkin_location))
                 wh_id = cur.lastrowid
 
-                # 同步更新派单表上门时间
                 cur.execute("UPDATE dispatch SET arrive_time = %s WHERE dispatch_id = %s", (checkin_time, dispatch_id))
             conn.commit()
             return wh_id
@@ -96,7 +94,6 @@ class Line3DAO:
                 """
                 cur.execute(sql, (checkout_time, fence_result, work_hour_id))
 
-                # 回查触发器计算后的最新结果
                 cur.execute("SELECT * FROM work_hour WHERE work_hour_id = %s", (work_hour_id,))
                 result = cur.fetchone()
             conn.commit()
@@ -117,6 +114,7 @@ class Line3DAO:
                     SELECT cg.caregiver_id,
                            cg.name AS caregiver_name,
                            cg.agency,
+                           cg.total_hours AS archive_total_hours,
                            COUNT(DISTINCT wh.work_hour_id) AS service_count,
                            COALESCE(SUM(wh.valid_hours), 0) AS total_valid_hours
                     FROM caregiver cg
@@ -124,10 +122,31 @@ class Line3DAO:
                            ON wh.caregiver_id = cg.caregiver_id
                           AND wh.review_status IN ('自动认定', '复核通过')
                     WHERE cg.on_duty = '在岗'
-                    GROUP BY cg.caregiver_id, cg.name, cg.agency
+                    GROUP BY cg.caregiver_id, cg.name, cg.agency, cg.total_hours
                     ORDER BY total_valid_hours DESC
                 """
                 cur.execute(sql)
                 return cur.fetchall()
+        finally:
+            conn.close()
+
+    @staticmethod
+    def batch_create_schedule(caregiver_id, start_date, end_date, shift='全天', capacity=4):
+        """7. 机构端按日期范围批量排班（调用存储过程 sp_batch_create_schedule）"""
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SET @created_cnt = 0")
+                cur.execute(
+                    "CALL sp_batch_create_schedule(%s, %s, %s, %s, %s, @created_cnt)",
+                    (caregiver_id, start_date, end_date, shift, capacity)
+                )
+                cur.execute("SELECT @created_cnt")
+                created_cnt = cur.fetchone()[0]
+            conn.commit()
+            return int(created_cnt)
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()

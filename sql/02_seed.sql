@@ -17,6 +17,7 @@ TRUNCATE subsidy_claim; TRUNCATE subsidy_policy; TRUNCATE schedule;
 TRUNCATE dispatch;     TRUNCATE service_order;  TRUNCATE service_item;
 TRUNCATE care_plan;    TRUNCATE assessment;     TRUNCATE elder;
 TRUNCATE caregiver;    TRUNCATE community;      TRUNCATE sys_user;
+TRUNCATE caregiver_item; TRUNCATE work_hour;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 社区（20 条）
@@ -482,3 +483,17 @@ FROM caregiver cg
 CROSS JOIN (SELECT 0 n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6) d
 CROSS JOIN (SELECT '上午' shift UNION SELECT '下午') s
 WHERE cg.on_duty = '在岗' AND cg.caregiver_id >= 21;
+
+-- 护工可承接服务项目种子数据 (24条，满足每表>=20条规范)
+INSERT INTO caregiver_item (caregiver_id, item_id, cert_verified) VALUES
+(1, 1, 1), (1, 4, 1), (1, 6, 1),
+(2, 3, 1), (2, 6, 1), (2, 7, 1),
+(4, 2, 1), (4, 6, 1),
+(5, 5, 1), (5, 7, 1),
+(6, 1, 1), (6, 4, 1),
+(8, 1, 1), (8, 4, 1),
+(9, 2, 1), (9, 6, 1),
+(10, 1, 1), (10, 4, 1),
+(11, 5, 1), (11, 7, 1),
+(12, 1, 1), (12, 4, 1),
+(14, 1, 1), (16, 2, 1);

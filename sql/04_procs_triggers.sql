@@ -197,3 +197,100 @@ BEGIN
   END IF;
 END$$
 DELIMITER ;
+
+DELIMITER $$
+
+-- 1. 排班跨班次重叠拦截触发器（拦截同一天"上午+全天"或"下午+全天"冲突）
+DROP TRIGGER IF EXISTS tr_schedule_before_insert$$
+CREATE TRIGGER tr_schedule_before_insert
+BEFORE INSERT ON schedule
+FOR EACH ROW
+BEGIN
+    DECLARE v_conflict INT DEFAULT 0;
+    SELECT COUNT(*) INTO v_conflict
+      FROM schedule
+     WHERE caregiver_id = NEW.caregiver_id
+       AND work_date = NEW.work_date
+       AND (
+            NEW.shift = '全天'
+            OR shift = '全天'
+            OR shift = NEW.shift
+       );
+    IF v_conflict > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '排班冲突：该护工当日已存在重叠班次（全天与上午/下午互斥）';
+    END IF;
+END$$
+
+-- 2. 派单前校验护工是否具备对应服务项目承接资质 (caregiver_item)
+DROP TRIGGER IF EXISTS tr_dispatch_check_item$$
+CREATE TRIGGER tr_dispatch_check_item
+BEFORE INSERT ON dispatch
+FOR EACH ROW
+BEGIN
+    DECLARE v_item_id INT;
+    DECLARE v_capable INT DEFAULT 0;
+
+    SELECT item_id INTO v_item_id
+      FROM service_order
+     WHERE order_id = NEW.order_id;
+
+    SELECT COUNT(*) INTO v_capable
+      FROM caregiver_item
+     WHERE caregiver_id = NEW.caregiver_id
+       AND item_id = v_item_id
+       AND cert_verified = 1;
+
+    IF v_capable = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '派单失败：该护工未获得此服务项目的承接资质授权';
+    END IF;
+END$$
+
+-- 3. 工时签退认定通过后，自动将有效工时累加到护工档案 total_hours
+DROP TRIGGER IF EXISTS tr_work_hour_after_update$$
+CREATE TRIGGER tr_work_hour_after_update
+AFTER UPDATE ON work_hour
+FOR EACH ROW
+BEGIN
+    IF OLD.valid_hours = 0 AND NEW.valid_hours > 0
+       AND NEW.review_status IN ('自动认定', '复核通过') THEN
+        UPDATE caregiver
+           SET total_hours = total_hours + NEW.valid_hours
+         WHERE caregiver_id = NEW.caregiver_id;
+    END IF;
+END$$
+
+-- 4. 机构端按日期范围批量排班存储过程（自动跳过已存在冲突排班的日期，返回成功排班天数）
+DROP PROCEDURE IF EXISTS sp_batch_create_schedule$$
+CREATE PROCEDURE sp_batch_create_schedule(
+    IN  p_caregiver_id INT,
+    IN  p_start_date   DATE,
+    IN  p_end_date     DATE,
+    IN  p_shift        VARCHAR(10),
+    IN  p_capacity     INT,
+    OUT p_created_cnt  INT
+)
+BEGIN
+    DECLARE v_curr DATE DEFAULT p_start_date;
+    DECLARE v_exists INT DEFAULT 0;
+    SET p_created_cnt = 0;
+
+    WHILE v_curr <= p_end_date DO
+        SELECT COUNT(*) INTO v_exists
+          FROM schedule
+         WHERE caregiver_id = p_caregiver_id
+           AND work_date = v_curr
+           AND (p_shift = '全天' OR shift = '全天' OR shift = p_shift);
+
+        IF v_exists = 0 THEN
+            INSERT INTO schedule (caregiver_id, work_date, shift, capacity, booked, status)
+            VALUES (p_caregiver_id, v_curr, p_shift, p_capacity, 0, '开放');
+            SET p_created_cnt = p_created_cnt + 1;
+        END IF;
+
+        SET v_curr = DATE_ADD(v_curr, INTERVAL 1 DAY);
+    END WHILE;
+END$$
+
+DELIMITER ;
