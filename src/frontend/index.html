@@ -127,12 +127,44 @@ textarea { width:100%; min-height:56px; resize:vertical; }
 #quality-table { min-width:1080px; }
 #quality-table td:nth-child(2) { min-width:150px; }
 #quality-table td:nth-child(8) { min-width:240px; }
+.workflow { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+.workflow-step { position:relative; padding:14px 12px; border:1px solid var(--border);
+  border-radius:8px; background:linear-gradient(180deg,#fff,var(--primary-lt)); min-height:88px; }
+.workflow-step::after { content:""; position:absolute; top:50%; right:-8px; width:8px;
+  border-top:2px solid var(--primary); }
+.workflow-step:last-child::after { display:none; }
+.workflow-step span { display:inline-flex; align-items:center; justify-content:center;
+  width:23px; height:23px; margin-bottom:9px; border-radius:50%; background:var(--primary);
+  color:#fff; font-size:11px; font-weight:700; }
+.workflow-step b { display:block; font-size:13px; }
+.workflow-step small { display:block; margin-top:4px; color:var(--muted); line-height:1.5; }
+.dashboard-grid { display:grid; grid-template-columns:1.15fr .85fr; gap:18px; align-items:start; }
+.dashboard-grid > .card { min-width:0; }
+.queue-empty { padding:24px 12px; text-align:center; color:var(--muted); }
+.policy-current { display:flex; justify-content:space-between; gap:12px; align-items:center;
+  padding:10px 0; border-bottom:1px solid #eff0f3; }
+.policy-current:last-child { border-bottom:0; }
+.policy-current b { font-size:13px; }
+.policy-current small { display:block; color:var(--muted); margin-top:2px; }
+.policy-money { color:var(--primary-dk); font-weight:700; white-space:nowrap; }
+.quality-rank { display:flex; align-items:center; gap:10px; padding:9px 0;
+  border-bottom:1px solid #eff0f3; }
+.quality-rank:last-child { border-bottom:0; }
+.quality-rank .rank { width:24px; height:24px; border-radius:6px; display:flex;
+  align-items:center; justify-content:center; background:var(--primary-lt);
+  color:var(--primary-dk); font-weight:700; font-size:11px; flex:none; }
+.quality-rank .who { flex:1; min-width:0; }
+.quality-rank .who b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; }
+.quality-rank .who small { display:block; color:var(--muted); margin-top:2px; }
+.quality-score { color:var(--primary-dk); font-weight:700; font-size:17px; }
+.queue-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 .muted { color:var(--muted); font-size:12px; }
 .hide { display:none; }
 @media (max-width:900px) {
   .sidebar { width:190px; }
   .main { margin-left:190px; }
   .content { padding:18px; }
+  .dashboard-grid { grid-template-columns:1fr; }
 }
 @media (max-width:680px) {
   .sidebar { position:static; width:100%; min-height:auto; }
@@ -146,6 +178,10 @@ textarea { width:100%; min-height:56px; resize:vertical; }
   .content { padding:14px; }
   .topbar { padding:14px 18px; }
   .card { overflow-x:auto; }
+  .workflow { grid-template-columns:1fr; }
+  .workflow-step::after { top:auto; right:auto; bottom:-8px; left:50%; width:0;
+    height:8px; border-top:0; border-left:2px solid var(--primary); }
+  .workflow-step:last-child::after { display:none; }
 }
 </style>
 </head>
@@ -243,6 +279,47 @@ textarea { width:100%; min-height:56px; resize:vertical; }
           <table id="order-table"><thead><tr>
             <th>订单号</th><th>老人</th><th>项目</th><th>预约时间</th><th>渠道</th>
             <th>金额</th><th>状态</th><th>护工</th><th>操作</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+
+      <section id="tab-line5" class="hide">
+        <div class="stats" id="line5-metrics"></div>
+        <div class="card">
+          <h3>补贴与质量监管闭环<small>申报防重、分级审核、抽查整改、拨付留痕</small></h3>
+          <div class="workflow">
+            <div class="workflow-step"><span>1</span><b>汇总申报</b>
+              <small>社区按账期汇总已完成服务订单</small></div>
+            <div class="workflow-step"><span>2</span><b>街道审核</b>
+              <small>核验区县、对象类别和订单追溯</small></div>
+            <div class="workflow-step"><span>3</span><b>民政终审</b>
+              <small>审核通过后进入待拨付队列</small></div>
+            <div class="workflow-step"><span>4</span><b>质量抽查</b>
+              <small>按比例回访订单或护工服务</small></div>
+            <div class="workflow-step"><span>5</span><b>拨付并整改</b>
+              <small>补贴拨付留痕，问题整改闭环</small></div>
+          </div>
+        </div>
+        <div class="dashboard-grid">
+          <div class="card">
+            <h3>监管待办<small>按审核、拨付和整改状态实时汇总</small></h3>
+            <table id="line5-claim-queue"><thead><tr>
+              <th>申报号</th><th>老人</th><th>账期</th><th>金额</th><th>当前环节</th><th>操作</th>
+            </tr></thead><tbody></tbody></table>
+          </div>
+          <div class="card">
+            <h3>整改跟踪<small>未完成整改将限制护工接单</small></h3>
+            <div id="line5-rectify-queue"></div>
+          </div>
+        </div>
+        <div class="dashboard-grid">
+          <div class="card">
+            <h3>当前有效补贴政策<small>区县、对象类别与服务项目匹配</small></h3>
+            <div id="line5-policy-list"></div>
+          </div>
+          <div class="card">
+            <h3>护工质量画像<small>抽查均分与未完成整改联动</small></h3>
+            <div id="line5-quality-ranking"></div>
+          </div>
         </div>
       </section>
 
@@ -425,11 +502,11 @@ document.getElementById('lg-pass').addEventListener('keydown', e => { if(e.key==
 /* ================= 各角色导航 ================= */
 const ROLE_TABS = {
   '社区管理员': [['dashboard','总览','📊'],['orders','订单与派单','📋'],['elders','老人档案','👴'],['health','健康监测','❤️'],
-                 ['subsidy','补贴申报','💰'],['quality','质量整改','🔎'],['ops','运维工具','🛠']],
+                 ['line5','补贴与质量','🛡️'],['subsidy','补贴申报','💰'],['quality','质量整改','🔎'],['ops','运维工具','🛠']],
   '家属':       [['orders','服务订单','📋'],['elders','家庭档案','🏠'],['health','健康监测','❤️']],
   '护工':       [['orders','我的派单','🧑‍⚕️'],['schedules','我的排班','📅'],['quality','我的整改','🔎']],
   '机构负责人': [['schedules','排班总览','📅'],['quality','质量整改','🔎']],
-  '监管人员':   [['dashboard','总览','📊'],['subsidy','补贴监管','💰'],['quality','质量抽查','🔎'],['elders','老人档案','👴']],
+  '监管人员':   [['dashboard','总览','📊'],['line5','补贴与质量','🛡️'],['subsidy','补贴监管','💰'],['quality','质量抽查','🔎'],['elders','老人档案','👴']],
 };
 
 async function boot(){
@@ -445,7 +522,7 @@ async function boot(){
   buildNav();
   await loadItems();
   await Promise.all([loadElders(), loadOrders(), loadSchedules()]);
-  loadStats(); loadPending(); loadSubsidy(); loadQuality(); loadOps();
+  loadStats(); loadPending(); loadSubsidy(); loadQuality(); loadLine5Overview(); loadOps();
   loadHealth(); if (ME.role === '社区管理员') loadHealthElders();
 }
 
@@ -462,6 +539,7 @@ function buildNav(){
     loadSchedules(); // 切到排班页时刷新（含工时表）
     loadQuality();
     loadHealth();    // 切到健康监测页时刷新
+    loadLine5Overview();
   });
   document.querySelectorAll('.content > section').forEach(s => s.classList.add('hide'));
   $('#tab-' + tabs[0][0]).classList.remove('hide');
@@ -725,7 +803,90 @@ $('#claim-form').onsubmit = async ev => {
 async function audit(id, action){
   const r = await API(`/api/subsidy/claims/${id}/audit`, {method:'POST', body:{action}});
   r.ok ? toast(`申报 ${id}：审核「${r.data.audit_status}」，拨付「${r.data.pay_status}」`) : toast(r.msg, true);
-  loadSubsidy(); loadStats();
+  loadSubsidy(); loadStats(); loadLine5Overview();
+}
+
+/* ================= 线5业务总览 ================= */
+function goToLine5Tab(tab){
+  const button = document.querySelector(`#nav button[data-tab="${tab}"]`);
+  if (button) button.click();
+}
+
+async function loadLine5Overview(){
+  if (!['社区管理员','监管人员'].includes(ME.role)) return;
+  if ($('#tab-line5').classList.contains('hide')) return;
+  const [policyRes, claimRes, qualityRes, caregiverRes] = await Promise.all([
+    API('/api/subsidy/policies'),
+    API('/api/subsidy/claims'),
+    API('/api/quality/inspections'),
+    API('/api/quality/caregivers')
+  ]);
+  if (!claimRes.ok || !qualityRes.ok) return;
+  const claims = claimRes.data || [];
+  const inspections = qualityRes.data || [];
+  const pendingAudit = claims.filter(c => c.audit_status === '待审核').length;
+  const pendingPayment = claims.filter(c => c.audit_status === '通过' && c.pay_status === '未拨付').length;
+  const paidAmount = claims.filter(c => c.pay_status === '已拨付')
+    .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const pendingInspection = inspections.filter(q => q.inspection_status === '待抽查').length;
+  const openRectify = inspections.filter(q => ['待整改','整改中'].includes(q.rectification_status)).length;
+
+  const metrics = [
+    ['待街道审核', pendingAudit, '📝', 'i-yellow'],
+    ['待确认拨付', pendingPayment, '💳', 'i-blue'],
+    ['已拨付金额', fmtYuan(paidAmount), '💰', 'i-teal'],
+    ['待录入抽查', pendingInspection, '🔎', 'i-purple'],
+    ['未完成整改', openRectify, '⚠️', 'i-orange']
+  ];
+  $('#line5-metrics').innerHTML = metrics.map(([label, value, icon, cls]) =>
+    `<div class="stat"><div class="icon ${cls}">${icon}</div><div>
+      <div class="num">${value}</div><div class="label">${label}</div></div></div>`).join('');
+
+  const queue = claims.filter(c =>
+    c.audit_status === '待审核' || c.audit_status === '街道已审' ||
+    (c.audit_status === '通过' && c.pay_status === '未拨付')
+  ).slice(0, 6);
+  $('#line5-claim-queue tbody').innerHTML = queue.map(c => {
+    let stage = '待街道审核';
+    if (c.audit_status === '街道已审') stage = '待终审';
+    if (c.audit_status === '通过') stage = '待拨付';
+    return `<tr><td>${c.claim_id}</td><td>${esc(c.elder_name)}</td>
+      <td>${c.claim_period}</td><td>${fmtYuan(c.amount)}</td>
+      <td><span class="badge ${c.audit_status === '通过' ? 'b-done' : 'b-wait'}">${stage}</span></td>
+      <td><button class="btn small ghost" onclick="goToLine5Tab('subsidy')">进入处理</button></td></tr>`;
+  }).join('') || '<tr><td colspan="6"><div class="queue-empty">当前没有待处理补贴</div></td></tr>';
+
+  const rectifications = inspections.filter(q =>
+    ['待整改','整改中'].includes(q.rectification_status)).slice(0, 6);
+  $('#line5-rectify-queue').innerHTML = rectifications.map(q => `
+    <div class="policy-current">
+      <div><b>${esc(q.caregiver_name || '未关联护工')}</b>
+        <small>${esc(q.issue_tags || '质量问题')} · ${esc(q.rectification_requirement || '待补充整改要求')}</small></div>
+      <div class="queue-actions">
+        <span class="badge b-red">${esc(q.rectification_status)}</span>
+        <button class="btn small ghost" onclick="goToLine5Tab('quality')">进入整改</button>
+      </div>
+    </div>`).join('') || '<div class="queue-empty">当前没有未完成整改</div>';
+
+  const policies = (policyRes.ok ? policyRes.data : []).slice(0, 6);
+  $('#line5-policy-list').innerHTML = policies.map(p => `
+    <div class="policy-current">
+      <div><b>${esc(p.district)} · ${esc(p.target_type)} · ${esc(p.item_name)}</b>
+        <small>${esc(p.period)}结算 · 有效期至 ${p.effective_to}</small></div>
+      <span class="policy-money">${fmtYuan(p.standard)}</span>
+    </div>`).join('') || '<div class="queue-empty">暂无有效政策</div>';
+
+  const caregivers = (caregiverRes.ok ? caregiverRes.data : [])
+    .filter(c => c.inspection_avg_score !== null)
+    .sort((a, b) => Number(b.inspection_avg_score) - Number(a.inspection_avg_score))
+    .slice(0, 6);
+  $('#line5-quality-ranking').innerHTML = caregivers.map((c, i) => `
+    <div class="quality-rank">
+      <span class="rank">${i + 1}</span>
+      <div class="who"><b>${esc(c.caregiver_name)}</b>
+        <small>${esc(c.agency)} · 抽查 ${c.inspected_count} 次 · 未整改 ${c.open_rectifications}</small></div>
+      <span class="quality-score">${Number(c.inspection_avg_score).toFixed(1)}</span>
+    </div>`).join('') || '<div class="queue-empty">暂无质量抽查数据</div>';
 }
 
 /* ================= 质量抽查与整改 ================= */
@@ -803,7 +964,7 @@ async function submitQualityResult(ev, id){
   if (r.ok) {
     toast(`抽查结果已保存，整改状态「${r.data.rectification_status}」`);
     $('#quality-action-panel').style.display = 'none';
-    loadQuality(); loadStats(); loadOrders();
+    loadQuality(); loadStats(); loadOrders(); loadLine5Overview();
   } else toast(r.msg, true);
 }
 
@@ -824,7 +985,7 @@ async function submitRectify(id){
   if (r.ok) {
     toast('整改结果已提交，护工接单限制已解除');
     $('#quality-action-panel').style.display = 'none';
-    loadQuality(); loadStats(); loadOrders();
+    loadQuality(); loadStats(); loadOrders(); loadLine5Overview();
   } else toast(r.msg, true);
 }
 
@@ -836,7 +997,7 @@ $('#quality-random-form').onsubmit = async ev => {
   }});
   r.ok ? toast(`已按 ${r.data.sample_rate}% 抽取 ${r.data.created_count} 笔，覆盖候选 ${r.data.candidate_count} 笔`)
        : toast(r.msg, true);
-  loadQuality(); loadStats();
+  loadQuality(); loadStats(); loadLine5Overview();
 };
 
 $('#quality-form').onsubmit = async ev => {
@@ -854,7 +1015,7 @@ $('#quality-form').onsubmit = async ev => {
   if (r.ok) {
     toast(`抽查已录入，评分 ${r.data.score}，整改状态「${r.data.rectification_status}」`);
     $('#q-score').value = ''; $('#q-issues').value = ''; $('#q-requirement').value = '';
-    loadQuality(); loadStats();
+    loadQuality(); loadStats(); loadLine5Overview();
   } else toast(r.msg, true);
 };
 
