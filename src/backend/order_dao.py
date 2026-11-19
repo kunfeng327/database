@@ -139,3 +139,79 @@ def reassign_dispatch(cur, dispatch_id, reason):
                       AND s.shift=(CASE WHEN TIME(o.appoint_time)<'12:00:00' THEN '上午' ELSE '下午' END)""",
                 (dispatch["order_id"], dispatch_id))
     return {"order_id": dispatch["order_id"]}
+
+
+def checkin_dispatch(cur, dispatch_id, checkin_time, location, caregiver_id):
+    """护工上门签到（仅本人，到场凭证不可代办）：
+    写工时记录(work_hour)、回填派单 arrive_time、订单转「服务中」。
+
+    与 line3_dao.checkin_work_hour 的区别：本函数游标注入、可参与路由事务，
+    并同步订单状态机（已派单 → 服务中），供页面演示完整闭环。
+    """
+    cur.execute("""SELECT d.caregiver_id, d.order_id, d.is_current, o.status
+                     FROM dispatch d JOIN service_order o ON o.order_id = d.order_id
+                    WHERE d.dispatch_id=%s""", (dispatch_id,))
+    d = cur.fetchone()
+    if not d:
+        raise OrderError("派单不存在")
+    if d["is_current"] != 1:
+        raise OrderError("该派单已不是当前派单（可能已改派）")
+    if d["caregiver_id"] != caregiver_id:
+        raise OrderError("无权限：签到是到场凭证，只能由该派单护工本人操作")
+    if d["status"] not in ("已派单", "服务中"):
+        raise OrderError(f"订单当前状态为「{d['status']}」，只有已派单订单可以签到")
+    cur.execute("SELECT work_hour_id FROM work_hour WHERE dispatch_id=%s", (dispatch_id,))
+    if cur.fetchone():
+        raise OrderError("该派单已签到过，请直接签退结算工时")
+
+    cur.execute(
+        """INSERT INTO work_hour
+           (caregiver_id, dispatch_id, checkin_time, checkin_location,
+            fence_result, valid_hours, review_status)
+           VALUES (%s,%s,%s,%s,'通过',0.00,'自动认定')""",
+        (d["caregiver_id"], dispatch_id, checkin_time, location or "上门签到"),
+    )
+    work_hour_id = cur.lastrowid  # INSERT 后立即保存
+    cur.execute("UPDATE dispatch SET arrive_time=%s WHERE dispatch_id=%s",
+                (checkin_time, dispatch_id))
+    cur.execute("UPDATE service_order SET status='服务中' WHERE order_id=%s AND status='已派单'",
+                (d["order_id"],))
+    return {"work_hour_id": work_hour_id, "order_id": d["order_id"], "status": "服务中"}
+
+
+def checkout_dispatch(cur, dispatch_id, checkout_time, fence_result, note, caregiver_id):
+    """护工离场签退（仅本人）：触发器自动按分钟差结算有效工时（围栏异常转人工复核），
+    派单确认完成 → 触发器回写订单「已完成」。"""
+    cur.execute("""SELECT d.caregiver_id, d.order_id, d.is_current, d.confirmed, o.status
+                     FROM dispatch d JOIN service_order o ON o.order_id = d.order_id
+                    WHERE d.dispatch_id=%s""", (dispatch_id,))
+    d = cur.fetchone()
+    if not d:
+        raise OrderError("派单不存在")
+    if d["is_current"] != 1:
+        raise OrderError("该派单已不是当前派单（可能已改派）")
+    if d["caregiver_id"] != caregiver_id:
+        raise OrderError("无权限：签退只能由该派单护工本人操作")
+    if d["confirmed"] == 1:
+        raise OrderError("该派单已确认完成，不能重复签退")
+    cur.execute("""SELECT work_hour_id FROM work_hour
+                    WHERE dispatch_id=%s AND checkout_time IS NULL""", (dispatch_id,))
+    wh = cur.fetchone()
+    if not wh:
+        raise OrderError("该派单尚未签到，请先签到再签退")
+
+    cur.execute(
+        """UPDATE work_hour SET checkout_time=%s, fence_result=%s WHERE work_hour_id=%s""",
+        (checkout_time, fence_result, wh["work_hour_id"]),
+    )  # tr_work_hour_before_update 自动结算 valid_hours / 复核状态
+    cur.execute("SELECT valid_hours, review_status FROM work_hour WHERE work_hour_id=%s",
+                (wh["work_hour_id"],))
+    settled = cur.fetchone()
+    cur.execute("""UPDATE dispatch SET leave_time=%s, service_note=%s, confirmed=1
+                    WHERE dispatch_id=%s""", (checkout_time, note or "服务完成", dispatch_id))
+    # confirmed 0→1 触发 tr_dispatch_after_confirm：订单「服务中/已派单」→「已完成」
+    return {
+        "dispatch_id": dispatch_id,
+        "valid_hours": float(settled["valid_hours"]),
+        "review_status": settled["review_status"],
+    }
