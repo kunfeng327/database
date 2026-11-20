@@ -91,6 +91,17 @@ def recommend_caregivers(cur, order_id):
                    WHERE o.order_id=%s AND cg.on_duty='在岗'
                      AND cg.cert_expire>=DATE(o.appoint_time)
                      AND FIND_IN_SET(c.name,REPLACE(cg.service_regions,' ',''))>0
+                     AND EXISTS (
+                       SELECT 1 FROM caregiver_item ci
+                        WHERE ci.caregiver_id=cg.caregiver_id
+                          AND ci.item_id=o.item_id
+                          AND ci.cert_verified=1
+                     )
+                     AND NOT EXISTS (
+                       SELECT 1 FROM quality_inspection qi
+                        WHERE qi.caregiver_id=cg.caregiver_id
+                          AND qi.rectification_status IN ('待整改','整改中')
+                     )
                    ORDER BY cg.rating DESC,s.booked ASC LIMIT 6""", order_id)
     return cur.fetchall()
 
