@@ -641,6 +641,16 @@ function resetElderForm(){
   $('#e-gender').disabled = false;
   $('#e-cancel').style.display = 'none';
 }
+function autofillElderIdentity(){
+  const idCard = $('#e-idcard').value.trim().toUpperCase();
+  if (!/^\d{17}[\dX]$/.test(idCard)) return;
+  const birthDate = `${idCard.slice(6,10)}-${idCard.slice(10,12)}-${idCard.slice(12,14)}`;
+  const date = new Date(`${birthDate}T00:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0,10) !== birthDate) return;
+  $('#e-birth').value = birthDate;
+  $('#e-gender').value = Number(idCard[16]) % 2 ? '男' : '女';
+}
+$('#e-idcard').addEventListener('input', autofillElderIdentity);
 async function editElder(elderId){
   const r = await API(`/api/elders/${elderId}/detail`);
   if (!r.ok) { toast(r.msg, true); return; }

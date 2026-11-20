@@ -78,9 +78,13 @@ CREATE TABLE care_plan (
   end_date     DATE NOT NULL,
   caregiver_id INT NULL COMMENT '责任护工',
   status       ENUM('生效','暂停','结束') NOT NULL DEFAULT '生效',
+  active_elder_id INT GENERATED ALWAYS AS (
+    CASE WHEN status='生效' THEN elder_id ELSE NULL END
+  ) STORED,
   CONSTRAINT fk_plan_elder FOREIGN KEY (elder_id) REFERENCES elder(elder_id),
   CONSTRAINT fk_plan_caregiver FOREIGN KEY (caregiver_id) REFERENCES caregiver(caregiver_id),
   CONSTRAINT chk_plan_date CHECK (end_date >= start_date),
+  UNIQUE KEY uk_care_plan_one_active_per_elder (active_elder_id),
   INDEX idx_plan_elder (elder_id, status)
 );
 

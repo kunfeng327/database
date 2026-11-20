@@ -46,13 +46,27 @@ def _date(value, name):
 
 
 def _require_elder(cur, elder_id, active_only=True):
-    cur.execute("SELECT elder_id, status FROM elder WHERE elder_id=%s", (elder_id,))
+    cur.execute(
+        "SELECT elder_id, status FROM elder WHERE elder_id=%s FOR UPDATE",
+        (elder_id,),
+    )
     row = cur.fetchone()
     if not row:
         raise CarePlanError("老人档案不存在")
     if active_only and row["status"] != "正常":
         raise CarePlanError("老人档案未处于正常状态，不允许制定照护计划")
     return row
+
+
+def _ensure_no_active_plan(cur, elder_id, excluding_plan_id=None):
+    sql = "SELECT plan_id FROM care_plan WHERE elder_id=%s AND status='生效'"
+    args = [elder_id]
+    if excluding_plan_id is not None:
+        sql += " AND plan_id<>%s"
+        args.append(excluding_plan_id)
+    cur.execute(sql + " LIMIT 1 FOR UPDATE", tuple(args))
+    if cur.fetchone():
+        raise CarePlanError("该老人已有生效的照护计划，请先暂停或结束后再启用")
 
 
 def _optional_caregiver(cur, caregiver_id):
@@ -111,6 +125,8 @@ def create_care_plan(cur, payload):
     status = payload.get("status", "生效")
     if status not in STATUSES:
         raise CarePlanError("计划状态只能是「生效/暂停/结束」")
+    if status == "生效":
+        _ensure_no_active_plan(cur, elder_id)
 
     cur.execute(
         """INSERT INTO care_plan
@@ -124,12 +140,13 @@ def create_care_plan(cur, payload):
 def update_care_plan(cur, plan_id, payload):
     row = get_care_plan(cur, plan_id)
     fields, args = [], []
+    target_elder_id = int(payload.get("elder_id", row["elder_id"]))
+    target_status = payload.get("status", row["status"])
 
     if "elder_id" in payload:
-        elder_id = int(payload["elder_id"])
-        _require_elder(cur, elder_id)
+        _require_elder(cur, target_elder_id)
         fields.append("elder_id=%s")
-        args.append(elder_id)
+        args.append(target_elder_id)
     if "package_name" in payload:
         fields.append("package_name=%s")
         args.append(_package_name(payload["package_name"]))
@@ -161,6 +178,11 @@ def update_care_plan(cur, plan_id, payload):
         raise CarePlanError("结束日期不能早于开始日期")
     if not fields:
         raise CarePlanError("没有需要修改的字段")
+    if target_status == "生效" and (
+        row["status"] != "生效" or target_elder_id != row["elder_id"]
+    ):
+        _require_elder(cur, target_elder_id)
+        _ensure_no_active_plan(cur, target_elder_id, excluding_plan_id=plan_id)
 
     args.append(plan_id)
     cur.execute(f"UPDATE care_plan SET {','.join(fields)} WHERE plan_id=%s", tuple(args))

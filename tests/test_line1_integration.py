@@ -146,6 +146,11 @@ def test_04_expired_assessment_pauses_then_reevaluation_resumes():
                    VALUES (%s,'测试服务包','每周1次',CURDATE(),CURDATE()+INTERVAL 90 DAY,'生效')""",
                 (elder_id,),
             )
+            cur.execute(
+                """INSERT INTO care_plan (elder_id, package_name, frequency, start_date, end_date, status)
+                   VALUES (%s,'测试服务包2','每周2次',CURDATE(),CURDATE()+INTERVAL 90 DAY,'暂停')""",
+                (elder_id,),
+            )
             # 过期自动暂停（与 sp_pause_expired_plans 同规则）
             assert dao.pause_expired_plans(cur)["paused_plans"] >= 1
             cur.execute("SELECT status FROM care_plan WHERE elder_id=%s", (elder_id,))
@@ -155,8 +160,12 @@ def test_04_expired_assessment_pauses_then_reevaluation_resumes():
             res = dao.record_assessment(cur, elder_id, {"score": 88}, "测试评估员")
             assert res["ability_level"] == "能力完好"
             assert res["resumed_plans"] == 1
-            cur.execute("SELECT status FROM care_plan WHERE elder_id=%s", (elder_id,))
-            assert cur.fetchone()["status"] == "生效"
+            cur.execute(
+                "SELECT status, COUNT(*) AS plan_count FROM care_plan WHERE elder_id=%s GROUP BY status",
+                (elder_id,),
+            )
+            statuses = {row["status"]: row["plan_count"] for row in cur.fetchall()}
+            assert statuses == {"生效": 1, "暂停": 1}
         conn.commit()
     finally:
         _cleanup(conn, elder_ids=[elder_id])
@@ -228,15 +237,36 @@ def test_07_care_plan_dao_crud():
                 "status": "生效",
             })
             plan_id = created["plan_id"]
+            with pytest.raises(care_plan_dao.CarePlanError, match="已有生效的照护计划"):
+                care_plan_dao.create_care_plan(cur, {
+                    "elder_id": elder_id,
+                    "package_name": "失能照护包",
+                    "frequency": "每周1次",
+                    "start_date": "2026-11-18",
+                    "end_date": "2027-02-18",
+                    "status": "生效",
+                })
             result = care_plan_dao.update_care_plan(cur, plan_id, {
                 "frequency": "每周2次",
                 "status": "暂停",
             })
             assert result["updated"] == 1
+            second = care_plan_dao.create_care_plan(cur, {
+                "elder_id": elder_id,
+                "package_name": "失能照护包",
+                "frequency": "每周1次",
+                "start_date": "2026-11-18",
+                "end_date": "2027-02-18",
+                "status": "生效",
+            })
+            with pytest.raises(care_plan_dao.CarePlanError, match="已有生效的照护计划"):
+                care_plan_dao.update_care_plan(cur, plan_id, {"status": "生效"})
             plans = care_plan_dao.list_care_plans(cur, elder_id)
-            assert len(plans) == 1
-            assert plans[0]["frequency"] == "每周2次"
-            assert plans[0]["status"] == "暂停"
+            assert len(plans) == 2
+            assert {plan["plan_id"]: plan["status"] for plan in plans} == {
+                plan_id: "暂停",
+                second["plan_id"]: "生效",
+            }
 
             with pytest.raises(care_plan_dao.CarePlanError):
                 care_plan_dao.create_care_plan(cur, {
