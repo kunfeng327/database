@@ -129,34 +129,48 @@ def test_03_assessment_level_and_expiry():
 
 
 def test_04_expired_assessment_pauses_then_reevaluation_resumes():
-    """闭环：评估过期 → 计划自动暂停 → 复评 → 计划自动恢复。"""
+    """闭环：评估过期 → 计划自动暂停 → 禁止手动启用 → 复评后恢复一条计划。"""
     conn = _connect()
     elder_id = None
     try:
         with conn.cursor() as cur:
             elder_id = dao.create_elder(cur, _new_elder_payload())["elder_id"]
-            # 一年前评估（已过期）+ 生效计划
+            # 先建有效评估和生效计划，再将评估过期以模拟时间流逝。
+            today = dt.date.today()
             last_year = dt.date.today() - dt.timedelta(days=400)
             cur.execute(
                 """INSERT INTO assessment (elder_id, scale, score, ability_level, assessor,
                                             assess_date, expire_date)
                    VALUES (%s,'ADL',90,'能力完好','历史评估',%s,%s)""",
-                (elder_id, last_year, last_year + dt.timedelta(days=365)),
+                (elder_id, today, today + dt.timedelta(days=365)),
             )
             cur.execute(
                 """INSERT INTO care_plan (elder_id, package_name, frequency, start_date, end_date, status)
                    VALUES (%s,'测试服务包','每周1次',CURDATE(),CURDATE()+INTERVAL 90 DAY,'生效')""",
                 (elder_id,),
             )
+            plan_id = cur.lastrowid
             cur.execute(
                 """INSERT INTO care_plan (elder_id, package_name, frequency, start_date, end_date, status)
                    VALUES (%s,'测试服务包2','每周2次',CURDATE(),CURDATE()+INTERVAL 90 DAY,'暂停')""",
                 (elder_id,),
             )
+            cur.execute(
+                "UPDATE assessment SET assess_date=%s, expire_date=%s WHERE elder_id=%s",
+                (last_year, last_year + dt.timedelta(days=365), elder_id),
+            )
             # 过期自动暂停（与 sp_pause_expired_plans 同规则）
             assert dao.pause_expired_plans(cur)["paused_plans"] >= 1
             cur.execute("SELECT status FROM care_plan WHERE elder_id=%s", (elder_id,))
             assert cur.fetchone()["status"] == "暂停"
+            with pytest.raises(care_plan_dao.CarePlanError, match="评估缺失或已过期"):
+                care_plan_dao.update_care_plan(cur, plan_id, {"status": "生效"})
+            with pytest.raises(pymysql.err.OperationalError) as trigger_error:
+                cur.execute(
+                    "UPDATE care_plan SET status='生效' WHERE plan_id=%s",
+                    (plan_id,),
+                )
+            assert trigger_error.value.args[0] == 1644
 
             # 复评 → 计划恢复 + 新评估一年有效
             res = dao.record_assessment(cur, elder_id, {"score": 88}, "测试评估员")
@@ -229,6 +243,7 @@ def test_07_care_plan_dao_crud():
     try:
         with conn.cursor() as cur:
             elder_id = dao.create_elder(cur, _new_elder_payload())["elder_id"]
+            dao.record_assessment(cur, elder_id, {"score": 90}, "测试评估员")
             created = care_plan_dao.create_care_plan(cur, {
                 "elder_id": elder_id,
                 "package_name": "助洁关怀包",

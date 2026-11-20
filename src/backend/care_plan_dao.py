@@ -69,6 +69,17 @@ def _ensure_no_active_plan(cur, elder_id, excluding_plan_id=None):
         raise CarePlanError("该老人已有生效的照护计划，请先暂停或结束后再启用")
 
 
+def _require_valid_assessment(cur, elder_id):
+    cur.execute(
+        """SELECT MAX(expire_date) AS latest_expire, CURDATE() AS today
+           FROM assessment WHERE elder_id=%s""",
+        (elder_id,),
+    )
+    row = cur.fetchone()
+    if not row["latest_expire"] or row["latest_expire"] < row["today"]:
+        raise CarePlanError("能力评估缺失或已过期，复评通过后才能启用照护计划")
+
+
 def _optional_caregiver(cur, caregiver_id):
     if caregiver_id in (None, "", 0):
         return None
@@ -126,6 +137,7 @@ def create_care_plan(cur, payload):
     if status not in STATUSES:
         raise CarePlanError("计划状态只能是「生效/暂停/结束」")
     if status == "生效":
+        _require_valid_assessment(cur, elder_id)
         _ensure_no_active_plan(cur, elder_id)
 
     cur.execute(
@@ -178,10 +190,9 @@ def update_care_plan(cur, plan_id, payload):
         raise CarePlanError("结束日期不能早于开始日期")
     if not fields:
         raise CarePlanError("没有需要修改的字段")
-    if target_status == "生效" and (
-        row["status"] != "生效" or target_elder_id != row["elder_id"]
-    ):
+    if target_status == "生效":
         _require_elder(cur, target_elder_id)
+        _require_valid_assessment(cur, target_elder_id)
         _ensure_no_active_plan(cur, target_elder_id, excluding_plan_id=plan_id)
 
     args.append(plan_id)

@@ -89,7 +89,7 @@ INSERT INTO elder (elder_id, name, id_card, birth_date, gender, address, communi
 (19,'周凤兰','110107195411262348','1954-11-26','女','石景山古城社区2号楼404',13,'周杰','13800000019','独居','正常'),
 (20,'吴国华','110108195611302254','1956-11-30','男','甘家口社区7号楼2单元803',17,'吴静','13800000020','高龄','正常');
 
--- 能力评估（4、13 号评估已过期 → 触发"暂停派单"演示）
+-- 能力评估（老人 10、13 的评估已过期，用于计划暂停演示）
 INSERT INTO assessment (assessment_id, elder_id, scale, score, ability_level, assessor, assess_date, expire_date) VALUES
 (1,1,'ADL',95,'能力完好','评估员小马', DATE_SUB(CURDATE(), INTERVAL 100 DAY), DATE_ADD(CURDATE(), INTERVAL 265 DAY)),
 (2,1,'简易智能状态',92,'能力完好','评估员小马', DATE_SUB(CURDATE(), INTERVAL 100 DAY), DATE_ADD(CURDATE(), INTERVAL 265 DAY)),
@@ -112,7 +112,7 @@ INSERT INTO assessment (assessment_id, elder_id, scale, score, ability_level, as
 (19,20,'ADL',75,'轻度失能','评估员小周', DATE_SUB(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 345 DAY)),
 (20,5,'简易智能状态',70,'中度失能','评估员小马', DATE_SUB(CURDATE(), INTERVAL 45 DAY), DATE_ADD(CURDATE(), INTERVAL 320 DAY));
 
--- 照护计划（6 号计划已手动暂停）
+-- 照护计划（6 号手动暂停；9、11 号因评估过期而暂停）
 INSERT INTO care_plan (plan_id, elder_id, package_name, frequency, start_date, end_date, caregiver_id, status) VALUES
 (1,1,'助洁关怀包','每周1次保洁+2次探访', DATE_SUB(CURDATE(), INTERVAL 90 DAY), DATE_ADD(CURDATE(), INTERVAL 270 DAY),3,'生效'),
 (2,3,'失能照护包','每日助浴+翻身护理',   DATE_SUB(CURDATE(), INTERVAL 80 DAY), DATE_ADD(CURDATE(), INTERVAL 280 DAY),4,'生效'),
@@ -122,7 +122,7 @@ INSERT INTO care_plan (plan_id, elder_id, package_name, frequency, start_date, e
 (6,7,'助餐关怀包','每日1餐送餐上门',     DATE_SUB(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 330 DAY),2,'暂停'),
 (7,8,'探访关爱包','每周2次电话+1次上门', DATE_SUB(CURDATE(), INTERVAL 70 DAY), DATE_ADD(CURDATE(), INTERVAL 290 DAY),6,'生效'),
 (8,2,'助浴助洁包','每周1次助浴',         DATE_SUB(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 340 DAY),1,'生效'),
-(9,10,'康复助行包','每周2次康复训练',     DATE_SUB(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 350 DAY),5,'生效'),
+(9,10,'康复助行包','每周2次康复训练', DATE_SUB(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 350 DAY),5,'暂停'),
 (10,9,'探访关爱包','每周2次电话+1次上门', DATE_SUB(CURDATE(), INTERVAL 40 DAY), DATE_ADD(CURDATE(), INTERVAL 320 DAY),6,'生效'),
 (11,13,'助餐关怀包','每日1餐送餐上门',     DATE_SUB(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 330 DAY),NULL,'暂停'),
 (12,14,'助洁关怀包','每周1次保洁+2次探访', DATE_SUB(CURDATE(), INTERVAL 25 DAY), DATE_ADD(CURDATE(), INTERVAL 340 DAY),3,'生效'),
