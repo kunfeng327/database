@@ -24,8 +24,14 @@ if errorlevel 1 (
   if errorlevel 1 ( echo [错误] 依赖安装失败 & pause & exit /b 1 )
 )
 
-set /p MP=请输入 MySQL root 密码:
-set "MYSQL_PWD=%MP%"
+set "MYSQL_PWD="
+pushd src\backend
+for /f "delims=" %%P in ('python -c "from config_local import PASSWORD; print(PASSWORD)" 2^>nul') do set "MYSQL_PWD=%%P"
+popd
+if not defined MYSQL_PWD (
+  echo [错误] 未读取到 MySQL 密码，请检查 src\backend\config_local.py
+  pause & exit /b 1
+)
 
 set /p RESET=是否重置演示数据库？会清空重建 elder_care 库 (y/N):
 if /i "%RESET%"=="y" (

@@ -27,7 +27,7 @@ if os.path.exists(_local_path):
         if _k.upper() in _ns:
             DB_CONFIG[_k] = _ns[_k.upper()]
 
-# 环境变量优先（启动演示.bat 用 MYSQL_PWD 同时喂给 mysql 客户端和后端，最不容易出错）
+# 环境变量优先（启动演示.bat 从 config_local.py 读取密码供 mysql 客户端和后端使用）
 if os.environ.get("MYSQL_HOST"):
     DB_CONFIG["host"] = os.environ["MYSQL_HOST"]
 if os.environ.get("MYSQL_PORT"):
