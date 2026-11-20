@@ -76,6 +76,7 @@ body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:
 /* ---------------- 通用组件 ---------------- */
 .card { background:var(--surface); border:1px solid var(--border); border-radius:8px;
   padding:18px 20px; margin-bottom:18px; }
+.card.edit-highlight { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-lt); }
 .card h3 { font-size:14px; margin-bottom:14px; color:var(--text); font-weight:600; }
 .card h3 small { font-weight:400; color:var(--muted); margin-left:8px; }
 .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:18px; }
@@ -238,7 +239,50 @@ textarea { width:100%; min-height:56px; resize:vertical; }
           <h3>老人档案 · 能力评估 · 照护计划<small>视图 v_elder_assessment_plan，身份证脱敏</small></h3>
           <table id="elder-table"><thead><tr>
             <th>编号</th><th>姓名</th><th>年龄</th><th>社区</th><th>身份证(脱敏)</th>
-            <th>特殊标签</th><th>能力等级</th><th>评估到期</th><th>状态</th><th>生效计划</th></tr></thead><tbody></tbody></table>
+            <th>特殊标签</th><th>能力等级</th><th>评估到期</th><th>状态</th><th>生效计划</th><th id="elder-action-th">操作</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="card" id="elder-form-card">
+          <h3 id="elder-form-title">新建老人档案</h3>
+          <form class="inline" id="elder-form">
+            <input type="hidden" id="e-id">
+            <div class="field"><label>姓名</label><input id="e-name" maxlength="30" required></div>
+            <div class="field"><label>身份证号</label><input id="e-idcard" maxlength="18" required></div>
+            <div class="field"><label>出生日期</label><input id="e-birth" type="date" required></div>
+            <div class="field"><label>性别</label><select id="e-gender"><option>男</option><option>女</option></select></div>
+            <div class="field" style="min-width:220px"><label>居住地址</label><input id="e-address" maxlength="100" required></div>
+            <div class="field"><label>所属社区</label><select id="e-community" required></select></div>
+            <div class="field"><label>监护人姓名</label><input id="e-guardian-name" maxlength="30" required></div>
+            <div class="field"><label>监护人电话</label><input id="e-guardian-phone" maxlength="11" required></div>
+            <div class="field"><label>特殊标签（多选）</label>
+              <select id="e-tags" multiple size="4">
+                <option>独居</option><option>失能</option><option>低保</option><option>高龄</option>
+              </select></div>
+            <div class="field"><label>档案状态</label>
+              <select id="e-status"><option>正常</option><option>暂停服务</option><option>注销</option></select></div>
+            <button class="btn" type="submit" id="e-submit">新建档案</button>
+            <button class="btn ghost" type="button" id="e-cancel" style="display:none" onclick="resetElderForm()">取消编辑</button>
+          </form>
+        </div>
+        <div class="card" id="care-plan-card">
+          <h3 id="care-plan-title">照护计划</h3>
+          <div id="care-plan-form-wrap">
+            <form class="inline" id="care-plan-form">
+              <input type="hidden" id="p-id">
+              <div class="field"><label>老人</label><select id="p-elder" required></select></div>
+              <div class="field"><label>服务包名称</label><select id="p-package" required></select></div>
+              <div class="field"><label>服务频次</label><input id="p-frequency" maxlength="50" placeholder="例如：每周3次" required></div>
+              <div class="field"><label>开始日期</label><input id="p-start" type="date" required></div>
+              <div class="field"><label>结束日期</label><input id="p-end" type="date" required></div>
+              <div class="field"><label>责任护工</label><select id="p-caregiver"><option value="">无指定护工</option></select></div>
+              <div class="field"><label>状态</label><select id="p-status"><option>生效</option><option>暂停</option><option>结束</option></select></div>
+              <button class="btn" type="submit" id="p-submit">新建计划</button>
+              <button class="btn ghost" type="button" id="p-cancel" style="display:none" onclick="resetCarePlanForm()">取消编辑</button>
+            </form>
+          </div>
+          <table style="margin-top:14px"><thead><tr>
+            <th>计划号</th><th>老人</th><th>服务包</th><th>频次</th><th>开始日期</th><th>结束日期</th>
+            <th>责任护工</th><th>状态</th><th id="care-plan-action-th">操作</th></tr></thead>
+            <tbody id="care-plan-table"></tbody></table>
         </div>
         <div class="card">
           <h3 id="assess-title">能力评估记录<small id="assess-sub">评估结果一年有效，到期须复评，逾期自动暂停派单</small></h3>
@@ -410,6 +454,8 @@ let ME = null;                 // 当前登录用户 {name, role, elder_id, care
 let elderList = [];
 let orderList = [];
 let qualityCaregivers = [];
+let communityList = [];
+let carePlanList = [];
 
 async function API(url, opts) {
   const r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...opts,
@@ -463,7 +509,7 @@ async function boot(){
   $('#role-badge').textContent = ME.role;
   buildNav();
   await loadItems();
-  await Promise.all([loadElders(), loadOrders(), loadSchedules()]);
+  await Promise.all([loadCommunities(), loadElders(), loadOrders(), loadSchedules(), loadCarePlans()]);
   loadStats(); loadPending(); loadSubsidy(); loadQuality(); loadLine5Overview(); loadOps();
 }
 
@@ -497,6 +543,10 @@ function buildNav(){
   $('#quality-action-panel').style.display = 'none';
   $('#assess-elder-field').classList.toggle('hide', !isAdmin);
   $('#assess-form-card').classList.toggle('hide', !isAdmin);
+  $('#elder-form-card').classList.toggle('hide', !isAdmin);
+  $('#elder-action-th').classList.toggle('hide', !isAdmin);
+  $('#care-plan-form-wrap').classList.toggle('hide', !isAdmin);
+  $('#care-plan-action-th').classList.toggle('hide', !isAdmin);
   $('#orders-title').textContent = ME.role==='护工' ? '我的派单记录' :
       isFamily ? '家庭服务订单' : '服务订单';
   $('#order-form-title').innerHTML = isFamily
@@ -510,6 +560,110 @@ async function loadItems(){
   const r = await API('/api/items');
   $('#f-item').innerHTML = r.data.map(i =>
     `<option value="${i.item_id}">${esc(i.name)}（￥${i.guide_price}/${i.unit}${i.subsidizable?'，可补贴':''}）</option>`).join('');
+}
+async function loadCommunities(){
+  if (ME.role !== '社区管理员') return;
+  const r = await API('/api/communities');
+  if (!r.ok) return;
+  communityList = r.data;
+  $('#e-community').innerHTML = communityList.map(c =>
+    `<option value="${c.community_id}">${esc(c.name)}（${esc(c.district)}）</option>`).join('');
+}
+async function loadCarePlanCaregivers(){
+  if (ME.role !== '社区管理员') return;
+  const r = await API('/api/care-plans/caregivers');
+  if (!r.ok) return;
+  $('#p-caregiver').innerHTML = '<option value="">无指定护工</option>' +
+    r.data.map(c => `<option value="${c.caregiver_id}">${esc(c.name)}（${esc(c.agency)}）</option>`).join('');
+}
+async function loadCarePlanPackages(){
+  if (ME.role !== '社区管理员') return;
+  const r = await API('/api/care-plans/packages');
+  if (!r.ok) return;
+  $('#p-package').innerHTML = r.data
+    .map(name => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+}
+function resetCarePlanForm(){
+  $('#care-plan-form').reset();
+  $('#p-id').value = '';
+  $('#p-status').value = '生效';
+  $('#care-plan-title').textContent = '照护计划';
+  $('#p-submit').textContent = '新建计划';
+  $('#p-cancel').style.display = 'none';
+}
+function editCarePlan(planId){
+  const p = carePlanList.find(x => x.plan_id === planId);
+  if (!p) return;
+  $('#p-id').value = p.plan_id;
+  $('#p-elder').value = p.elder_id;
+  $('#p-package').value = p.package_name;
+  $('#p-frequency').value = p.frequency;
+  $('#p-start').value = p.start_date;
+  $('#p-end').value = p.end_date;
+  $('#p-caregiver').value = p.caregiver_id || '';
+  $('#p-status').value = p.status;
+  $('#care-plan-title').textContent = `编辑照护计划：#${p.plan_id}`;
+  $('#p-submit').textContent = '保存计划';
+  $('#p-cancel').style.display = '';
+  $('#care-plan-form-wrap').scrollIntoView({behavior:'smooth', block:'start'});
+  $('#care-plan-card').classList.add('edit-highlight');
+  setTimeout(() => $('#care-plan-card').classList.remove('edit-highlight'), 1200);
+  setTimeout(() => $('#p-package').focus({preventScroll:true}), 350);
+}
+async function loadCarePlans(){
+  const r = await API('/api/care-plans');
+  if (!r.ok) return;
+  carePlanList = r.data;
+  $('#care-plan-table').innerHTML = r.data.map(p => `<tr>
+    <td>${p.plan_id}</td><td>${esc(p.elder_name)}</td><td>${esc(p.package_name)}</td>
+    <td>${esc(p.frequency)}</td><td>${p.start_date}</td><td>${p.end_date}</td>
+    <td>${esc(p.caregiver_name) || '<span class="muted">未指定</span>'}</td>
+    <td>${p.status==='生效'?'<span class="badge b-done">生效</span>'
+      :p.status==='暂停'?'<span class="badge b-wait">暂停</span>':'<span class="badge b-canc">结束</span>'}</td>
+    ${ME.role==='社区管理员'?`<td><button class="btn small ghost" onclick="editCarePlan(${p.plan_id})">编辑</button></td>`:''}
+  </tr>`).join('')
+    || '<tr><td colspan="9" class="muted">暂无照护计划</td></tr>';
+  if (ME.role === '社区管理员') {
+    $('#p-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
+      .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}）</option>`).join('');
+    await loadCarePlanPackages();
+    await loadCarePlanCaregivers();
+  }
+}
+function resetElderForm(){
+  $('#elder-form').reset();
+  $('#e-id').value = '';
+  $('#e-status').value = '正常';
+  $('#elder-form-title').textContent = '新建老人档案';
+  $('#e-submit').textContent = '新建档案';
+  $('#e-idcard').disabled = false;
+  $('#e-birth').disabled = false;
+  $('#e-gender').disabled = false;
+  $('#e-cancel').style.display = 'none';
+}
+async function editElder(elderId){
+  const r = await API(`/api/elders/${elderId}/detail`);
+  if (!r.ok) { toast(r.msg, true); return; }
+  const e = r.data;
+  resetElderForm();
+  $('#e-id').value = e.elder_id;
+  $('#e-name').value = e.name;
+  $('#e-idcard').value = e.id_card;
+  $('#e-birth').value = e.birth_date;
+  $('#e-gender').value = e.gender;
+  $('#e-address').value = e.address;
+  $('#e-community').value = e.community_id;
+  $('#e-guardian-name').value = e.guardian_name;
+  $('#e-guardian-phone').value = e.guardian_phone;
+  $('#e-status').value = e.status;
+  Array.from($('#e-tags').options).forEach(o => o.selected = (e.special_tag || '').split(',').includes(o.value));
+  $('#e-idcard').disabled = true;
+  $('#e-birth').disabled = true;
+  $('#e-gender').disabled = true;
+  $('#elder-form-title').textContent = `编辑老人档案：${e.name}`;
+  $('#e-submit').textContent = '保存修改';
+  $('#e-cancel').style.display = '';
+  $('#elder-form-card').scrollIntoView({behavior:'smooth', block:'center'});
 }
 async function loadStats(){
   if (!['社区管理员','监管人员','机构负责人'].includes(ME.role)) { $('#stat-cards').innerHTML=''; return; }
@@ -540,9 +694,14 @@ async function loadElders(){
     <td>${esc(e.ability_level)||'<span class="muted">未评估</span>'}</td>
     <td>${e.assess_expire||''} ${e.assess_expired?'<span class="badge b-red">已过期</span>':''}</td>
     <td>${e.elder_status==='正常'?'<span class="badge b-done">正常</span>':`<span class="badge b-canc">${esc(e.elder_status)}</span>`}</td>
-    <td>${esc(e.package_name)||'<span class="muted">无</span>'}${e.plan_status==='暂停'?' <span class="badge b-red">暂停</span>':''}</td></tr>`).join('');
+    <td>${esc(e.package_name)||'<span class="muted">无</span>'}${e.plan_status==='暂停'?' <span class="badge b-red">暂停</span>':''}</td>
+    ${ME.role==='社区管理员'?`<td><button class="btn small ghost" onclick="editElder(${e.elder_id})">编辑</button></td>`:''}</tr>`).join('');
   $('#f-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
     .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}${e.assess_expired?'，评估已过期':''}）</option>`).join('');
+  if (ME.role === '社区管理员') {
+    $('#p-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
+      .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}）</option>`).join('');
+  }
   const t = new Date(Date.now() + 26*3600e3);
   $('#f-time').value = t.toISOString().slice(0,16);
   // 评估卡片：家属自动绑定自家老人，管理员可选
@@ -551,6 +710,61 @@ async function loadElders(){
   loadAssessments();
   $('#a-elder').onchange = () => loadAssessments();
 }
+
+$('#elder-form').onsubmit = async ev => {
+  ev.preventDefault();
+  const elderId = +$('#e-id').value;
+  const tags = Array.from($('#e-tags').selectedOptions).map(o => o.value);
+  const body = elderId ? {
+    name: $('#e-name').value,
+    address: $('#e-address').value,
+    community_id: +$('#e-community').value,
+    guardian_name: $('#e-guardian-name').value,
+    guardian_phone: $('#e-guardian-phone').value,
+    special_tag: tags,
+    status: $('#e-status').value
+  } : {
+    name: $('#e-name').value,
+    id_card: $('#e-idcard').value,
+    birth_date: $('#e-birth').value,
+    gender: $('#e-gender').value,
+    address: $('#e-address').value,
+    community_id: +$('#e-community').value,
+    guardian_name: $('#e-guardian-name').value,
+    guardian_phone: $('#e-guardian-phone').value,
+    special_tag: tags,
+    status: $('#e-status').value
+  };
+  const r = await API(elderId ? `/api/elders/${elderId}` : '/api/elders',
+    {method: elderId ? 'PATCH' : 'POST', body});
+  if (!r.ok) { toast(r.msg, true); return; }
+  toast(elderId ? '老人档案已修改' : `老人档案创建成功：编号 ${r.data.elder_id}`);
+  resetElderForm();
+  await loadElders();
+  loadStats();
+};
+
+$('#care-plan-form').onsubmit = async ev => {
+  ev.preventDefault();
+  const planId = +$('#p-id').value;
+  const body = {
+    elder_id: +$('#p-elder').value,
+    package_name: $('#p-package').value,
+    frequency: $('#p-frequency').value,
+    start_date: $('#p-start').value,
+    end_date: $('#p-end').value,
+    caregiver_id: $('#p-caregiver').value ? +$('#p-caregiver').value : null,
+    status: $('#p-status').value
+  };
+  const r = await API(planId ? `/api/care-plans/${planId}` : '/api/care-plans',
+    {method: planId ? 'PATCH' : 'POST', body});
+  if (!r.ok) { toast(r.msg, true); return; }
+  toast(planId ? '照护计划已修改' : '照护计划创建成功');
+  resetCarePlanForm();
+  await loadCarePlans();
+  await loadElders();
+  loadStats();
+};
 
 async function loadAssessments(){
   if ($('#tab-elders').classList.contains('hide') && ME.role !== '家属') return;

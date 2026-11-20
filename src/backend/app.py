@@ -22,6 +22,18 @@ import pymysql
 from flask import Flask, jsonify, request, send_file, session
 
 from db import DB_CONFIG
+from care_plan_dao import (
+    CarePlanError,
+    PACKAGE_NAMES,
+    create_care_plan,
+    list_care_plans,
+    update_care_plan,
+)
+from elder_dao import (
+    ElderError,
+    create_elder as dao_create_elder,
+    update_elder as dao_update_elder,
+)
 from line5_dao import (
     Line5Error,
     complete_inspection,
@@ -115,6 +127,16 @@ def handle_line5(e):
 
 @app.errorhandler(OrderError)
 def handle_order_error(e):
+    return jsonify({"ok": False, "msg": str(e)}), 400
+
+
+@app.errorhandler(ElderError)
+def handle_elder_error(e):
+    return jsonify({"ok": False, "msg": str(e)}), 400
+
+
+@app.errorhandler(CarePlanError)
+def handle_care_plan_error(e):
     return jsonify({"ok": False, "msg": str(e)}), 400
 
 
@@ -255,6 +277,95 @@ def elders():
         sql += " WHERE elder_id=%s"
         args = (session["elder_id"],)
     return jsonify({"ok": True, "data": query_all(sql + " ORDER BY elder_id", args)})
+
+
+@app.get("/api/communities")
+@login_required()
+def communities():
+    return jsonify({"ok": True, "data": query_all(
+        "SELECT community_id, name, district FROM community ORDER BY community_id")})
+
+
+@app.get("/api/elders/<int:elder_id>/detail")
+@login_required()
+def elder_detail(elder_id):
+    if session["role"] == "家属" and elder_id != session["elder_id"]:
+        return jsonify({"ok": False, "msg": "无权限：只能查看自家老人档案"}), 403
+    row = query_all(
+        """SELECT elder_id, name, id_card, birth_date, gender, address, community_id,
+                  guardian_name, guardian_phone, special_tag, status
+           FROM elder WHERE elder_id=%s""",
+        (elder_id,),
+    )
+    if not row:
+        return jsonify({"ok": False, "msg": "老人档案不存在"}), 404
+    return jsonify({"ok": True, "data": row[0]})
+
+
+@app.post("/api/elders")
+@login_required(roles=("社区管理员",))
+def elder_create():
+    body = request.get_json(force=True)
+
+    def fn(cur):
+        return dao_create_elder(cur, body)
+
+    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+
+@app.patch("/api/elders/<int:elder_id>")
+@login_required(roles=("社区管理员",))
+def elder_update(elder_id):
+    body = request.get_json(force=True)
+
+    def fn(cur):
+        return dao_update_elder(cur, elder_id, body)
+
+    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+
+# ------------------------------------------------------------------ 照护计划
+@app.get("/api/care-plans")
+@login_required()
+def care_plans():
+    elder_id = session["elder_id"] if session["role"] == "家属" else None
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: [jsonable(row) for row in list_care_plans(cur, elder_id)]
+    )})
+
+
+@app.get("/api/care-plans/caregivers")
+@login_required(roles=("社区管理员",))
+def care_plan_caregivers():
+    return jsonify({"ok": True, "data": query_all(
+        """SELECT caregiver_id, name, agency
+           FROM caregiver WHERE on_duty='在岗'
+           ORDER BY name"""
+    )})
+
+
+@app.get("/api/care-plans/packages")
+@login_required(roles=("社区管理员",))
+def care_plan_packages():
+    return jsonify({"ok": True, "data": list(PACKAGE_NAMES)})
+
+
+@app.post("/api/care-plans")
+@login_required(roles=("社区管理员",))
+def care_plan_create():
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: create_care_plan(cur, body)
+    )})
+
+
+@app.patch("/api/care-plans/<int:plan_id>")
+@login_required(roles=("社区管理员",))
+def care_plan_update(plan_id):
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: update_care_plan(cur, plan_id, body)
+    )})
 
 
 # ------------------------------------------------------------------ 能力评估

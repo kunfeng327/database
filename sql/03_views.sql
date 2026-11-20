@@ -302,3 +302,50 @@ SELECT d.device_id,
 FROM device d
 JOIN elder e     ON e.elder_id = d.elder_id
 JOIN community c ON c.community_id = e.community_id;
+
+-- 视图16 档案业务线：独居老人未评估清单
+-- 筛选「独居」且从未评估或最新评估已过期的在档老人，供社区安排上门评估/复评；
+-- 身份证脱敏展示，附监护人联系方式与逾期天数。
+CREATE OR REPLACE VIEW v_unassessed_solitary AS
+SELECT e.elder_id,
+       e.name,
+       TIMESTAMPDIFF(YEAR, e.birth_date, CURDATE()) AS age,
+       c.name AS community,
+       CONCAT(LEFT(e.id_card,6),'********',RIGHT(e.id_card,4)) AS id_masked,
+       e.special_tag,
+       la.assess_date AS last_assess_date,
+       la.expire_date AS last_expire,
+       CASE WHEN la.assessment_id IS NULL THEN '从未评估'
+            ELSE CONCAT('已逾期 ', DATEDIFF(CURDATE(), la.expire_date), ' 天') END AS assess_state,
+       e.guardian_name,
+       e.guardian_phone
+FROM elder e
+JOIN community c ON c.community_id = e.community_id
+LEFT JOIN assessment la ON la.elder_id = e.elder_id
+     AND la.assessment_id = (SELECT MAX(a2.assessment_id) FROM assessment a2
+                              WHERE a2.elder_id = e.elder_id)
+WHERE FIND_IN_SET('独居', e.special_tag) > 0
+  AND (la.assessment_id IS NULL OR la.expire_date < CURDATE())
+  AND e.status = '正常';
+
+-- 视图17 档案业务线：各社区能力等级分布
+-- 按每位老人最新一次评估核定等级，统计各社区等级构成与失能占比、未评估人数。
+CREATE OR REPLACE VIEW v_community_ability_distribution AS
+SELECT c.community_id,
+       c.name AS community,
+       c.district,
+       COUNT(e.elder_id) AS total_elders,
+       SUM(la.ability_level = '能力完好') AS level_intact,
+       SUM(la.ability_level = '轻度失能') AS level_mild,
+       SUM(la.ability_level = '中度失能') AS level_moderate,
+       SUM(la.ability_level = '重度失能') AS level_severe,
+       SUM(la.assessment_id IS NULL) AS unassessed,
+       ROUND(SUM(la.ability_level IN ('轻度失能','中度失能','重度失能'))
+             / NULLIF(SUM(la.assessment_id IS NOT NULL), 0) * 100, 1) AS disabled_pct
+FROM community c
+JOIN elder e ON e.community_id = c.community_id
+LEFT JOIN assessment la ON la.elder_id = e.elder_id
+     AND la.assessment_id = (SELECT MAX(a2.assessment_id) FROM assessment a2
+                              WHERE a2.elder_id = e.elder_id)
+WHERE e.status <> '注销'
+GROUP BY c.community_id, c.name, c.district;
