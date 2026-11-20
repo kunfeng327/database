@@ -33,6 +33,8 @@ from care_plan_dao import (
 from elder_dao import (
     ElderError,
     create_elder as dao_create_elder,
+    list_community_distribution,
+    list_unassessed_solitary,
     record_assessment as dao_record_assessment,
     update_elder as dao_update_elder,
 )
@@ -309,6 +311,24 @@ def elders():
         sql += " WHERE elder_id=%s"
         args = (session["elder_id"],)
     return jsonify({"ok": True, "data": query_all(sql + " ORDER BY elder_id", args)})
+
+
+@app.get("/api/elder-reports/unassessed-solitary")
+@login_required(roles=("社区管理员",))
+def unassessed_solitary_report():
+    rows = run_in_transaction(
+        lambda cur: [jsonable(row) for row in list_unassessed_solitary(cur)]
+    )
+    return jsonify({"ok": True, "data": rows})
+
+
+@app.get("/api/elder-reports/community-distribution")
+@login_required(roles=("社区管理员", "监管人员"))
+def community_distribution_report():
+    rows = run_in_transaction(
+        lambda cur: [jsonable(row) for row in list_community_distribution(cur)]
+    )
+    return jsonify({"ok": True, "data": rows})
 
 
 @app.get("/api/communities")

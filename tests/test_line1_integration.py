@@ -333,3 +333,27 @@ def test_expired_plans_pause_once_for_authenticated_api_requests(monkeypatch):
     cursor.execute.assert_called_once_with("CALL sp_pause_expired_plans()")
     conn.commit.assert_called_once()
     conn.close.assert_called_once()
+
+
+def test_elder_report_api_role_access():
+    """独居老人联系方式仅社区管理员可见，社区分布向监管人员开放。"""
+    client = appmod.app.test_client()
+
+    def set_role(role):
+        with client.session_transaction() as user_session:
+            user_session.update(uid=1, name="测试用户", role=role)
+
+    set_role("社区管理员")
+    solitary = client.get("/api/elder-reports/unassessed-solitary")
+    assert solitary.status_code == 200
+    assert solitary.get_json()["ok"]
+    assert "guardian_phone" in solitary.get_json()["data"][0]
+
+    distribution = client.get("/api/elder-reports/community-distribution")
+    assert distribution.status_code == 200
+    assert distribution.get_json()["ok"]
+    assert distribution.get_json()["data"]
+
+    set_role("监管人员")
+    assert client.get("/api/elder-reports/unassessed-solitary").status_code == 403
+    assert client.get("/api/elder-reports/community-distribution").status_code == 200
