@@ -605,7 +605,7 @@ function editCarePlan(planId){
   $('#care-plan-title').textContent = `编辑照护计划：#${p.plan_id}`;
   $('#p-submit').textContent = '保存计划';
   $('#p-cancel').style.display = '';
-  $('#care-plan-form-wrap').scrollIntoView({behavior:'smooth', block:'start'});
+  $('#care-plan-card').scrollIntoView({behavior:'smooth', block:'start'});
   $('#care-plan-card').classList.add('edit-highlight');
   setTimeout(() => $('#care-plan-card').classList.remove('edit-highlight'), 1200);
   setTimeout(() => $('#p-package').focus({preventScroll:true}), 350);
