@@ -9,6 +9,7 @@
 import os
 import sys
 import datetime as dt
+from unittest.mock import MagicMock, Mock
 
 import pytest
 import pymysql
@@ -18,6 +19,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 import db as dbmod  # noqa: E402
 import elder_dao as dao  # noqa: E402
 import care_plan_dao  # noqa: E402
+import app as appmod  # noqa: E402
 
 
 TEST_ID_BASE = dt.date.today().strftime("110101%y%m%d")  # 每日变化，避免残留脏数据
@@ -292,3 +294,27 @@ def test_07_care_plan_dao_crud():
         _cleanup(conn, elder_ids=[elder_id])
         conn.commit()
         conn.close()
+
+
+def test_expired_plans_pause_once_for_authenticated_api_requests(monkeypatch):
+    """登录后的首个 API 请求触发暂停过程，同日后续请求不重复执行。"""
+    monkeypatch.setattr(appmod, "_expired_plans_checked_on", None)
+    conn = Mock()
+    cursor = Mock()
+    conn.cursor.return_value = MagicMock()
+    conn.cursor.return_value.__enter__.return_value = cursor
+    cursor.fetchone.return_value = {"paused_plans": 1}
+    monkeypatch.setattr(appmod, "get_conn", lambda: conn)
+
+    client = appmod.app.test_client()
+    assert client.get("/api/me").status_code == 401
+    conn.cursor.assert_not_called()
+
+    with client.session_transaction() as user_session:
+        user_session.update(uid=1, name="测试管理员", role="社区管理员")
+
+    assert client.get("/api/me").status_code == 200
+    assert client.get("/api/me").status_code == 200
+    cursor.execute.assert_called_once_with("CALL sp_pause_expired_plans()")
+    conn.commit.assert_called_once()
+    conn.close.assert_called_once()

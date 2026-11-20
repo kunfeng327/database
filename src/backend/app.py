@@ -15,6 +15,7 @@ import datetime as dt
 import decimal
 import hashlib
 import os
+import threading
 from functools import wraps
 from pathlib import Path
 
@@ -32,6 +33,7 @@ from care_plan_dao import (
 from elder_dao import (
     ElderError,
     create_elder as dao_create_elder,
+    record_assessment as dao_record_assessment,
     update_elder as dao_update_elder,
 )
 from line5_dao import (
@@ -57,11 +59,41 @@ app.secret_key = os.environ.get("APP_SECRET_KEY", "elder-care-demo-key-2026")
 app.config["PERMANENT_SESSION_LIFETIME"] = dt.timedelta(minutes=30)  # 会话超时
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
+_expired_plans_checked_on = None
+_expired_plans_check_lock = threading.Lock()
 
 
 # ------------------------------------------------------------------ 工具
 def get_conn():
     return pymysql.connect(cursorclass=pymysql.cursors.DictCursor, **DB_CONFIG)
+
+
+def _pause_expired_plans_once_per_day():
+    global _expired_plans_checked_on
+    today = dt.date.today()
+    if _expired_plans_checked_on == today:
+        return
+    with _expired_plans_check_lock:
+        if _expired_plans_checked_on == today:
+            return
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("CALL sp_pause_expired_plans()")
+                cur.fetchone()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        _expired_plans_checked_on = today
+
+
+@app.before_request
+def pause_expired_plans_for_authenticated_api():
+    if request.path.startswith("/api/") and session.get("uid"):
+        _pause_expired_plans_once_per_day()
 
 
 def jsonable(row):
@@ -387,31 +419,13 @@ def elder_assessments(elder_id):
 def create_assessment(elder_id):
     """社区录入能力评估：等级按得分自动核定（演示口径，与种子数据一致：
     ≥85 能力完好 / 75-84 轻度 / 50-74 中度 / <50 重度），结果一年有效；
-    该老人此前因评估过期被暂停的照护计划随复评自动恢复。"""
+    无其他生效计划时，复评最多恢复一条暂停计划。"""
     body = request.get_json(force=True)
     scale, score = body.get("scale", "ADL"), body["score"]
-    if not isinstance(score, int) or not 0 <= score <= 100:
-        raise BizError("得分应为 0-100 的整数")
-
-    def level_of(s):
-        return ("能力完好" if s >= 85 else "轻度失能" if s >= 75
-                else "中度失能" if s >= 50 else "重度失能")
 
     def fn(cur):
-        cur.execute("SELECT elder_id FROM elder WHERE elder_id=%s AND status='正常'", elder_id)
-        if not cur.fetchone():
-            raise BizError("老人档案不存在或已暂停服务")
-        cur.execute("""INSERT INTO assessment (elder_id, scale, score, ability_level, assessor,
-                       assess_date, expire_date)
-                       VALUES (%s,%s,%s,%s,%s,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 1 YEAR))""",
-                    (elder_id, scale, score, level_of(score), session["name"]))
-        assessment_id = cur.lastrowid  # 须在 INSERT 后立即取，后续语句会覆盖该值
-        # 恢复暂停计划（演示口径：该老人的暂停计划默认因评估过期，见 sp_pause_expired_plans）
-        cur.execute("UPDATE care_plan SET status='生效' WHERE elder_id=%s AND status='暂停'", elder_id)
-        resumed = cur.rowcount
-        return {"assessment_id": assessment_id, "ability_level": level_of(score),
-                "expire_date": (dt.date.today() + dt.timedelta(days=365)).strftime("%Y-%m-%d"),
-                "resumed_plans": resumed}
+        return dao_record_assessment(
+            cur, elder_id, {"scale": scale, "score": score}, session["name"])
 
     return jsonify({"ok": True, "data": run_in_transaction(fn)})
 
