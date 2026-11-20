@@ -15,13 +15,20 @@ SELECT cl.claim_id,
        si.name AS item_name,
        o.appoint_time,
        o.amount AS order_amount,
-       cg.name AS caregiver_name
+       cg.name AS caregiver_name,
+       wh.work_hour_id,
+       wh.valid_hours,
+       wh.review_status,
+       (wh.work_hour_id IS NOT NULL
+        AND wh.review_status IN ('自动认定','复核通过')
+        AND wh.valid_hours > 0) AS work_hour_valid
 FROM subsidy_claim cl
 JOIN elder e ON e.elder_id = cl.elder_id
 JOIN service_order o ON FIND_IN_SET(o.order_id, cl.order_ids) > 0
 JOIN service_item si ON si.item_id = o.item_id
 LEFT JOIN dispatch d ON d.order_id = o.order_id AND d.is_current = 1
 LEFT JOIN caregiver cg ON cg.caregiver_id = d.caregiver_id
+LEFT JOIN work_hour wh ON wh.dispatch_id = d.dispatch_id
 ORDER BY cl.claim_id DESC, o.order_id;
 
 -- 2. 区县补贴监管：申报数、通过率、拨付率和已拨付金额

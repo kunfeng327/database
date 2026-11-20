@@ -457,7 +457,7 @@ INSERT INTO work_hour (work_hour_id, caregiver_id, dispatch_id, checkin_time, ch
 (4, 1, 4,  DATE_SUB(NOW(), INTERVAL 24 DAY), DATE_SUB(NOW(), INTERVAL 24 DAY) + INTERVAL 60 MINUTE,  '阳光社区2栋1204门前(116.314,39.982)', '通过', 1.00, '自动认定'),
 (5, 2, 5,  DATE_SUB(NOW(), INTERVAL 20 DAY), DATE_SUB(NOW(), INTERVAL 20 DAY) + INTERVAL 60 MINUTE,  '滨江社区西里4号楼(116.351,39.912)',   '通过', 1.00, '自动认定'),
 (6, 4, 6,  DATE_SUB(NOW(), INTERVAL 18 DAY), DATE_SUB(NOW(), INTERVAL 18 DAY) + INTERVAL 180 MINUTE, '滨江社区西里4号楼(116.351,39.912)',   '通过', 3.00, '自动认定'),
-(7, 3, 7,  DATE_SUB(NOW(), INTERVAL 15 DAY), DATE_SUB(NOW(), INTERVAL 15 DAY) + INTERVAL 150 MINUTE, '幸福社区3号楼2单元(116.305,39.990)',  '围栏外异常', 0.00, '待人工复核'),
+(7, 3, 7,  DATE_SUB(NOW(), INTERVAL 15 DAY), DATE_SUB(NOW(), INTERVAL 15 DAY) + INTERVAL 150 MINUTE, '幸福社区3号楼2单元(116.305,39.990)',  '围栏外异常', 2.50, '复核通过'),
 (8, 4, 13, DATE_SUB(NOW(), INTERVAL 2 HOUR), NULL,                                                 '滨江社区东里11号楼(116.353,39.914)', '通过', 0.00, '自动认定'),
 (9, 6, 14, DATE_SUB(NOW(), INTERVAL 1 HOUR), NULL,                                                 '幸福社区3号楼2单元(116.305,39.990)',  '通过', 0.00, '自动认定');
 

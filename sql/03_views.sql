@@ -134,12 +134,21 @@ SELECT cl.claim_id,
        o.amount AS order_amount,
        o.status AS order_status,
        d.caregiver_id,
-       cg.name AS caregiver_name
+       cg.name AS caregiver_name,
+       wh.work_hour_id,
+       wh.checkin_time,
+       wh.checkout_time,
+       wh.valid_hours,
+       wh.review_status,
+       (wh.work_hour_id IS NOT NULL
+        AND wh.review_status IN ('自动认定','复核通过')
+        AND wh.valid_hours > 0) AS work_hour_valid
 FROM subsidy_claim cl
 JOIN service_order o ON FIND_IN_SET(o.order_id, cl.order_ids) > 0
 JOIN service_item si ON si.item_id = o.item_id
 LEFT JOIN dispatch d ON d.order_id = o.order_id AND d.is_current = 1
-LEFT JOIN caregiver cg ON cg.caregiver_id = d.caregiver_id;
+LEFT JOIN caregiver cg ON cg.caregiver_id = d.caregiver_id
+LEFT JOIN work_hour wh ON wh.dispatch_id = d.dispatch_id;
 
 -- 视图6 质量监管业务线：抽查、订单、护工与整改闭环
 CREATE OR REPLACE VIEW v_quality_inspection_summary AS

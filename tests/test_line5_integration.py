@@ -69,6 +69,53 @@ class Line5IntegrationTest(unittest.TestCase):
         )
         self.assertEqual(response.get_json()["data"]["pay_status"], "已拨付")
 
+        conn = db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT DATE_FORMAT(o.appoint_time, '%Y-%m') AS claim_period,
+                              wh.work_hour_id, wh.valid_hours
+                         FROM service_order o
+                         JOIN dispatch d
+                           ON d.order_id = o.order_id AND d.is_current = 1
+                         JOIN work_hour wh ON wh.dispatch_id = d.dispatch_id
+                        WHERE o.order_id = 30"""
+                )
+                hour = cur.fetchone()
+                cur.execute(
+                    "UPDATE work_hour SET valid_hours=0 WHERE work_hour_id=%s",
+                    (hour["work_hour_id"],),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+        self.login("shequ")
+        claim_body = {
+            "elder_id": 1,
+            "policy_id": 6,
+            "claim_period": hour["claim_period"],
+        }
+        response = self.client.post("/api/subsidy/claims", json=claim_body)
+        self.assertEqual(response.status_code, 400, response.get_json())
+        self.assertIn("有效工时", response.get_json()["msg"])
+
+        conn = db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE work_hour SET valid_hours=%s WHERE work_hour_id=%s",
+                    (hour["valid_hours"], hour["work_hour_id"]),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+        response = self.client.post("/api/subsidy/claims", json=claim_body)
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertIn(30, response.get_json()["data"]["order_ids"])
+
+        self.login("jianguan")
         response = self.client.post(
             "/api/quality/inspections",
             json={
