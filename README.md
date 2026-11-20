@@ -51,7 +51,7 @@ tests/  test_line5_integration.py   # 补贴审核、随机抽查、整改限制
 
 ### 运行方式
 
-- **一键**：双击 `启动演示.bat`，输入 MySQL root 密码即可（可选是否重置演示数据）。
+- **一键**：先在 `src/backend/config_local.py` 配置 MySQL 密码，再双击 `启动演示.bat`（可选是否重置演示数据）。
 - **手动**：
   ```bash
   # 1. 导入数据库（按序执行 4 个脚本）
