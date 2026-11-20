@@ -404,12 +404,12 @@ def create_claim():
     def fn(cur):
         cur.execute("""SELECT c.district, e.special_tag FROM elder e
                         JOIN community c ON c.community_id = e.community_id
-                       WHERE e.elder_id=%s""", elder_id)
+                       WHERE e.elder_id=%s""", (elder_id,))
         elder = cur.fetchone()
         if not elder:
             raise BizError("老人档案不存在")
         cur.execute("""SELECT p.target_type, p.item_id, p.standard, p.district FROM subsidy_policy p
-                        WHERE p.policy_id=%s""", policy_id)
+                        WHERE p.policy_id=%s""", (policy_id,))
         policy = cur.fetchone()
         if not policy:
             raise BizError("政策不存在或已失效")
@@ -419,13 +419,32 @@ def create_claim():
         if policy["target_type"] not in tags.split(","):
             raise BizError(f"该老人标签（{tags or '无'}）不符合政策的对象类别「{policy['target_type']}」")
 
-        cur.execute("""SELECT order_id FROM service_order
-                        WHERE elder_id=%s AND item_id=%s AND status='已完成'
-                          AND DATE_FORMAT(appoint_time,'%%Y-%%m')=%s ORDER BY order_id""",
+        cur.execute("""SELECT o.order_id, wh.work_hour_id, wh.review_status, wh.valid_hours
+                         FROM service_order o
+                         LEFT JOIN dispatch d
+                           ON d.order_id = o.order_id AND d.is_current = 1
+                         LEFT JOIN work_hour wh
+                           ON wh.dispatch_id = d.dispatch_id
+                        WHERE o.elder_id=%s AND o.item_id=%s AND o.status='已完成'
+                          AND DATE_FORMAT(o.appoint_time,'%%Y-%%m')=%s
+                        ORDER BY o.order_id""",
                     (elder_id, policy["item_id"], period))
-        orders = [r["order_id"] for r in cur.fetchall()]
-        if not orders:
+        rows = cur.fetchall()
+        if not rows:
             raise BizError("该账期内没有符合条件的已完成订单，缺少记录不予申报")
+        invalid_orders = [
+            str(row["order_id"]) for row in rows
+            if not row["work_hour_id"]
+            or row["review_status"] not in ("自动认定", "复核通过")
+            or not row["valid_hours"]
+            or float(row["valid_hours"]) <= 0
+        ]
+        if invalid_orders:
+            raise BizError(
+                "以下订单缺少有效工时记录，暂不能申报："
+                + "、".join(invalid_orders)
+            )
+        orders = [row["order_id"] for row in rows]
 
         amount = round(len(orders) * float(policy["standard"]), 2)
         cur.execute("""INSERT INTO subsidy_claim (elder_id, policy_id, claim_period, order_ids, amount)
