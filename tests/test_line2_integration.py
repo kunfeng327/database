@@ -26,6 +26,7 @@ from order_dao import (  # noqa: E402
     create_order,
     dispatch_order,
     reassign_dispatch,
+    recommend_caregivers,
 )
 
 
@@ -68,13 +69,26 @@ class Line2IntegrationTest(unittest.TestCase):
         finally:
             conn.close()
 
-    def _dispatch(self, order_id, caregiver_id=4):
+    def _dispatch(self, order_id, caregiver_id=6):
         conn = pymysql.connect(cursorclass=pymysql.cursors.DictCursor, **DB_CONFIG)
         try:
             with conn.cursor() as cur:
                 result = dispatch_order(cur, order_id, caregiver_id)
             conn.commit()
             return result["dispatch_id"]
+        finally:
+            conn.close()
+
+    def test_recommend_only_dispatchable_caregivers(self):
+        order_id = self._new_order()
+        conn = pymysql.connect(cursorclass=pymysql.cursors.DictCursor, **DB_CONFIG)
+        try:
+            with conn.cursor() as cur:
+                candidates = recommend_caregivers(cur, order_id)
+            caregiver_ids = {row["caregiver_id"] for row in candidates}
+            self.assertIn(6, caregiver_ids)
+            self.assertNotIn(1, caregiver_ids)
+            self.assertNotIn(2, caregiver_ids)
         finally:
             conn.close()
 
