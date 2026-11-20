@@ -105,6 +105,26 @@ def test_02_create_elder_field_validation():
         conn.close()
 
 
+def test_02b_restore_elder_status_without_assessment():
+    """档案恢复为正常不需要能力评估记录。"""
+    conn = _connect()
+    elder_id = None
+    try:
+        with conn.cursor() as cur:
+            elder_id = dao.create_elder(cur, _new_elder_payload())["elder_id"]
+            dao.update_elder(cur, elder_id, {"status": "暂停服务"})
+            result = dao.update_elder(cur, elder_id, {"status": "正常"})
+            assert result["updated"] == 1
+        conn.commit()
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT status FROM elder WHERE elder_id=%s", (elder_id,))
+            assert cur.fetchone()["status"] == "正常"
+    finally:
+        _cleanup(conn, elder_ids=[elder_id])
+        conn.close()
+
+
 def test_03_assessment_level_and_expiry():
     """评估等级按得分核定（演示口径），有效期一年。"""
     conn = _connect()

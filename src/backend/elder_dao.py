@@ -170,15 +170,6 @@ def update_elder(cur, elder_id, payload):
         new_status = payload["status"]
         if new_status not in ("正常", "暂停服务", "注销"):
             raise ElderError("档案状态非法")
-        if new_status == "正常" and row["status"] == "暂停服务":
-            # 恢复服务须有有效评估（暂停通常因评估过期，恢复前应先复评）
-            cur.execute(
-                """SELECT MAX(expire_date) AS exp FROM assessment WHERE elder_id=%s""",
-                (elder_id,),
-            )
-            exp = cur.fetchone()["exp"]
-            if not exp or exp < dt.date.today():
-                raise ElderError("能力评估缺失或已过期，复评通过后才能恢复服务")
         fields.append("status=%s"); args.append(new_status)
 
     if not fields:
