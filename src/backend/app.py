@@ -558,10 +558,15 @@ def create_claim():
         orders = [row["order_id"] for row in rows]
 
         amount = round(len(orders) * float(policy["standard"]), 2)
-        cur.execute("""INSERT INTO subsidy_claim (elder_id, policy_id, claim_period, order_ids, amount)
-                       VALUES (%s,%s,%s,%s,%s)""",
-                    (elder_id, policy_id, period, ",".join(map(str, orders)), amount))
-        return {"claim_id": cur.lastrowid, "amount": amount, "order_ids": orders}
+        cur.execute("""INSERT INTO subsidy_claim (elder_id, policy_id, claim_period, amount)
+                       VALUES (%s,%s,%s,%s)""",
+                    (elder_id, policy_id, period, amount))
+        claim_id = cur.lastrowid
+        cur.executemany(
+            "INSERT INTO subsidy_claim_order (claim_id, order_id) VALUES (%s, %s)",
+            [(claim_id, oid) for oid in orders],
+        )
+        return {"claim_id": claim_id, "amount": amount, "order_ids": orders}
 
     return jsonify({"ok": True, "data": run_in_transaction(fn)})
 
