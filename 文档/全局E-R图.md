@@ -2,6 +2,18 @@
 
 本图合并五条业务线的局部 E-R 设计，并以 `sql/01_schema.sql` 中实际建表的外键为准。共覆盖 18 张表；图中展示主键、外键及主要业务字段。
 
+## 传统 Chen 记法
+
+下图将五条业务线整合为一张连续的 Chen 风格全局图：18 个实体各出现一次，并按局部 E-R 中的关系连接。矩形表示实体、椭圆表示主键属性、菱形表示联系。
+
+![全局 E-R 图（Chen 记法）](./全局E-R图-陈氏.svg)
+
+图中通过共享的老人、护工、服务项目、服务订单等实体贯通各业务线；关联表 `CAREGIVER_ITEM` 连接护工和服务项目。补贴申报与订单之间的虚线表示 `order_ids` 文本追溯关系，不是数据库外键。其余字段请参见各业务线数据字典。
+
+## 表关系视图
+
+以下保留表及外键关系视图，便于对照实际关系模式。
+
 <!-- mermaid-checked: every attribute is `<type> <name> [<key>] ["<description>"]` with at most one of PK/FK/UK, no \n in descriptions, no {} in descriptions, every relationship label is double-quoted -->
 ```mermaid
 erDiagram
