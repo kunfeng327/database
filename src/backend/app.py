@@ -51,6 +51,7 @@ from order_dao import (
     recommend_caregivers,
     reassign_dispatch,
 )
+from line3_dao import Line3DAO
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("APP_SECRET_KEY", "elder-care-demo-key-2026")
@@ -644,6 +645,199 @@ def record_rectification(inspection_id):
         )
     )})
 
+# ------------------------------------------------------------------ 线3：护工档案、批量排班与工时签到签退
+@app.get("/api/line3/caregivers")
+@login_required(roles=("社区管理员", "机构负责人", "监管人员"))
+def line3_caregivers():
+    """查询护工档案及持有专项资质列表"""
+    rows = query_all("""
+        SELECT cg.*,
+               GROUP_CONCAT(si.name ORDER BY si.item_id SEPARATOR '、') AS qualified_items
+          FROM caregiver cg
+          LEFT JOIN caregiver_item ci ON ci.caregiver_id = cg.caregiver_id AND ci.cert_verified = 1
+          LEFT JOIN service_item si ON si.item_id = ci.item_id
+         GROUP BY cg.caregiver_id
+         ORDER BY cg.caregiver_id
+    """)
+    return jsonify({"ok": True, "data": rows})
+
+
+@app.get("/api/line3/cert-warnings")
+@login_required(roles=("社区管理员", "机构负责人", "监管人员"))
+def line3_cert_warnings():
+    """查询证书已过期或30天内临期预警（视图 v_caregiver_cert_warning）"""
+    rows = [jsonable(r) for r in Line3DAO.list_cert_warnings()]
+    return jsonify({"ok": True, "data": rows})
+
+
+@app.post("/api/line3/schedules")
+@login_required(roles=("社区管理员", "机构负责人"))
+def line3_create_schedule():
+    """单条新增排班（触发器拦截同日全天/半天冲突，唯一索引防重复）"""
+    body = request.get_json(force=True)
+    try:
+        new_id = Line3DAO.create_schedule(
+            int(body["caregiver_id"]),
+            body["work_date"],
+            body["shift"],
+            int(body.get("capacity", 4)),
+        )
+        return jsonify({"ok": True, "data": {"schedule_id": new_id}})
+    except pymysql.err.OperationalError as e:
+        if e.args and e.args[0] == 1644:
+            raise BizError(e.args[1])
+        raise
+
+
+@app.post("/api/line3/schedules/batch")
+@login_required(roles=("社区管理员", "机构负责人"))
+def line3_batch_schedule():
+    """调用存储过程 sp_batch_create_schedule 按日期范围批量排班"""
+    body = request.get_json(force=True)
+    try:
+        cnt = Line3DAO.batch_create_schedule(
+            int(body["caregiver_id"]),
+            body["start_date"],
+            body["end_date"],
+            body.get("shift", "全天"),
+            int(body.get("capacity", 4)),
+        )
+        return jsonify({"ok": True, "data": {"created_count": cnt}})
+    except pymysql.err.OperationalError as e:
+        if e.args and e.args[0] == 1644:
+            raise BizError(e.args[1])
+        raise
+
+
+@app.get("/api/line3/work-hours")
+@login_required(roles=("社区管理员", "机构负责人", "护工", "监管人员"))
+def line3_work_hours():
+    """查询工时签到签退记录；护工仅看本人记录"""
+    sql = """
+        SELECT wh.work_hour_id, wh.caregiver_id, cg.name AS caregiver_name, cg.agency,
+               wh.dispatch_id, d.order_id, e.name AS elder_name, si.name AS item_name,
+               wh.checkin_time, wh.checkout_time, wh.checkin_location,
+               wh.fence_result, wh.valid_hours, wh.review_status
+          FROM work_hour wh
+          JOIN caregiver cg ON cg.caregiver_id = wh.caregiver_id
+          JOIN dispatch d ON d.dispatch_id = wh.dispatch_id
+          JOIN service_order o ON o.order_id = d.order_id
+          JOIN elder e ON e.elder_id = o.elder_id
+          JOIN service_item si ON si.item_id = o.item_id
+    """
+    args = ()
+    if session["role"] == "护工":
+        sql += " WHERE wh.caregiver_id = %s"
+        args = (session["caregiver_id"],)
+    return jsonify({"ok": True, "data": query_all(sql + " ORDER BY wh.work_hour_id DESC", args)})
+
+
+@app.get("/api/line3/pending-checkin")
+@login_required(roles=("护工", "社区管理员"))
+def line3_pending_checkin():
+    """查询当前处于已派单/服务中且尚未签到的派单记录，供前端一键签到"""
+    sql = """
+        SELECT d.dispatch_id, d.order_id, d.caregiver_id, cg.name AS caregiver_name,
+               e.name AS elder_name, e.address, si.name AS item_name, o.appoint_time
+          FROM dispatch d
+          JOIN caregiver cg ON cg.caregiver_id = d.caregiver_id
+          JOIN service_order o ON o.order_id = d.order_id
+          JOIN elder e ON e.elder_id = o.elder_id
+          JOIN service_item si ON si.item_id = o.item_id
+          LEFT JOIN work_hour wh ON wh.dispatch_id = d.dispatch_id
+         WHERE d.is_current = 1
+           AND o.status IN ('已派单', '服务中')
+           AND wh.work_hour_id IS NULL
+    """
+    args = ()
+    if session["role"] == "护工":
+        sql += " AND d.caregiver_id = %s"
+        args = (session["caregiver_id"],)
+    return jsonify({"ok": True, "data": query_all(sql + " ORDER BY d.dispatch_id DESC", args)})
+
+
+@app.post("/api/line3/work-hours/checkin")
+@login_required(roles=("护工", "社区管理员"))
+def line3_checkin():
+    """护工上门签到"""
+    body = request.get_json(force=True)
+    dispatch_id = int(body["dispatch_id"])
+    checkin_time = body["checkin_time"]
+    location = body.get("checkin_location", "").strip() or "老人居住地址现场定位"
+    rows = query_all("SELECT caregiver_id FROM dispatch WHERE dispatch_id=%s AND is_current=1", (dispatch_id,))
+    if not rows:
+        raise BizError("有效派单记录不存在")
+    cg_id = rows[0]["caregiver_id"]
+    if session["role"] == "护工" and cg_id != session["caregiver_id"]:
+        raise BizError("无权限为其他护工签到")
+    try:
+        wh_id = Line3DAO.checkin_work_hour(cg_id, dispatch_id, checkin_time, location)
+        return jsonify({"ok": True, "data": {"work_hour_id": wh_id}})
+    except pymysql.err.OperationalError as e:
+        if e.args and e.args[0] == 1644:
+            raise BizError(e.args[1])
+        raise
+
+
+@app.post("/api/line3/work-hours/<int:wh_id>/checkout")
+@login_required(roles=("护工", "社区管理员"))
+def line3_checkout(wh_id):
+    """护工离场签退（触发器自动计算 valid_hours 并累加 caregiver.total_hours，围栏异常转待复核）"""
+    body = request.get_json(force=True)
+    checkout_time = body["checkout_time"]
+    fence_result = body.get("fence_result", "通过")
+    try:
+        res = Line3DAO.checkout_work_hour(wh_id, checkout_time, fence_result)
+        if not res:
+            raise BizError("工时记录不存在")
+        return jsonify({"ok": True, "data": jsonable(res)})
+    except pymysql.err.OperationalError as e:
+        if e.args and e.args[0] == 1644:
+            raise BizError(e.args[1])
+        raise
+
+
+@app.post("/api/line3/work-hours/<int:wh_id>/review")
+@login_required(roles=("社区管理员", "机构负责人", "监管人员"))
+def line3_review_work_hour(wh_id):
+    """管理员/机构对围栏外异常工时进行人工复核"""
+    body = request.get_json(force=True)
+    decision = body.get("decision")  # '复核通过' 或 '复核驳回'
+    if decision not in ("复核通过", "复核驳回"):
+        raise BizError("复核结论非法")
+
+    def fn(cur):
+        cur.execute("SELECT * FROM work_hour WHERE work_hour_id=%s", (wh_id,))
+        wh = cur.fetchone()
+        if not wh:
+            raise BizError("工时记录不存在")
+        if not wh["checkout_time"]:
+            raise BizError("该记录尚未签退，无法复核")
+        if decision == "复核通过":
+            cur.execute("""
+                UPDATE work_hour
+                   SET review_status = '复核通过',
+                       valid_hours = ROUND(TIMESTAMPDIFF(MINUTE, checkin_time, checkout_time) / 60.0, 2)
+                 WHERE work_hour_id = %s
+            """, (wh_id,))
+            cur.execute("""
+                UPDATE caregiver
+                   SET total_hours = total_hours + (SELECT valid_hours FROM work_hour WHERE work_hour_id = %s)
+                 WHERE caregiver_id = %s
+            """, (wh_id, wh["caregiver_id"]))
+        else:
+            cur.execute("UPDATE work_hour SET review_status = '复核驳回', valid_hours = 0.00 WHERE work_hour_id = %s", (wh_id,))
+        return {"work_hour_id": wh_id, "review_status": decision}
+
+    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+
+@app.get("/api/line3/summary")
+@login_required(roles=("社区管理员", "机构负责人", "护工", "监管人员"))
+def line3_summary():
+    """护工月度有效工时与服务单量综合汇总"""
+    rows = [jsonable(r) for r in Line3DAO.get_monthly_work_summary()]
+    return jsonify({"ok": True, "data": rows})
 
 # ------------------------------------------------------------------ 运维（存储过程）
 @app.get("/api/maintenance/expired-preview")
