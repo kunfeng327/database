@@ -671,6 +671,7 @@ async function editElder(elderId){
   const r = await API(`/api/elders/${elderId}/detail`);
   if (!r.ok) { toast(r.msg, true); return; }
   const e = r.data;
+  if (e.status === '注销') { toast('档案已注销，不允许修改', true); return; }
   resetElderForm();
   $('#e-id').value = e.elder_id;
   $('#e-name').value = e.name;
@@ -742,7 +743,9 @@ async function loadElders(){
     <td>${e.assess_expire||''} ${e.assess_expired?'<span class="badge b-red">已过期</span>':''}</td>
     <td>${e.elder_status==='正常'?'<span class="badge b-done">正常</span>':`<span class="badge b-canc">${esc(e.elder_status)}</span>`}</td>
     <td>${esc(e.package_name)||'<span class="muted">无</span>'}${e.plan_status==='暂停'?' <span class="badge b-red">暂停</span>':''}</td>
-    ${ME.role==='社区管理员'?`<td><button class="btn small ghost" onclick="editElder(${e.elder_id})">编辑</button></td>`:''}</tr>`).join('');
+    ${ME.role==='社区管理员'?`<td>${e.elder_status==='注销'
+      ?'<button class="btn small ghost" disabled title="档案已注销，不允许修改">已注销</button>'
+      :`<button class="btn small ghost" onclick="editElder(${e.elder_id})">编辑</button>`}</td>`:''}</tr>`).join('');
   $('#f-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
     .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}${e.assess_expired?'，评估已过期':''}）</option>`).join('');
   if (ME.role === '社区管理员') {
