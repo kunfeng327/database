@@ -30,6 +30,16 @@ from line5_dao import (
     submit_rectification,
     transition_claim,
 )
+from line4_dao import (
+    Line4Error,
+    bind_device,
+    complete_emergency,
+    confirm_vital_abnormal,
+    create_emergency,
+    record_vital_sign,
+    respond_emergency,
+    unbind_device,
+)
 from order_dao import (
     OrderError,
     complete_dispatch as dao_complete_dispatch,
@@ -115,6 +125,11 @@ def handle_line5(e):
 
 @app.errorhandler(OrderError)
 def handle_order_error(e):
+    return jsonify({"ok": False, "msg": str(e)}), 400
+
+
+@app.errorhandler(Line4Error)
+def handle_line4_error(e):
     return jsonify({"ok": False, "msg": str(e)}), 400
 
 
@@ -513,6 +528,143 @@ def record_rectification(inspection_id):
             session.get("caregiver_id"),
         )
     )})
+
+
+# ------------------------------------------------------------------ 健康监测与应急响应（线4）
+@app.get("/api/health/devices")
+@login_required(roles=("社区管理员", "家属"))
+def health_devices():
+    sql = "SELECT * FROM v_device_binding_status"
+    args = ()
+    if session["role"] == "家属":
+        sql += " WHERE elder_id=%s"
+        args = (session["elder_id"],)
+    return jsonify({"ok": True, "data": query_all(sql + " ORDER BY device_id DESC", args)})
+
+
+@app.get("/api/health/elders")
+@login_required(roles=("社区管理员",))
+def health_elders():
+    return jsonify({"ok": True, "data": query_all(
+        "SELECT elder_id, name FROM elder WHERE status='正常' ORDER BY elder_id")})
+
+
+@app.post("/api/health/devices")
+@login_required(roles=("社区管理员",))
+def health_bind_device():
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: bind_device(cur, body))})
+
+
+@app.post("/api/health/devices/<int:device_id>/unbind")
+@login_required(roles=("社区管理员",))
+def health_unbind_device(device_id):
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: unbind_device(cur, device_id))})
+
+
+@app.get("/api/health/vitals")
+@login_required(roles=("社区管理员", "家属"))
+def health_vitals():
+    def fn(cur):
+        is_family = session["role"] == "家属"
+        scope = "WHERE v.elder_id=%s" if is_family else ""
+        args = (session["elder_id"],) if is_family else ()
+        cur.execute(f"""SELECT v.* FROM v_daily_abnormal_vitals v {scope}
+                        ORDER BY v.collect_time DESC LIMIT 50""", args)
+        return {"abnormal": [jsonable(row) for row in cur.fetchall()]}
+    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+
+@app.post("/api/health/vitals")
+@login_required(roles=("社区管理员",))
+def health_record_vital():
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: record_vital_sign(cur, body))})
+
+
+@app.post("/api/health/vitals/<int:vital_id>/confirm")
+@login_required(roles=("社区管理员",))
+def health_confirm_vital(vital_id):
+    decision = request.get_json(force=True).get("decision", "")
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: confirm_vital_abnormal(cur, vital_id, decision))})
+
+
+@app.get("/api/health/emergencies")
+@login_required(roles=("社区管理员", "家属"))
+def health_emergencies():
+    def fn(cur):
+        is_family = session["role"] == "家属"
+        scope = "AND em.elder_id=%s" if is_family else ""
+        args = (session["elder_id"],) if is_family else ()
+        cur.execute(f"""SELECT em.event_id, em.elder_id, e.name AS elder_name,
+                               c.name AS community, em.trigger_source, em.event_level,
+                               em.occur_time,
+                               TIMESTAMPDIFF(MINUTE, em.occur_time, NOW()) AS waited_min,
+                               CASE em.event_level WHEN '一般' THEN 60
+                                    WHEN '紧急' THEN 30 ELSE 15 END AS deadline_min,
+                               CASE
+                                   WHEN TIMESTAMPDIFF(MINUTE, em.occur_time, NOW()) >
+                                       CASE em.event_level WHEN '一般' THEN 60
+                                            WHEN '紧急' THEN 30 ELSE 15 END
+                                       THEN '超时'
+                                   WHEN TIMESTAMPDIFF(MINUTE, em.occur_time, NOW()) >=
+                                       CASE em.event_level WHEN '一般' THEN 50
+                                            WHEN '紧急' THEN 20 ELSE 5 END
+                                       THEN '临近超时'
+                                   ELSE '正常'
+                               END AS timeout_flag,
+                               em.escalated, em.status
+                        FROM emergency em
+                        JOIN elder e ON e.elder_id = em.elder_id
+                        JOIN community c ON c.community_id = e.community_id
+                        WHERE em.status IN ('待响应','已响应') {scope}
+                        ORDER BY waited_min DESC""", args)
+        pending = cur.fetchall()
+        closed_scope = ("WHERE em.status='已处置' AND em.elder_id=%s" if is_family
+                        else "WHERE em.status='已处置'")
+        closed_args = (session["elder_id"],) if is_family else ()
+        cur.execute(f"""SELECT em.event_id, em.elder_id, e.name AS elder_name,
+                               em.trigger_source, em.event_level, em.occur_time,
+                               em.responder, em.arrive_time, em.result, em.status,
+                               em.escalated
+                        FROM emergency em JOIN elder e ON e.elder_id = em.elder_id
+                        {closed_scope}
+                        ORDER BY em.event_id DESC LIMIT 20""", closed_args)
+        closed = cur.fetchall()
+        return {
+            "pending": [jsonable(row) for row in pending],
+            "closed": [jsonable(row) for row in closed],
+        }
+    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+
+@app.post("/api/health/emergencies")
+@login_required(roles=("社区管理员",))
+def health_create_emergency():
+    body = request.get_json(force=True)
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: create_emergency(cur, body))})
+
+
+@app.post("/api/health/emergencies/<int:event_id>/respond")
+@login_required(roles=("社区管理员",))
+def health_respond_emergency(event_id):
+    body = request.get_json(force=True)
+    body.setdefault("responder", session["name"])
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: respond_emergency(cur, event_id, body))})
+
+
+@app.post("/api/health/emergencies/<int:event_id>/complete")
+@login_required(roles=("社区管理员",))
+def health_complete_emergency(event_id):
+    result = request.get_json(force=True).get("result", "")
+    return jsonify({"ok": True, "data": run_in_transaction(
+        lambda cur: complete_emergency(cur, event_id, result))})
 
 
 # ------------------------------------------------------------------ 运维（存储过程）
