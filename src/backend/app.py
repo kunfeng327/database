@@ -20,7 +20,7 @@ from functools import wraps
 from pathlib import Path
 
 import pymysql
-from flask import Flask, jsonify, request, send_file, session
+from flask import Flask, jsonify, request, send_file, send_from_directory, session
 
 from db import DB_CONFIG
 from care_plan_dao import (
@@ -62,6 +62,7 @@ app.secret_key = os.environ.get("APP_SECRET_KEY", "elder-care-demo-key-2026")
 app.config["PERMANENT_SESSION_LIFETIME"] = dt.timedelta(minutes=30)  # 会话超时
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
+FRONTEND_DIR = FRONTEND.parent          # 前端资源根目录（css / js 与 index.html 同级）
 _expired_plans_checked_on = None
 _expired_plans_check_lock = threading.Lock()
 
@@ -253,6 +254,12 @@ def me():
 @app.get("/")
 def index():
     return send_file(FRONTEND)
+
+
+@app.get("/assets/<path:filename>")
+def frontend_assets(filename):
+    """前端静态资源：/assets/css/*.css、/assets/js/*.js（与 index.html 同目录）。"""
+    return send_from_directory(FRONTEND_DIR, filename)
 
 
 # ------------------------------------------------------------------ 基础数据

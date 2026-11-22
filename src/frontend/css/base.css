@@ -1,0 +1,73 @@
+/* base.css — 设计变量、重置、登录页、应用外壳、通用工具类与响应式 */
+/* 设计基调借鉴 gentelella（MIT）：深色侧栏 + 青绿主色 + 浅灰底 */
+:root {
+  --sidebar-bg:#1a2332; --sidebar-text:#7b8fa3; --sidebar-text-active:#fff;
+  --sidebar-active:rgba(26,187,156,.12); --sidebar-hover:rgba(255,255,255,.05);
+  --primary:#1ABB9C; --primary-dk:#169f85; --primary-lt:rgba(26,187,156,.08);
+  --bg:#f5f7fb; --surface:#fff; --border:#e6e7eb;
+  --text:#1e2633; --text-2:#626d7d; --muted:#7e8896;
+  --blue:#066fd1; --azure:#4299e1; --green:#2fb344; --yellow:#f59f00;
+  --orange:#f76707; --red:#d63939; --purple:#ae3ec9;
+  --green-lt:rgba(47,179,68,.1); --red-lt:rgba(214,57,57,.08);
+  --yellow-lt:rgba(245,159,0,.12); --blue-lt:rgba(6,111,209,.08);
+  --purple-lt:rgba(174,62,201,.08); --orange-lt:rgba(247,103,7,.1);
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:"Microsoft YaHei","PingFang SC",Inter,sans-serif; background:var(--bg);
+  color:var(--text); font-size:14px; }
+
+/* ---------------- 登录页 ---------------- */
+#login-view { min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,#1a2332 0%,#17303c 60%,#1ABB9C 160%); }
+.login-card { background:#fff; border-radius:12px; padding:36px 40px; width:400px;
+  box-shadow:0 18px 50px rgba(0,0,0,.35); }
+.login-card h1 { font-size:19px; margin-bottom:4px; }
+.login-card .sub { color:var(--muted); font-size:12px; margin-bottom:22px; }
+.login-card label { font-size:12px; color:var(--text-2); display:block; margin:12px 0 5px; }
+.login-card input { width:100%; padding:10px 12px; border:1px solid var(--border);
+  border-radius:6px; font-size:14px; }
+.login-card input:focus { outline:2px solid var(--primary-lt); border-color:var(--primary); }
+.btn-login { width:100%; margin-top:20px; padding:11px; background:var(--primary); color:#fff;
+  border:none; border-radius:6px; font-size:15px; cursor:pointer; }
+.btn-login:hover { background:var(--primary-dk); }
+.demo-accounts { margin-top:18px; border-top:1px dashed var(--border); padding-top:14px; }
+.demo-accounts p { font-size:12px; color:var(--muted); margin-bottom:8px; }
+.demo-accounts .chip { display:inline-block; margin:2px 3px; padding:4px 10px; font-size:12px;
+  background:var(--bg); border:1px solid var(--border); border-radius:14px; cursor:pointer; }
+.demo-accounts .chip:hover { border-color:var(--primary); color:var(--primary); }
+
+/* ---------------- 应用外壳 ---------------- */
+#app-view { display:none; }
+.sidebar { position:fixed; left:0; top:0; bottom:0; width:222px; background:var(--sidebar-bg);
+  color:var(--sidebar-text); display:flex; flex-direction:column; z-index:10; }
+.brand { padding:20px 20px 16px; border-bottom:1px solid rgba(255,255,255,.06); }
+.brand b { color:#fff; font-size:15px; display:block; }
+.brand span { font-size:11px; color:var(--sidebar-text); }
+.nav { flex:1; padding:10px 0; overflow-y:auto; }
+.nav button { display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+  background:none; border:none; color:var(--sidebar-text); padding:11px 20px; font-size:13.5px;
+  cursor:pointer; border-left:3px solid transparent; }
+.nav button:hover { background:var(--sidebar-hover); color:#c5d0dc; }
+.nav button.active { background:var(--sidebar-active); color:var(--sidebar-text-active);
+  border-left-color:var(--primary); }
+.nav .ico { width:18px; text-align:center; font-size:15px; }
+.side-user { padding:14px 20px; border-top:1px solid rgba(255,255,255,.06); font-size:12px; }
+.side-user b { color:#fff; display:block; margin-bottom:2px; }
+.side-user button { margin-top:8px; width:100%; padding:7px; background:transparent;
+  color:var(--sidebar-text); border:1px solid rgba(255,255,255,.15); border-radius:6px;
+  cursor:pointer; font-size:12px; }
+.side-user button:hover { color:#fff; border-color:var(--primary); }
+
+.main { margin-left:222px; min-height:100vh; }
+.topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:16px 28px;
+  display:flex; justify-content:space-between; align-items:center; }
+.topbar .pre { font-size:11px; color:var(--muted); letter-spacing:.05em; }
+.topbar h2 { font-size:18px; font-weight:600; }
+.role-badge { font-size:12px; padding:4px 12px; border-radius:14px; background:var(--primary-lt);
+  color:var(--primary-dk); font-weight:600; }
+.content { padding:24px 28px; max-width:1250px; }
+
+
+/* ---------------- 工具类 ---------------- */
+.muted { color:var(--muted); font-size:12px; }
+.hide { display:none; }
