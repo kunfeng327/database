@@ -84,8 +84,11 @@ def _validate_tags(tags):
     return ",".join(dict.fromkeys(items)) or None  # 去重保序
 
 
-def _require_elder(cur, elder_id, active_only=False):
-    cur.execute("SELECT elder_id, name, status FROM elder WHERE elder_id=%s", (elder_id,))
+def _require_elder(cur, elder_id, active_only=False, for_update=False):
+    sql = "SELECT elder_id, name, status FROM elder WHERE elder_id=%s"
+    if for_update:
+        sql += " FOR UPDATE"
+    cur.execute(sql, (elder_id,))
     row = cur.fetchone()
     if not row:
         raise ElderError("老人档案不存在")
@@ -167,15 +170,6 @@ def update_elder(cur, elder_id, payload):
         new_status = payload["status"]
         if new_status not in ("正常", "暂停服务", "注销"):
             raise ElderError("档案状态非法")
-        if new_status == "正常" and row["status"] == "暂停服务":
-            # 恢复服务须有有效评估（暂停通常因评估过期，恢复前应先复评）
-            cur.execute(
-                """SELECT MAX(expire_date) AS exp FROM assessment WHERE elder_id=%s""",
-                (elder_id,),
-            )
-            exp = cur.fetchone()["exp"]
-            if not exp or exp < dt.date.today():
-                raise ElderError("能力评估缺失或已过期，复评通过后才能恢复服务")
         fields.append("status=%s"); args.append(new_status)
 
     if not fields:
@@ -189,7 +183,7 @@ def update_elder(cur, elder_id, payload):
 def record_assessment(cur, elder_id, payload, assessor):
     """录入能力评估：等级按得分核定，结果一年有效；
     该老人因评估过期被暂停的照护计划随复评自动恢复。"""
-    _require_elder(cur, elder_id, active_only=True)
+    _require_elder(cur, elder_id, active_only=True, for_update=True)
     scale = payload.get("scale", "ADL")
     if scale not in SCALES:
         raise ElderError("评估量表只能是「ADL」或「简易智能状态」")
@@ -209,12 +203,29 @@ def record_assessment(cur, elder_id, payload, assessor):
         (elder_id, scale, score, level, assessor, assess_date, expire_date),
     )
     assessment_id = cur.lastrowid  # INSERT 后立即保存
-    # 复评恢复：该老人的「暂停」计划默认因评估过期（见 sp_pause_expired_plans）
+    # 复评时仅恢复最新的暂停计划，避免同一老人同时有多个生效计划。
     cur.execute(
-        "UPDATE care_plan SET status='生效' WHERE elder_id=%s AND status='暂停'",
+        """SELECT plan_id FROM care_plan
+           WHERE elder_id=%s AND status='生效'
+           LIMIT 1 FOR UPDATE""",
         (elder_id,),
     )
-    resumed = cur.rowcount
+    active_plan = cur.fetchone()
+    resumed = 0
+    if not active_plan:
+        cur.execute(
+            """SELECT plan_id FROM care_plan
+               WHERE elder_id=%s AND status='暂停'
+               ORDER BY plan_id DESC LIMIT 1 FOR UPDATE""",
+            (elder_id,),
+        )
+        paused_plan = cur.fetchone()
+        if paused_plan:
+            cur.execute(
+                "UPDATE care_plan SET status='生效' WHERE plan_id=%s AND status='暂停'",
+                (paused_plan["plan_id"],),
+            )
+            resumed = cur.rowcount
     return {
         "assessment_id": assessment_id,
         "ability_level": level,

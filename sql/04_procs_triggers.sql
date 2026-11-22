@@ -4,6 +4,8 @@
 USE elder_care;
 SET NAMES utf8mb4;
 DROP PROCEDURE IF EXISTS sp_pause_expired_plans;
+DROP TRIGGER IF EXISTS tr_care_plan_before_insert;
+DROP TRIGGER IF EXISTS tr_care_plan_before_update;
 DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
@@ -25,6 +27,41 @@ BEGIN
    WHERE p.status = '生效'
      AND a.latest_expire < CURDATE();
   SELECT ROW_COUNT() AS paused_plans;
+END$$
+DELIMITER ;
+
+-- ---------------------------------------------------------------------
+-- 生效计划必须有有效评估，防止人工或其他 SQL 绕过应用层校验
+-- ---------------------------------------------------------------------
+DELIMITER $$
+CREATE TRIGGER tr_care_plan_before_insert
+BEFORE INSERT ON care_plan
+FOR EACH ROW
+BEGIN
+  DECLARE latest_expire DATE;
+  IF NEW.status = '生效' THEN
+    SELECT MAX(expire_date) INTO latest_expire
+      FROM assessment WHERE elder_id = NEW.elder_id;
+    IF latest_expire IS NULL OR latest_expire < CURDATE() THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '能力评估缺失或已过期，不能启用照护计划';
+    END IF;
+  END IF;
+END$$
+
+CREATE TRIGGER tr_care_plan_before_update
+BEFORE UPDATE ON care_plan
+FOR EACH ROW
+BEGIN
+  DECLARE latest_expire DATE;
+  IF NEW.status = '生效' THEN
+    SELECT MAX(expire_date) INTO latest_expire
+      FROM assessment WHERE elder_id = NEW.elder_id;
+    IF latest_expire IS NULL OR latest_expire < CURDATE() THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '能力评估缺失或已过期，不能启用照护计划';
+    END IF;
+  END IF;
 END$$
 DELIMITER ;
 

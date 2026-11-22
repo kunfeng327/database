@@ -299,6 +299,20 @@ textarea { width:100%; min-height:56px; resize:vertical; }
             <button class="btn" type="submit">录入评估（等级自动核定）</button>
           </form>
         </div>
+        <div class="card" id="unassessed-solitary-card">
+          <h3>独居老人未评估清单<small>视图 v_unassessed_solitary · 安排上门评估或复评</small></h3>
+          <table id="unassessed-solitary-table"><thead><tr>
+            <th>编号</th><th>姓名</th><th>年龄</th><th>社区</th><th>身份证(脱敏)</th><th>标签</th>
+            <th>上次评估</th><th>评估到期</th><th>评估状态</th><th>监护人</th><th>联系电话</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+        <div class="card" id="community-distribution-card">
+          <h3>各社区能力等级分布<small>视图 v_community_ability_distribution · 按最新评估统计</small></h3>
+          <table id="community-distribution-table"><thead><tr>
+            <th>社区</th><th>区县</th><th>在档人数</th><th>能力完好</th><th>轻度失能</th>
+            <th>中度失能</th><th>重度失能</th><th>未评估</th><th>失能占比</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
       </section>
 
       <section id="tab-orders" class="hide">
@@ -593,6 +607,8 @@ function buildNav(){
   $('#elder-action-th').classList.toggle('hide', !isAdmin);
   $('#care-plan-form-wrap').classList.toggle('hide', !isAdmin);
   $('#care-plan-action-th').classList.toggle('hide', !isAdmin);
+  $('#unassessed-solitary-card').classList.toggle('hide', !isAdmin);
+  $('#community-distribution-card').classList.toggle('hide', !(isAdmin || isReg));
   $('#orders-title').textContent = ME.role==='护工' ? '我的派单记录' :
       isFamily ? '家庭服务订单' : '服务订单';
   $('#order-form-title').innerHTML = isFamily
@@ -651,7 +667,7 @@ function editCarePlan(planId){
   $('#care-plan-title').textContent = `编辑照护计划：#${p.plan_id}`;
   $('#p-submit').textContent = '保存计划';
   $('#p-cancel').style.display = '';
-  $('#care-plan-form-wrap').scrollIntoView({behavior:'smooth', block:'start'});
+  $('#care-plan-card').scrollIntoView({behavior:'smooth', block:'start'});
   $('#care-plan-card').classList.add('edit-highlight');
   setTimeout(() => $('#care-plan-card').classList.remove('edit-highlight'), 1200);
   setTimeout(() => $('#p-package').focus({preventScroll:true}), 350);
@@ -687,10 +703,21 @@ function resetElderForm(){
   $('#e-gender').disabled = false;
   $('#e-cancel').style.display = 'none';
 }
+function autofillElderIdentity(){
+  const idCard = $('#e-idcard').value.trim().toUpperCase();
+  if (!/^\d{17}[\dX]$/.test(idCard)) return;
+  const birthDate = `${idCard.slice(6,10)}-${idCard.slice(10,12)}-${idCard.slice(12,14)}`;
+  const date = new Date(`${birthDate}T00:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0,10) !== birthDate) return;
+  $('#e-birth').value = birthDate;
+  $('#e-gender').value = Number(idCard[16]) % 2 ? '男' : '女';
+}
+$('#e-idcard').addEventListener('input', autofillElderIdentity);
 async function editElder(elderId){
   const r = await API(`/api/elders/${elderId}/detail`);
   if (!r.ok) { toast(r.msg, true); return; }
   const e = r.data;
+  if (e.status === '注销') { toast('档案已注销，不允许修改', true); return; }
   resetElderForm();
   $('#e-id').value = e.elder_id;
   $('#e-name').value = e.name;
@@ -730,6 +757,27 @@ async function loadPending(){
     <td>${o.timeout_flag==='超时'?'<span class="badge b-red">超时</span>':o.timeout_flag==='临近超时'?'<span class="badge b-wait">临近超时</span>':'<span class="badge b-done">正常</span>'}</td></tr>`).join('')
     || '<tr><td colspan="7" class="muted">暂无待派单订单</td></tr>';
 }
+async function loadUnassessedSolitary(){
+  const r = await API('/api/elder-reports/unassessed-solitary');
+  if (!r.ok) { toast(r.msg, true); return; }
+  $('#unassessed-solitary-table tbody').innerHTML = r.data.map(e => `<tr>
+    <td>${esc(e.elder_id)}</td><td>${esc(e.name)}</td><td>${esc(e.age)}</td>
+    <td>${esc(e.community)}</td><td>${esc(e.id_masked)}</td><td>${esc(e.special_tag)}</td>
+    <td>${esc(e.last_assess_date || '从未评估')}</td><td>${esc(e.last_expire || '—')}</td>
+    <td>${esc(e.assess_state)}</td><td>${esc(e.guardian_name)}</td><td>${esc(e.guardian_phone)}</td>
+  </tr>`).join('') || '<tr><td colspan="11" class="muted">暂无待评估的独居老人</td></tr>';
+}
+async function loadCommunityDistribution(){
+  const r = await API('/api/elder-reports/community-distribution');
+  if (!r.ok) { toast(r.msg, true); return; }
+  $('#community-distribution-table tbody').innerHTML = r.data.map(c => `<tr>
+    <td>${esc(c.community)}</td><td>${esc(c.district)}</td><td>${esc(c.total_elders)}</td>
+    <td>${esc(c.level_intact ?? 0)}</td><td>${esc(c.level_mild ?? 0)}</td>
+    <td>${esc(c.level_moderate ?? 0)}</td><td>${esc(c.level_severe ?? 0)}</td>
+    <td>${esc(c.unassessed ?? 0)}</td>
+    <td>${c.disabled_pct == null ? '—' : `${Number(c.disabled_pct).toFixed(1)}%`}</td>
+  </tr>`).join('') || '<tr><td colspan="9" class="muted">暂无社区评估数据</td></tr>';
+}
 async function loadElders(){
   const r = await API('/api/elders');
   elderList = r.data;
@@ -741,7 +789,9 @@ async function loadElders(){
     <td>${e.assess_expire||''} ${e.assess_expired?'<span class="badge b-red">已过期</span>':''}</td>
     <td>${e.elder_status==='正常'?'<span class="badge b-done">正常</span>':`<span class="badge b-canc">${esc(e.elder_status)}</span>`}</td>
     <td>${esc(e.package_name)||'<span class="muted">无</span>'}${e.plan_status==='暂停'?' <span class="badge b-red">暂停</span>':''}</td>
-    ${ME.role==='社区管理员'?`<td><button class="btn small ghost" onclick="editElder(${e.elder_id})">编辑</button></td>`:''}</tr>`).join('');
+    ${ME.role==='社区管理员'?`<td>${e.elder_status==='注销'
+      ?'<button class="btn small ghost" disabled title="档案已注销，不允许修改">已注销</button>'
+      :`<button class="btn small ghost" onclick="editElder(${e.elder_id})">编辑</button>`}</td>`:''}</tr>`).join('');
   $('#f-elder').innerHTML = elderList.filter(e => e.elder_status==='正常')
     .map(e => `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}${e.assess_expired?'，评估已过期':''}）</option>`).join('');
   if (ME.role === '社区管理员') {
@@ -755,6 +805,10 @@ async function loadElders(){
     `<option value="${e.elder_id}">${esc(e.name)}${e.assess_expired?'（评估已过期）':''}</option>`).join('');
   loadAssessments();
   $('#a-elder').onchange = () => loadAssessments();
+  if (ME.role === '社区管理员') await loadUnassessedSolitary();
+  if (ME.role === '社区管理员' || ME.role === '监管人员') {
+    await loadCommunityDistribution();
+  }
 }
 
 $('#elder-form').onsubmit = async ev => {

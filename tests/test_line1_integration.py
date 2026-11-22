@@ -9,6 +9,7 @@
 import os
 import sys
 import datetime as dt
+from unittest.mock import MagicMock, Mock
 
 import pytest
 import pymysql
@@ -18,6 +19,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 import db as dbmod  # noqa: E402
 import elder_dao as dao  # noqa: E402
 import care_plan_dao  # noqa: E402
+import app as appmod  # noqa: E402
 
 
 TEST_ID_BASE = dt.date.today().strftime("110101%y%m%d")  # 每日变化，避免残留脏数据
@@ -103,6 +105,26 @@ def test_02_create_elder_field_validation():
         conn.close()
 
 
+def test_02b_restore_elder_status_without_assessment():
+    """档案恢复为正常不需要能力评估记录。"""
+    conn = _connect()
+    elder_id = None
+    try:
+        with conn.cursor() as cur:
+            elder_id = dao.create_elder(cur, _new_elder_payload())["elder_id"]
+            dao.update_elder(cur, elder_id, {"status": "暂停服务"})
+            result = dao.update_elder(cur, elder_id, {"status": "正常"})
+            assert result["updated"] == 1
+        conn.commit()
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT status FROM elder WHERE elder_id=%s", (elder_id,))
+            assert cur.fetchone()["status"] == "正常"
+    finally:
+        _cleanup(conn, elder_ids=[elder_id])
+        conn.close()
+
+
 def test_03_assessment_level_and_expiry():
     """评估等级按得分核定（演示口径），有效期一年。"""
     conn = _connect()
@@ -127,36 +149,59 @@ def test_03_assessment_level_and_expiry():
 
 
 def test_04_expired_assessment_pauses_then_reevaluation_resumes():
-    """闭环：评估过期 → 计划自动暂停 → 复评 → 计划自动恢复。"""
+    """闭环：评估过期 → 计划自动暂停 → 禁止手动启用 → 复评后恢复一条计划。"""
     conn = _connect()
     elder_id = None
     try:
         with conn.cursor() as cur:
             elder_id = dao.create_elder(cur, _new_elder_payload())["elder_id"]
-            # 一年前评估（已过期）+ 生效计划
+            # 先建有效评估和生效计划，再将评估过期以模拟时间流逝。
+            today = dt.date.today()
             last_year = dt.date.today() - dt.timedelta(days=400)
             cur.execute(
                 """INSERT INTO assessment (elder_id, scale, score, ability_level, assessor,
                                             assess_date, expire_date)
                    VALUES (%s,'ADL',90,'能力完好','历史评估',%s,%s)""",
-                (elder_id, last_year, last_year + dt.timedelta(days=365)),
+                (elder_id, today, today + dt.timedelta(days=365)),
             )
             cur.execute(
                 """INSERT INTO care_plan (elder_id, package_name, frequency, start_date, end_date, status)
                    VALUES (%s,'测试服务包','每周1次',CURDATE(),CURDATE()+INTERVAL 90 DAY,'生效')""",
                 (elder_id,),
             )
+            plan_id = cur.lastrowid
+            cur.execute(
+                """INSERT INTO care_plan (elder_id, package_name, frequency, start_date, end_date, status)
+                   VALUES (%s,'测试服务包2','每周2次',CURDATE(),CURDATE()+INTERVAL 90 DAY,'暂停')""",
+                (elder_id,),
+            )
+            cur.execute(
+                "UPDATE assessment SET assess_date=%s, expire_date=%s WHERE elder_id=%s",
+                (last_year, last_year + dt.timedelta(days=365), elder_id),
+            )
             # 过期自动暂停（与 sp_pause_expired_plans 同规则）
             assert dao.pause_expired_plans(cur)["paused_plans"] >= 1
             cur.execute("SELECT status FROM care_plan WHERE elder_id=%s", (elder_id,))
             assert cur.fetchone()["status"] == "暂停"
+            with pytest.raises(care_plan_dao.CarePlanError, match="评估缺失或已过期"):
+                care_plan_dao.update_care_plan(cur, plan_id, {"status": "生效"})
+            with pytest.raises(pymysql.err.OperationalError) as trigger_error:
+                cur.execute(
+                    "UPDATE care_plan SET status='生效' WHERE plan_id=%s",
+                    (plan_id,),
+                )
+            assert trigger_error.value.args[0] == 1644
 
             # 复评 → 计划恢复 + 新评估一年有效
             res = dao.record_assessment(cur, elder_id, {"score": 88}, "测试评估员")
             assert res["ability_level"] == "能力完好"
             assert res["resumed_plans"] == 1
-            cur.execute("SELECT status FROM care_plan WHERE elder_id=%s", (elder_id,))
-            assert cur.fetchone()["status"] == "生效"
+            cur.execute(
+                "SELECT status, COUNT(*) AS plan_count FROM care_plan WHERE elder_id=%s GROUP BY status",
+                (elder_id,),
+            )
+            statuses = {row["status"]: row["plan_count"] for row in cur.fetchall()}
+            assert statuses == {"生效": 1, "暂停": 1}
         conn.commit()
     finally:
         _cleanup(conn, elder_ids=[elder_id])
@@ -218,6 +263,7 @@ def test_07_care_plan_dao_crud():
     try:
         with conn.cursor() as cur:
             elder_id = dao.create_elder(cur, _new_elder_payload())["elder_id"]
+            dao.record_assessment(cur, elder_id, {"score": 90}, "测试评估员")
             created = care_plan_dao.create_care_plan(cur, {
                 "elder_id": elder_id,
                 "package_name": "助洁关怀包",
@@ -228,15 +274,36 @@ def test_07_care_plan_dao_crud():
                 "status": "生效",
             })
             plan_id = created["plan_id"]
+            with pytest.raises(care_plan_dao.CarePlanError, match="已有生效的照护计划"):
+                care_plan_dao.create_care_plan(cur, {
+                    "elder_id": elder_id,
+                    "package_name": "失能照护包",
+                    "frequency": "每周1次",
+                    "start_date": "2026-11-18",
+                    "end_date": "2027-02-18",
+                    "status": "生效",
+                })
             result = care_plan_dao.update_care_plan(cur, plan_id, {
                 "frequency": "每周2次",
                 "status": "暂停",
             })
             assert result["updated"] == 1
+            second = care_plan_dao.create_care_plan(cur, {
+                "elder_id": elder_id,
+                "package_name": "失能照护包",
+                "frequency": "每周1次",
+                "start_date": "2026-11-18",
+                "end_date": "2027-02-18",
+                "status": "生效",
+            })
+            with pytest.raises(care_plan_dao.CarePlanError, match="已有生效的照护计划"):
+                care_plan_dao.update_care_plan(cur, plan_id, {"status": "生效"})
             plans = care_plan_dao.list_care_plans(cur, elder_id)
-            assert len(plans) == 1
-            assert plans[0]["frequency"] == "每周2次"
-            assert plans[0]["status"] == "暂停"
+            assert len(plans) == 2
+            assert {plan["plan_id"]: plan["status"] for plan in plans} == {
+                plan_id: "暂停",
+                second["plan_id"]: "生效",
+            }
 
             with pytest.raises(care_plan_dao.CarePlanError):
                 care_plan_dao.create_care_plan(cur, {
@@ -262,3 +329,51 @@ def test_07_care_plan_dao_crud():
         _cleanup(conn, elder_ids=[elder_id])
         conn.commit()
         conn.close()
+
+
+def test_expired_plans_pause_once_for_authenticated_api_requests(monkeypatch):
+    """登录后的首个 API 请求触发暂停过程，同日后续请求不重复执行。"""
+    monkeypatch.setattr(appmod, "_expired_plans_checked_on", None)
+    conn = Mock()
+    cursor = Mock()
+    conn.cursor.return_value = MagicMock()
+    conn.cursor.return_value.__enter__.return_value = cursor
+    cursor.fetchone.return_value = {"paused_plans": 1}
+    monkeypatch.setattr(appmod, "get_conn", lambda: conn)
+
+    client = appmod.app.test_client()
+    assert client.get("/api/me").status_code == 401
+    conn.cursor.assert_not_called()
+
+    with client.session_transaction() as user_session:
+        user_session.update(uid=1, name="测试管理员", role="社区管理员")
+
+    assert client.get("/api/me").status_code == 200
+    assert client.get("/api/me").status_code == 200
+    cursor.execute.assert_called_once_with("CALL sp_pause_expired_plans()")
+    conn.commit.assert_called_once()
+    conn.close.assert_called_once()
+
+
+def test_elder_report_api_role_access():
+    """独居老人联系方式仅社区管理员可见，社区分布向监管人员开放。"""
+    client = appmod.app.test_client()
+
+    def set_role(role):
+        with client.session_transaction() as user_session:
+            user_session.update(uid=1, name="测试用户", role=role)
+
+    set_role("社区管理员")
+    solitary = client.get("/api/elder-reports/unassessed-solitary")
+    assert solitary.status_code == 200
+    assert solitary.get_json()["ok"]
+    assert "guardian_phone" in solitary.get_json()["data"][0]
+
+    distribution = client.get("/api/elder-reports/community-distribution")
+    assert distribution.status_code == 200
+    assert distribution.get_json()["ok"]
+    assert distribution.get_json()["data"]
+
+    set_role("监管人员")
+    assert client.get("/api/elder-reports/unassessed-solitary").status_code == 403
+    assert client.get("/api/elder-reports/community-distribution").status_code == 200
