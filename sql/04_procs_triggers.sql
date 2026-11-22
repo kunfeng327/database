@@ -294,3 +294,33 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+-- ---------------------------------------------------------------------
+-- 触发器：抽查评分回写护工评分（对应任务书 2.1.5「抽查结果与护工评分挂钩」）
+--   规则：抽查录入评分（0-100）时，按 1:20 折算到护工评分（0-5），保留 1 位小数
+-- ---------------------------------------------------------------------
+DELIMITER $$
+DROP TRIGGER IF EXISTS tr_inspection_after_insert$$
+CREATE TRIGGER tr_inspection_after_insert
+AFTER INSERT ON quality_inspection
+FOR EACH ROW
+BEGIN
+  IF NEW.inspection_status = '已抽查' AND NEW.caregiver_id IS NOT NULL AND NEW.score IS NOT NULL THEN
+    UPDATE caregiver cg
+       SET cg.rating = ROUND(NEW.score / 20, 1)
+     WHERE cg.caregiver_id = NEW.caregiver_id;
+  END IF;
+END$$
+
+DROP TRIGGER IF EXISTS tr_inspection_after_update$$
+CREATE TRIGGER tr_inspection_after_update
+AFTER UPDATE ON quality_inspection
+FOR EACH ROW
+BEGIN
+  IF NEW.inspection_status = '已抽查' AND NEW.caregiver_id IS NOT NULL AND NEW.score IS NOT NULL THEN
+    UPDATE caregiver cg
+       SET cg.rating = ROUND(NEW.score / 20, 1)
+     WHERE cg.caregiver_id = NEW.caregiver_id;
+  END IF;
+END$$
+DELIMITER ;
