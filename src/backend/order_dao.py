@@ -83,14 +83,13 @@ def recommend_caregivers(cur, order_id):
                          s.schedule_id, s.shift, s.booked, s.capacity
                     FROM service_order o
                     JOIN elder e ON e.elder_id=o.elder_id
-                    JOIN community c ON c.community_id=e.community_id
                     JOIN schedule s ON s.work_date=DATE(o.appoint_time)
                      AND s.shift=(CASE WHEN TIME(o.appoint_time)<'12:00:00' THEN '上午' ELSE '下午' END)
                      AND s.status='开放' AND s.booked<s.capacity
                     JOIN caregiver cg ON cg.caregiver_id=s.caregiver_id
+                    JOIN caregiver_region cr ON cr.caregiver_id=cg.caregiver_id AND cr.community_id=e.community_id
                    WHERE o.order_id=%s AND cg.on_duty='在岗'
                      AND cg.cert_expire>=DATE(o.appoint_time)
-                     AND FIND_IN_SET(c.name,REPLACE(cg.service_regions,' ',''))>0
                      AND EXISTS (
                        SELECT 1 FROM caregiver_item ci
                         WHERE ci.caregiver_id=cg.caregiver_id

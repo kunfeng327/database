@@ -122,10 +122,13 @@ WHERE cg.on_duty = '在岗'
 GROUP BY cg.caregiver_id, cg.name, cg.agency, cg.cert_type
 ORDER BY total_valid_hours DESC, avg_quality_score DESC;
 
--- 2. 跨区接单与围栏异常排查：定位服务社区不在护工注册区域或围栏校验异常的派单（5表连接）
+-- 2. 跨区接单与围栏异常排查：定位服务社区不在护工注册区域或围栏校验异常的派单（关联 caregiver_region）
 SELECT wh.work_hour_id,
        cg.name AS caregiver_name,
-       cg.service_regions AS registered_regions,
+       (SELECT GROUP_CONCAT(c2.name ORDER BY c2.community_id SEPARATOR ',')
+          FROM caregiver_region cr2
+          JOIN community c2 ON c2.community_id = cr2.community_id
+         WHERE cr2.caregiver_id = cg.caregiver_id) AS registered_regions,
        c.name AS actual_community,
        o.order_id,
        o.appoint_time,
@@ -137,9 +140,12 @@ JOIN dispatch d      ON d.dispatch_id = wh.dispatch_id
 JOIN service_order o ON o.order_id = d.order_id
 JOIN elder e         ON e.elder_id = o.elder_id
 JOIN community c     ON c.community_id = e.community_id
-WHERE FIND_IN_SET(c.name, cg.service_regions) = 0
+WHERE NOT EXISTS (
+        SELECT 1 FROM caregiver_region cr
+         WHERE cr.caregiver_id = cg.caregiver_id
+           AND cr.community_id = e.community_id
+      )
    OR wh.fence_result = '围栏外异常';
-
 -- 3. 机构排班饱和度与证书合规分析（3表连接）
 SELECT cg.agency,
        s.work_date,
@@ -156,7 +162,7 @@ WHERE cg.on_duty = '在岗'
 GROUP BY cg.agency, s.work_date, s.shift
 ORDER BY s.work_date ASC, utilization_rate_pct DESC;
 
--- 4. 可用护工智能匹配查询：筛选指定日期/社区/项目类型下证书有效且有余量的护工（4表连接）
+-- 4. 可用护工智能匹配查询：筛选指定日期/社区/项目类型下证书有效且有余量的护工（走 caregiver_region 主键索引）
 SELECT cg.caregiver_id,
        cg.name AS caregiver_name,
        cg.cert_type,
@@ -167,7 +173,9 @@ SELECT cg.caregiver_id,
        (s.capacity - s.booked) AS remaining_slots,
        COUNT(qi.inspection_id) AS pending_rectifications
 FROM caregiver cg
-JOIN schedule s ON s.caregiver_id = cg.caregiver_id
+JOIN caregiver_region cr ON cr.caregiver_id = cg.caregiver_id
+JOIN community c         ON c.community_id = cr.community_id AND c.name = '幸福社区'
+JOIN schedule s          ON s.caregiver_id = cg.caregiver_id
 LEFT JOIN quality_inspection qi
        ON qi.caregiver_id = cg.caregiver_id
       AND qi.rectification_status IN ('待整改','整改中')
@@ -176,7 +184,6 @@ WHERE cg.on_duty = '在岗'
   AND cg.cert_expire >= CURDATE()
   AND s.status = '开放'
   AND s.booked < s.capacity
-  AND FIND_IN_SET('幸福社区', cg.service_regions) > 0
 GROUP BY cg.caregiver_id, cg.name, cg.cert_type, cg.cert_level, cg.rating, s.work_date, s.shift, s.capacity, s.booked
 HAVING pending_rectifications = 0
 ORDER BY cg.rating DESC, remaining_slots DESC;

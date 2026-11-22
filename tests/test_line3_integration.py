@@ -122,3 +122,68 @@ def test_05_views_and_summary_queries():
 
     summary = Line3DAO.get_monthly_work_summary()
     assert isinstance(summary, list) and len(summary) > 0
+def test_work_hour_incremental_accumulation_and_reconcile():
+    """验证 Issue #26：0->2.0->3.0->0 工时增量触发器精准对账，及 Issue #25 caregiver_region 关联"""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            # 清理 test_01~03 对 12 号护工留下的测试痕迹，确保从纯净种子基线验证全库对账
+            cur.execute("UPDATE caregiver SET total_hours = 0.00 WHERE caregiver_id = 12")
+
+            # 1. 验证全库种子数据总账与明细零差异
+            cur.execute("""
+                SELECT cg.caregiver_id, cg.total_hours,
+                       COALESCE(SUM(wh.valid_hours), 0) AS detail_sum
+                  FROM caregiver cg
+                  LEFT JOIN work_hour wh
+                         ON wh.caregiver_id = cg.caregiver_id
+                        AND wh.review_status IN ('自动认定', '复核通过')
+                 GROUP BY cg.caregiver_id, cg.total_hours
+                HAVING cg.total_hours <> detail_sum
+            """)
+            assert cur.fetchall() == (), "存在 total_hours 与明细不一致的护工"
+
+            # 2. 验证 0 -> 2.0 -> 3.0 -> 0 增量变化（使用 10 号护工）
+            cur.execute("SELECT total_hours FROM caregiver WHERE caregiver_id = 10")
+            base_hours = float(cur.fetchone()[0])
+
+            cur.execute("DELETE FROM work_hour WHERE dispatch_id = 9998")
+            cur.execute("DELETE FROM dispatch WHERE dispatch_id = 9998")
+            cur.execute("""
+                INSERT INTO dispatch (dispatch_id, order_id, caregiver_id, is_current)
+                VALUES (9998, 8, 10, 1)
+            """)
+            cur.execute("""
+                INSERT INTO work_hour (caregiver_id, dispatch_id, checkin_time, checkin_location, fence_result, valid_hours, review_status)
+                VALUES (10, 9998, '2026-11-22 09:00:00', '幸福社区', '通过', 0.00, '自动认定')
+            """)
+            wh_id = cur.lastrowid
+
+            # 0 -> 2.0
+            cur.execute("UPDATE work_hour SET checkout_time = '2026-11-22 11:00:00' WHERE work_hour_id = %s", (wh_id,))
+            cur.execute("SELECT total_hours FROM caregiver WHERE caregiver_id = 10")
+            assert float(cur.fetchone()[0]) == round(base_hours + 2.0, 2)
+
+            # 2.0 -> 3.0（只补差额 +1.0）
+            cur.execute("UPDATE work_hour SET valid_hours = 3.00, review_status = '复核通过' WHERE work_hour_id = %s", (wh_id,))
+            cur.execute("SELECT total_hours FROM caregiver WHERE caregiver_id = 10")
+            assert float(cur.fetchone()[0]) == round(base_hours + 3.0, 2)
+
+            # 3.0 -> 0（扣减 3.0 回到 base_hours）
+            cur.execute("UPDATE work_hour SET valid_hours = 0.00, review_status = '复核驳回' WHERE work_hour_id = %s", (wh_id,))
+            cur.execute("SELECT total_hours FROM caregiver WHERE caregiver_id = 10")
+            assert float(cur.fetchone()[0]) == round(base_hours, 2)
+
+            # 清理测试数据并还原调度计数
+            cur.execute("DELETE FROM work_hour WHERE work_hour_id = %s", (wh_id,))
+            cur.execute("DELETE FROM dispatch WHERE dispatch_id = 9998")
+            cur.execute("""
+                UPDATE schedule s JOIN service_order o ON o.order_id = 8
+                   SET s.booked = GREATEST(s.booked - 1, 0)
+                 WHERE s.caregiver_id = 10
+                   AND s.work_date = DATE(o.appoint_time)
+                   AND s.shift = (CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END)
+            """)
+        conn.commit()
+    finally:
+        conn.close()
