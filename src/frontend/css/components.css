@@ -48,6 +48,7 @@ textarea { width:100%; min-height:56px; resize:vertical; }
 #quality-action-panel { display:none; border-left:3px solid var(--orange); }
 #quality-action-panel .row { display:flex; gap:10px; align-items:flex-start; }
 .inline-note { color:var(--muted); font-size:12px; margin:-4px 0 12px; }
+.form-hint { color:var(--muted); font-size:12px; line-height:1.7; margin:12px 0 0; }
 .status-pair { display:flex; gap:5px; flex-wrap:wrap; }
 #tab-quality .card { overflow-x:auto; }
 #quality-table { min-width:1080px; }

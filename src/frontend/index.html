@@ -205,13 +205,14 @@
 
       <section id="tab-subsidy" class="hide">
         <div class="card" id="claim-form-card">
-          <h3>发起补贴申报<small>校验：区县+对象类别匹配、账期内已完成订单、唯一约束防重复</small></h3>
+          <h3>发起补贴申报<small>已按「老人 + 账期」筛出可申报政策（区县、对象类别、账期订单、重复申报四项校验）</small></h3>
           <form class="inline" id="claim-form">
             <div class="field"><label>老人</label><select id="c-elder"></select></div>
-            <div class="field"><label>补贴政策</label><select id="c-policy"></select></div>
+            <div class="field"><label>可申报补贴（自动匹配）</label><select id="c-policy"></select></div>
             <div class="field"><label>账期(YYYY-MM)</label><input id="c-period" placeholder="2026-10"></div>
-            <button class="btn" type="submit">生成申报</button>
+            <button class="btn" id="claim-submit" type="submit">生成申报</button>
           </form>
+          <p class="form-hint" id="c-policy-hint"></p>
         </div>
         <div class="card">
           <h3>申报与拨付进度<small>视图 v_claim_progress</small></h3>

@@ -9,6 +9,40 @@ class Line5Error(Exception):
 
 
 INSPECTION_METHODS = ("电话回访", "上门核查")
+CLAIMABLE_REVIEW_STATUS = ("自动认定", "复核通过")
+
+
+def claim_orders_for(cur, elder_id, item_id, period):
+    """列出某老人在指定账期内、属于某服务项目的已完成订单及其工时记录。"""
+    cur.execute(
+        """SELECT o.order_id, wh.work_hour_id, wh.review_status, wh.valid_hours
+             FROM service_order o
+             LEFT JOIN dispatch d
+               ON d.order_id = o.order_id AND d.is_current = 1
+             LEFT JOIN work_hour wh
+               ON wh.dispatch_id = d.dispatch_id
+            WHERE o.elder_id=%s AND o.item_id=%s AND o.status='已完成'
+              AND DATE_FORMAT(o.appoint_time,'%%Y-%%m')=%s
+            ORDER BY o.order_id""",
+        (elder_id, item_id, period),
+    )
+    return cur.fetchall()
+
+
+def split_claimable_orders(rows):
+    """把订单分成「可申报」与「缺有效工时」两类，返回 (可申报订单号, 不可申报订单号)。"""
+    orders, invalid = [], []
+    for row in rows:
+        if (
+            not row["work_hour_id"]
+            or row["review_status"] not in CLAIMABLE_REVIEW_STATUS
+            or not row["valid_hours"]
+            or float(row["valid_hours"]) <= 0
+        ):
+            invalid.append(str(row["order_id"]))
+        else:
+            orders.append(row["order_id"])
+    return orders, invalid
 
 
 def _require_score(value):

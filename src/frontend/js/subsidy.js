@@ -1,14 +1,73 @@
 // subsidy.js — 线5：补贴申报与审核、业务总览看板
 /* ================= 补贴 ================= */
+const SUBSIDY_PERIOD_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+let subsidyPolicyTimer = null;
+let subsidyPolicyReq = 0;
+
+function setSubsidyPolicyState(msg){
+  const sel = $('#c-policy');
+  sel.innerHTML = '<option value="">暂无可申报补贴</option>';
+  sel.disabled = true;
+  $('#claim-submit').disabled = true;
+  $('#c-policy-hint').textContent = msg;
+}
+
+/* 按「老人 + 账期」向后端取可申报政策：只把 claimable 的项放进下拉框 */
+async function loadEligibleSubsidyPolicies(){
+  const seq = ++subsidyPolicyReq;
+  const elderId = +($('#c-elder').value || 0);
+  const period = $('#c-period').value.trim();
+  if (!elderId) return setSubsidyPolicyState('请先选择老人，系统会自动筛出该老人可申报的补贴');
+  if (!SUBSIDY_PERIOD_RE.test(period))
+    return setSubsidyPolicyState('账期请填写 YYYY-MM（如 2026-10），填好后自动筛选可申报补贴');
+
+  const r = await API(`/api/subsidy/eligible-policies?elder_id=${elderId}&period=${encodeURIComponent(period)}`);
+  if (seq !== subsidyPolicyReq) return;  // 只采用最后一次请求的结果
+  if (!r.ok) return setSubsidyPolicyState(r.msg || '筛选可申报补贴失败');
+
+  const data = r.data || {};
+  const policies = data.policies || [];
+  const claimable = policies.filter(p => p.claimable);
+  const blocked = policies.filter(p => !p.claimable);
+
+  const sel = $('#c-policy');
+  sel.disabled = !claimable.length;
+  $('#claim-submit').disabled = !claimable.length;
+  sel.innerHTML = claimable.length
+    ? claimable.map(p => `<option value="${p.policy_id}">${esc(p.district)} · ${esc(p.target_type)} · ${esc(p.item_name)}（${fmtYuan(p.standard)}/次 · ${p.order_count} 笔订单）</option>`).join('')
+    : '<option value="">暂无可申报补贴</option>';
+
+  const e = data.elder || {};
+  const tags = (e.special_tag || '').split(',').filter(Boolean).join('/') || '无标签';
+  const head = `当前老人：${esc(e.name)}（${esc(e.community)} · ${esc(e.district)}，${esc(tags)}）｜账期 ${esc(period)}：可申报 ${claimable.length} 项`;
+  const extras = [];
+  if (blocked.length) {
+    extras.push(`已隐藏 ${blocked.length} 项（${blocked.map(p => `${esc(p.item_name)}：${esc(p.block_reason)}`).join('；')}）`);
+  }
+  if (data.excluded_count) extras.push(`另有 ${data.excluded_count} 项因区县或对象类别不符，不适用该老人`);
+  if (!claimable.length && !blocked.length) extras.push('该区县暂无适用于该老人标签的有效政策');
+  $('#c-policy-hint').innerHTML = extras.length ? `${head}<br>${extras.join('；')}` : head;
+}
+
 async function loadSubsidy(){
   if (!['家属','社区管理员','监管人员'].includes(ME.role)) return;
-  const [pol, clm] = await Promise.all([API('/api/subsidy/policies'), API('/api/subsidy/claims')]);
-  $('#c-policy').innerHTML = pol.ok ? pol.data.map(p =>
-    `<option value="${p.policy_id}">${p.district} · ${p.target_type} · ${esc(p.item_name)}（￥${p.standard}/次）</option>`).join('') : '';
-  $('#c-elder').innerHTML = elderList.map(e => `<option value="${e.elder_id}">${esc(e.name)}</option>`).join('');
-  const lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth()-1);
-  $('#c-period').value = lastMonth.toISOString().slice(0,7);
   const isReg = ME.role === '监管人员';
+  const isAdmin = ME.role === '社区管理员';
+
+  if (isAdmin) {
+    const normalElders = elderList.filter(e => e.elder_status === '正常');
+    const selected = $('#c-elder').value;
+    $('#c-elder').innerHTML = normalElders.map(e =>
+      `<option value="${e.elder_id}">${esc(e.name)}（${esc(e.community)}）</option>`).join('');
+    if (selected && normalElders.some(e => String(e.elder_id) === selected)) $('#c-elder').value = selected;
+    if (!$('#c-period').value) {
+      const d = new Date(); d.setMonth(d.getMonth() - 1);
+      $('#c-period').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    loadEligibleSubsidyPolicies();
+  }
+
+  const clm = await API('/api/subsidy/claims');
   $('#claim-table tbody').innerHTML = clm.ok ? clm.data.map(c => {
     let act = '—';
     if (isReg) {
@@ -28,19 +87,25 @@ async function loadSubsidy(){
 }
 $('#claim-form').onsubmit = async ev => {
   ev.preventDefault();
+  const policyId = +($('#c-policy').value || 0);
+  if (!policyId) { toast('当前没有可申报的补贴，请先确认老人与账期', true); return; }
   const r = await API('/api/subsidy/claims', {method:'POST', body:{
-    elder_id:+$('#c-elder').value, policy_id:+$('#c-policy').value, claim_period:$('#c-period').value}});
+    elder_id:+$('#c-elder').value, policy_id:policyId, claim_period:$('#c-period').value.trim()}});
   r.ok ? toast(`申报成功：${r.data.order_ids.length} 笔订单，金额 ${fmtYuan(r.data.amount)}`)
        : toast('申报被拒绝：' + r.msg, true);
   loadSubsidy(); loadStats();
 };
+if ($('#c-elder')) $('#c-elder').addEventListener('change', loadEligibleSubsidyPolicies);
+if ($('#c-period')) $('#c-period').addEventListener('input', () => {
+  clearTimeout(subsidyPolicyTimer);
+  subsidyPolicyTimer = setTimeout(loadEligibleSubsidyPolicies, 300);
+});
 async function audit(id, action){
   const r = await API(`/api/subsidy/claims/${id}/audit`, {method:'POST', body:{action}});
   r.ok ? toast(`申报 ${id}：审核「${r.data.audit_status}」，拨付「${r.data.pay_status}」`) : toast(r.msg, true);
   loadSubsidy(); loadStats(); loadLine5Overview();
 }
 
-/* ================= 线5业务总览 ================= */
 /* ================= 线5业务总览 ================= */
 function goToLine5Tab(tab){
   const button = document.querySelector(`#nav button[data-tab="${tab}"]`);
