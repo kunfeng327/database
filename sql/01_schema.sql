@@ -191,7 +191,8 @@ CREATE TABLE subsidy_policy (
   effective_from DATE NOT NULL,
   effective_to   DATE NOT NULL,
   CONSTRAINT fk_policy_item FOREIGN KEY (item_id) REFERENCES service_item(item_id),
-  CONSTRAINT chk_policy_date CHECK (effective_to >= effective_from)
+  CONSTRAINT chk_policy_date CHECK (effective_to >= effective_from),
+  INDEX idx_policy_item (item_id)
 );
 
 -- ------------------------- 11 补贴申报 -------------------------
@@ -200,7 +201,6 @@ CREATE TABLE subsidy_claim (
   elder_id     INT NOT NULL,
   policy_id    INT NOT NULL,
   claim_period CHAR(7) NOT NULL COMMENT '所属账期 YYYY-MM',
-  order_ids    VARCHAR(200) NOT NULL COMMENT '关联订单集合(可追溯)',
   amount       DECIMAL(8,2) NOT NULL COMMENT '申报金额',
   audit_status ENUM('待审核','街道已审','通过','驳回') NOT NULL DEFAULT '待审核' COMMENT '审核状态',
   pay_status   ENUM('未拨付','已拨付') NOT NULL DEFAULT '未拨付' COMMENT '拨付状态',
@@ -214,6 +214,16 @@ CREATE TABLE subsidy_claim (
   INDEX idx_claim_audit_pay (audit_status, pay_status),
   INDEX idx_claim_period (claim_period)
 );
+
+-- ------------------------- 11.1 补贴申报-订单关联表（多对多中间表，满足3NF） -------------------------
+CREATE TABLE subsidy_claim_order (
+  claim_id INT NOT NULL COMMENT '申报编号',
+  order_id INT NOT NULL COMMENT '订单编号',
+  PRIMARY KEY (claim_id, order_id),
+  CONSTRAINT fk_sco_claim FOREIGN KEY (claim_id) REFERENCES subsidy_claim(claim_id) ON DELETE CASCADE,
+  CONSTRAINT fk_sco_order FOREIGN KEY (order_id) REFERENCES service_order(order_id),
+  INDEX idx_sco_order (order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='补贴申报-订单关联表';
 
 -- ------------------------- 12 质量抽查 -------------------------
 CREATE TABLE quality_inspection (

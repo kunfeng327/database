@@ -95,8 +95,7 @@ SELECT cl.claim_id,
                             WHEN '通过' THEN 3 WHEN '驳回' THEN 0 END AS progress_step,
        cl.reviewer,
        cl.audited_at,
-       cl.paid_at,
-       cl.order_ids
+       cl.paid_at
 FROM subsidy_claim cl
 JOIN elder e          ON e.elder_id = cl.elder_id
 JOIN community c      ON c.community_id = e.community_id
@@ -144,7 +143,8 @@ SELECT cl.claim_id,
         AND wh.review_status IN ('自动认定','复核通过')
         AND wh.valid_hours > 0) AS work_hour_valid
 FROM subsidy_claim cl
-JOIN service_order o ON FIND_IN_SET(o.order_id, cl.order_ids) > 0
+JOIN subsidy_claim_order sco ON sco.claim_id = cl.claim_id
+JOIN service_order o ON o.order_id = sco.order_id
 JOIN service_item si ON si.item_id = o.item_id
 LEFT JOIN dispatch d ON d.order_id = o.order_id AND d.is_current = 1
 LEFT JOIN caregiver cg ON cg.caregiver_id = d.caregiver_id
