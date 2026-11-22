@@ -15,12 +15,13 @@ import datetime as dt
 import decimal
 import hashlib
 import os
+import re
 import threading
 from functools import wraps
 from pathlib import Path
 
 import pymysql
-from flask import Flask, jsonify, request, send_file, session
+from flask import Flask, jsonify, request, send_file, send_from_directory, session
 
 from db import DB_CONFIG
 from care_plan_dao import (
@@ -40,9 +41,11 @@ from elder_dao import (
 )
 from line5_dao import (
     Line5Error,
+    claim_orders_for,
     complete_inspection,
     create_manual_inspection,
     sample_completed_orders,
+    split_claimable_orders,
     submit_rectification,
     transition_claim,
 )
@@ -62,6 +65,7 @@ app.secret_key = os.environ.get("APP_SECRET_KEY", "elder-care-demo-key-2026")
 app.config["PERMANENT_SESSION_LIFETIME"] = dt.timedelta(minutes=30)  # 会话超时
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
+FRONTEND_DIR = FRONTEND.parent          # 前端资源根目录（css / js 与 index.html 同级）
 _expired_plans_checked_on = None
 _expired_plans_check_lock = threading.Lock()
 
@@ -253,6 +257,12 @@ def me():
 @app.get("/")
 def index():
     return send_file(FRONTEND)
+
+
+@app.get("/assets/<path:filename>")
+def frontend_assets(filename):
+    """前端静态资源：/assets/css/*.css、/assets/js/*.js（与 index.html 同目录）。"""
+    return send_from_directory(FRONTEND_DIR, filename)
 
 
 # ------------------------------------------------------------------ 基础数据
@@ -529,6 +539,90 @@ def policies():
         ORDER BY p.policy_id""")})
 
 
+@app.get("/api/subsidy/eligible-policies")
+@login_required(roles=("社区管理员",))
+def eligible_policies():
+    """按「老人 + 账期」筛选当前真正可以申报的补贴政策。
+
+    依次校验：区县一致 → 对象类别匹配 → 账期内存在已完成订单 → 订单工时有效 → 本账期未重复申报。
+    返回的 policies 只包含区县和类别都符合的政策，并用 claimable/block_reason 标出暂不可申报的原因，
+    前端只把 claimable=True 的项放进下拉框。
+    """
+    elder_id = request.args.get("elder_id", type=int)
+    period = (request.args.get("period") or "").strip()
+    if not elder_id:
+        return jsonify({"ok": False, "msg": "请先选择老人"}), 400
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", period):
+        return jsonify({"ok": False, "msg": "账期格式应为 YYYY-MM"}), 400
+
+    def fn(cur):
+        cur.execute("""SELECT e.elder_id, e.name, e.status, e.special_tag,
+                              c.name AS community, c.district
+                         FROM elder e
+                         JOIN community c ON c.community_id = e.community_id
+                        WHERE e.elder_id=%s""", (elder_id,))
+        elder = cur.fetchone()
+        if not elder:
+            raise BizError("老人档案不存在")
+
+        tags = [t.strip() for t in (elder["special_tag"] or "").split(",") if t.strip()]
+        cur.execute("""SELECT p.policy_id, p.district, p.target_type, p.item_id,
+                              p.standard, si.name AS item_name
+                         FROM subsidy_policy p JOIN service_item si ON si.item_id=p.item_id
+                        WHERE CURDATE() BETWEEN p.effective_from AND p.effective_to
+                        ORDER BY p.policy_id""")
+        policies = cur.fetchall()
+
+        cur.execute("""SELECT policy_id FROM subsidy_claim
+                        WHERE elder_id=%s AND claim_period=%s""", (elder_id, period))
+        claimed_policy_ids = {row["policy_id"] for row in cur.fetchall()}
+
+        candidates, excluded_count = [], 0
+        for policy in policies:
+            if policy["district"] != elder["district"] or policy["target_type"] not in tags:
+                excluded_count += 1
+                continue
+            rows = claim_orders_for(cur, elder_id, policy["item_id"], period)
+            orders, invalid_orders = split_claimable_orders(rows)
+            already_claimed = policy["policy_id"] in claimed_policy_ids
+            if already_claimed:
+                reason = "本账期已申报该项"
+            elif not rows:
+                reason = "本账期无该项已完成订单"
+            elif invalid_orders:
+                reason = "订单 " + "、".join(invalid_orders) + " 缺少有效工时记录"
+            else:
+                reason = None
+            candidates.append({
+                "policy_id": policy["policy_id"],
+                "district": policy["district"],
+                "target_type": policy["target_type"],
+                "item_name": policy["item_name"],
+                "standard": float(policy["standard"]),
+                "claimable": reason is None,
+                "block_reason": reason,
+                "order_count": len(orders),
+                "order_ids": orders,
+            })
+
+        return {
+            "elder": {
+                "elder_id": elder["elder_id"],
+                "name": elder["name"],
+                "community": elder["community"],
+                "district": elder["district"],
+                "special_tag": elder["special_tag"],
+                "status": elder["status"],
+            },
+            "period": period,
+            "policies": candidates,
+            "claimable_count": sum(1 for p in candidates if p["claimable"]),
+            "excluded_count": excluded_count,
+        }
+
+    return jsonify({"ok": True, "data": run_in_transaction(fn)})
+
+
 @app.get("/api/subsidy/claims")
 @login_required(roles=("家属", "社区管理员", "监管人员"))
 def claims():
@@ -562,35 +656,18 @@ def create_claim():
         if policy["district"] != elder["district"]:
             raise BizError(f"政策适用区县为「{policy['district']}」，该老人所属区县为「{elder['district']}」")
         tags = elder["special_tag"] or ""
-        if policy["target_type"] not in tags.split(","):
+        if policy["target_type"] not in [t.strip() for t in tags.split(",") if t.strip()]:
             raise BizError(f"该老人标签（{tags or '无'}）不符合政策的对象类别「{policy['target_type']}」")
 
-        cur.execute("""SELECT o.order_id, wh.work_hour_id, wh.review_status, wh.valid_hours
-                         FROM service_order o
-                         LEFT JOIN dispatch d
-                           ON d.order_id = o.order_id AND d.is_current = 1
-                         LEFT JOIN work_hour wh
-                           ON wh.dispatch_id = d.dispatch_id
-                        WHERE o.elder_id=%s AND o.item_id=%s AND o.status='已完成'
-                          AND DATE_FORMAT(o.appoint_time,'%%Y-%%m')=%s
-                        ORDER BY o.order_id""",
-                    (elder_id, policy["item_id"], period))
-        rows = cur.fetchall()
+        rows = claim_orders_for(cur, elder_id, policy["item_id"], period)
         if not rows:
             raise BizError("该账期内没有符合条件的已完成订单，缺少记录不予申报")
-        invalid_orders = [
-            str(row["order_id"]) for row in rows
-            if not row["work_hour_id"]
-            or row["review_status"] not in ("自动认定", "复核通过")
-            or not row["valid_hours"]
-            or float(row["valid_hours"]) <= 0
-        ]
+        orders, invalid_orders = split_claimable_orders(rows)
         if invalid_orders:
             raise BizError(
                 "以下订单缺少有效工时记录，暂不能申报："
                 + "、".join(invalid_orders)
             )
-        orders = [row["order_id"] for row in rows]
 
         amount = round(len(orders) * float(policy["standard"]), 2)
         cur.execute("""INSERT INTO subsidy_claim (elder_id, policy_id, claim_period, amount)

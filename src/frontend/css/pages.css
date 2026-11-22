@@ -1,0 +1,57 @@
+/* pages.css — 业务页面专用样式（流程图、双栏面板、政策/排名列表）与响应式断点 */
+.workflow { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+.workflow-step { position:relative; padding:14px 12px; border:1px solid var(--border);
+  border-radius:8px; background:linear-gradient(180deg,#fff,var(--primary-lt)); min-height:88px; }
+.workflow-step::after { content:""; position:absolute; top:50%; right:-8px; width:8px;
+  border-top:2px solid var(--primary); }
+.workflow-step:last-child::after { display:none; }
+.workflow-step span { display:inline-flex; align-items:center; justify-content:center;
+  width:23px; height:23px; margin-bottom:9px; border-radius:50%; background:var(--primary);
+  color:#fff; font-size:11px; font-weight:700; }
+.workflow-step b { display:block; font-size:13px; }
+.workflow-step small { display:block; margin-top:4px; color:var(--muted); line-height:1.5; }
+.dashboard-grid { display:grid; grid-template-columns:1.15fr .85fr; gap:18px; align-items:start; }
+.dashboard-grid > .card { min-width:0; }
+.queue-empty { padding:24px 12px; text-align:center; color:var(--muted); }
+.policy-current { display:flex; justify-content:space-between; gap:12px; align-items:center;
+  padding:10px 0; border-bottom:1px solid #eff0f3; }
+.policy-current:last-child { border-bottom:0; }
+.policy-current b { font-size:13px; }
+.policy-current small { display:block; color:var(--muted); margin-top:2px; }
+.policy-money { color:var(--primary-dk); font-weight:700; white-space:nowrap; }
+.quality-rank { display:flex; align-items:center; gap:10px; padding:9px 0;
+  border-bottom:1px solid #eff0f3; }
+.quality-rank:last-child { border-bottom:0; }
+.quality-rank .rank { width:24px; height:24px; border-radius:6px; display:flex;
+  align-items:center; justify-content:center; background:var(--primary-lt);
+  color:var(--primary-dk); font-weight:700; font-size:11px; flex:none; }
+.quality-rank .who { flex:1; min-width:0; }
+.quality-rank .who b { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; }
+.quality-rank .who small { display:block; color:var(--muted); margin-top:2px; }
+.quality-score { color:var(--primary-dk); font-weight:700; font-size:17px; }
+.queue-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+
+/* ---------------- 响应式 ---------------- */
+@media (max-width:900px) {
+  .sidebar { width:190px; }
+  .main { margin-left:190px; }
+  .content { padding:18px; }
+  .dashboard-grid { grid-template-columns:1fr; }
+}
+@media (max-width:680px) {
+  .sidebar { position:static; width:100%; min-height:auto; }
+  .nav { display:flex; overflow-x:auto; }
+  .nav button { width:auto; min-width:max-content; border-left:0; border-bottom:3px solid transparent; }
+  .nav button.active { border-left:0; border-bottom-color:var(--primary); }
+  .side-user { display:flex; align-items:center; gap:8px; padding:10px 14px; }
+  .side-user b { margin:0; }
+  .side-user button { width:auto; margin:0 0 0 auto; padding:6px 10px; }
+  .main { margin-left:0; }
+  .content { padding:14px; }
+  .topbar { padding:14px 18px; }
+  .card { overflow-x:auto; }
+  .workflow { grid-template-columns:1fr; }
+  .workflow-step::after { top:auto; right:auto; bottom:-8px; left:50%; width:0;
+    height:8px; border-top:0; border-left:2px solid var(--primary); }
+  .workflow-step:last-child::after { display:none; }
+}

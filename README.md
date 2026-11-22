@@ -44,7 +44,9 @@ sql/
   04_procs_triggers.sql  # 存储过程 sp_pause_expired_plans + 3 个触发器
   05_line5_queries.sql   # 线5 的 5 条多表业务查询
 src/backend/  app.py db.py line5_dao.py  # REST API + 线5持久层（事务 / 触发器错误拦截）
-src/frontend/ index.html            # 单页前端（登录页 + 按角色生成的侧边栏导航）
+src/frontend/ index.html            # 页面结构（登录页 + 按角色生成的侧边栏导航）
+              css/  base.css components.css pages.css      # 基础变量与外壳 / 通用组件 / 业务页与响应式
+              js/   core auth elders orders schedules subsidy quality ops main.js  # 按职责拆分的脚本
 tests/  test_line5_integration.py   # 补贴审核、随机抽查、整改限制接单的集成测试
 启动演示.bat                          # 一键初始化数据库并启动（队友用这个）
 ```
