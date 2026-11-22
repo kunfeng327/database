@@ -25,7 +25,9 @@ CREATE TABLE caregiver (
   cert_expire    DATE NOT NULL COMMENT '证书有效期截止',
   service_regions VARCHAR(100) NOT NULL COMMENT '可服务区域(社区名,逗号分隔)',
   on_duty        ENUM('在岗','离职') NOT NULL DEFAULT '在岗',
-  rating         DECIMAL(2,1) NOT NULL DEFAULT 5.0 COMMENT '评分',
+  rating         DECIMAL(2,1) NOT NULL DEFAULT 5.0 COMMENT '评分(累计抽查均分,1:20折算)',
+  rating_sum     INT NOT NULL DEFAULT 0 COMMENT '抽查评分累计(0-100分制)',
+  rating_cnt     INT NOT NULL DEFAULT 0 COMMENT '抽查评分次数',
   total_hours     DECIMAL(8,2)  NOT NULL DEFAULT 0.00 COMMENT '累计有效服务时长(小时)',
   CONSTRAINT chk_rating CHECK (rating BETWEEN 0 AND 5),
   INDEX idx_caregiver_region (service_regions(20)),
@@ -220,6 +222,18 @@ CREATE TABLE subsidy_claim_order (
   CONSTRAINT fk_sco_order FOREIGN KEY (order_id) REFERENCES service_order(order_id),
   INDEX idx_sco_order (order_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='补贴申报-订单关联表';
+
+-- ------------------------- 11.2 补贴申报审核日志表（审计轨迹） -------------------------
+CREATE TABLE subsidy_claim_log (
+  log_id      BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '日志编号',
+  claim_id    INT NOT NULL COMMENT '申报编号',
+  from_status VARCHAR(10) NULL COMMENT '变更前状态(审核或拨付)',
+  to_status   VARCHAR(10) NOT NULL COMMENT '变更后状态',
+  operator    VARCHAR(30) NOT NULL COMMENT '操作人',
+  op_time     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  CONSTRAINT fk_clog_claim FOREIGN KEY (claim_id) REFERENCES subsidy_claim(claim_id) ON DELETE CASCADE,
+  INDEX idx_clog_claim (claim_id, op_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='补贴申报审核日志表';
 
 -- ------------------------- 12 质量抽查 -------------------------
 CREATE TABLE quality_inspection (

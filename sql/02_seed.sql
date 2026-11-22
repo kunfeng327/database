@@ -314,6 +314,18 @@ INSERT INTO quality_inspection
 (19,NULL,7,'电话回访',84,NULL,NULL,NULL,'已抽查','无需整改','街道张监管',DATE_SUB(NOW(), INTERVAL 1 DAY),NULL),
 (20,7,3,'电话回访',NULL,NULL,NULL,NULL,'待抽查',NULL,'街道张监管',NOW(),NULL);
 
+-- 初始化护工评分：根据种子抽查数据计算累计抽查均分（1:20 折算到 0-5）
+UPDATE caregiver cg
+LEFT JOIN (
+  SELECT caregiver_id, SUM(score) AS s, COUNT(score) AS c
+  FROM quality_inspection
+  WHERE inspection_status = '已抽查' AND score IS NOT NULL
+  GROUP BY caregiver_id
+) q ON q.caregiver_id = cg.caregiver_id
+SET cg.rating_sum = COALESCE(q.s, 0),
+    cg.rating_cnt = COALESCE(q.c, 0),
+    cg.rating = CASE WHEN q.c > 0 THEN ROUND(q.s / q.c / 20, 1) ELSE cg.rating END;
+
 -- 同步排班已接单量与种子派单数据一致（触发器建好后新派单会自动维护 booked）
 UPDATE schedule s
 SET s.booked = LEAST(s.capacity,

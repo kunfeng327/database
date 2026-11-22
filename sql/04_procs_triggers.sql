@@ -305,9 +305,11 @@ CREATE TRIGGER tr_inspection_after_insert
 AFTER INSERT ON quality_inspection
 FOR EACH ROW
 BEGIN
-  IF NEW.inspection_status = '已抽查' AND NEW.caregiver_id IS NOT NULL AND NEW.score IS NOT NULL THEN
+  IF NEW.score IS NOT NULL AND NEW.caregiver_id IS NOT NULL THEN
     UPDATE caregiver cg
-       SET cg.rating = ROUND(NEW.score / 20, 1)
+       SET cg.rating = ROUND((cg.rating_sum + NEW.score) / (cg.rating_cnt + 1) / 20, 1),
+           cg.rating_sum = cg.rating_sum + NEW.score,
+           cg.rating_cnt = cg.rating_cnt + 1
      WHERE cg.caregiver_id = NEW.caregiver_id;
   END IF;
 END$$
@@ -317,9 +319,12 @@ CREATE TRIGGER tr_inspection_after_update
 AFTER UPDATE ON quality_inspection
 FOR EACH ROW
 BEGIN
-  IF NEW.inspection_status = '已抽查' AND NEW.caregiver_id IS NOT NULL AND NEW.score IS NOT NULL THEN
+  -- 仅当评分从 NULL 首次写入时累加，避免整改等更新重复累计
+  IF NEW.score IS NOT NULL AND OLD.score IS NULL AND NEW.caregiver_id IS NOT NULL THEN
     UPDATE caregiver cg
-       SET cg.rating = ROUND(NEW.score / 20, 1)
+       SET cg.rating = ROUND((cg.rating_sum + NEW.score) / (cg.rating_cnt + 1) / 20, 1),
+           cg.rating_sum = cg.rating_sum + NEW.score,
+           cg.rating_cnt = cg.rating_cnt + 1
      WHERE cg.caregiver_id = NEW.caregiver_id;
   END IF;
 END$$
