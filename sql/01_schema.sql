@@ -187,7 +187,8 @@ CREATE TABLE subsidy_policy (
   effective_from DATE NOT NULL,
   effective_to   DATE NOT NULL,
   CONSTRAINT fk_policy_item FOREIGN KEY (item_id) REFERENCES service_item(item_id),
-  CONSTRAINT chk_policy_date CHECK (effective_to >= effective_from)
+  CONSTRAINT chk_policy_date CHECK (effective_to >= effective_from),
+  INDEX idx_policy_item (item_id)
 );
 
 -- ------------------------- 11 补贴申报 -------------------------
