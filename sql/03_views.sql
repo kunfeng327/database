@@ -224,14 +224,21 @@ WHERE cg.on_duty = '在岗'
   AND DATEDIFF(cg.cert_expire, CURDATE()) <= 30
 ORDER BY days_remaining ASC;
 
--- 视图10 护工与排班业务线：跨区接单与异常工时核查视图
+-- 视图10 护工与排班业务线：跨区接单与异常工时核查视图（基于 caregiver_region 关联表）
 CREATE OR REPLACE VIEW v_work_hour_audit AS
 SELECT wh.work_hour_id,
        cg.caregiver_id,
        cg.name AS caregiver_name,
-       cg.service_regions AS allowed_regions,
+       (SELECT GROUP_CONCAT(c2.name ORDER BY c2.community_id SEPARATOR ',')
+          FROM caregiver_region cr2
+          JOIN community c2 ON c2.community_id = cr2.community_id
+         WHERE cr2.caregiver_id = cg.caregiver_id) AS allowed_regions,
        c.name AS order_community,
-       FIND_IN_SET(c.name, cg.service_regions) > 0 AS is_in_region,
+       EXISTS (
+         SELECT 1 FROM caregiver_region cr
+          WHERE cr.caregiver_id = cg.caregiver_id
+            AND cr.community_id = e.community_id
+       ) AS is_in_region,
        d.dispatch_id,
        o.order_id,
        wh.checkin_time,
@@ -246,7 +253,6 @@ JOIN dispatch d      ON d.dispatch_id = wh.dispatch_id
 JOIN service_order o ON o.order_id = d.order_id
 JOIN elder e         ON e.elder_id = o.elder_id
 JOIN community c     ON c.community_id = e.community_id;
-
 -- 视图11 健康监测业务线：当日异常体征（待确认 + 已确认异常）
 CREATE OR REPLACE VIEW v_daily_abnormal_vitals AS
 SELECT vs.vital_id,

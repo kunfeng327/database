@@ -825,11 +825,6 @@ def line3_review_work_hour(wh_id):
                        valid_hours = ROUND(TIMESTAMPDIFF(MINUTE, checkin_time, checkout_time) / 60.0, 2)
                  WHERE work_hour_id = %s
             """, (wh_id,))
-            cur.execute("""
-                UPDATE caregiver
-                   SET total_hours = total_hours + (SELECT valid_hours FROM work_hour WHERE work_hour_id = %s)
-                 WHERE caregiver_id = %s
-            """, (wh_id, wh["caregiver_id"]))
         else:
             cur.execute("UPDATE work_hour SET review_status = '复核驳回', valid_hours = 0.00 WHERE work_hour_id = %s", (wh_id,))
         return {"work_hour_id": wh_id, "review_status": decision}

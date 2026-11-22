@@ -247,20 +247,32 @@ BEGIN
     END IF;
 END$$
 
--- 3. 工时签退认定通过后，自动将有效工时累加到护工档案 total_hours
+-- 3. 工时变更后按“计入状态”动态维护护工档案累计工时 total_hours（支持新增、改数与驳回扣减）
 DROP TRIGGER IF EXISTS tr_work_hour_after_update$$
 CREATE TRIGGER tr_work_hour_after_update
 AFTER UPDATE ON work_hour
 FOR EACH ROW
 BEGIN
-    IF OLD.valid_hours = 0 AND NEW.valid_hours > 0
-       AND NEW.review_status IN ('自动认定', '复核通过') THEN
+    DECLARE v_counted_old BOOLEAN DEFAULT (OLD.review_status IN ('自动认定', '复核通过'));
+    DECLARE v_counted_new BOOLEAN DEFAULT (NEW.review_status IN ('自动认定', '复核通过'));
+    DECLARE v_delta DECIMAL(8,2) DEFAULT 0.00;
+
+    IF v_counted_new AND v_counted_old THEN
+        SET v_delta = NEW.valid_hours - OLD.valid_hours;
+    ELSEIF v_counted_new THEN
+        SET v_delta = NEW.valid_hours;
+    ELSEIF v_counted_old THEN
+        SET v_delta = -OLD.valid_hours;
+    ELSE
+        SET v_delta = 0.00;
+    END IF;
+
+    IF v_delta <> 0 THEN
         UPDATE caregiver
-           SET total_hours = total_hours + NEW.valid_hours
+           SET total_hours = GREATEST(total_hours + v_delta, 0.00)
          WHERE caregiver_id = NEW.caregiver_id;
     END IF;
 END$$
-
 -- 4. 机构端按日期范围批量排班存储过程（自动跳过已存在冲突排班的日期，返回成功排班天数）
 DROP PROCEDURE IF EXISTS sp_batch_create_schedule$$
 CREATE PROCEDURE sp_batch_create_schedule(

@@ -8,16 +8,19 @@ SET NAMES utf8mb4;
 DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
+DROP TRIGGER IF EXISTS tr_dispatch_check_item;
+DROP TRIGGER IF EXISTS tr_schedule_before_insert;
+DROP TRIGGER IF EXISTS tr_work_hour_before_update;
+DROP TRIGGER IF EXISTS tr_work_hour_after_update;
 DROP TRIGGER IF EXISTS tr_vital_sign_before_insert;
 DROP TRIGGER IF EXISTS tr_emergency_before_update;
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE emergency;     TRUNCATE vital_sign;     TRUNCATE device;
 TRUNCATE quality_inspection; TRUNCATE work_hour;
-TRUNCATE subsidy_claim; TRUNCATE subsidy_policy; TRUNCATE schedule;
+TRUNCATE subsidy_claim_order; TRUNCATE subsidy_claim; TRUNCATE subsidy_policy; TRUNCATE schedule;
 TRUNCATE dispatch;     TRUNCATE service_order;  TRUNCATE service_item;
 TRUNCATE care_plan;    TRUNCATE assessment;     TRUNCATE elder;
-TRUNCATE caregiver;    TRUNCATE community;      TRUNCATE sys_user;
-TRUNCATE caregiver_item; TRUNCATE work_hour;
+TRUNCATE caregiver_region; TRUNCATE caregiver_item; TRUNCATE caregiver; TRUNCATE community; TRUNCATE sys_user;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 社区（20 条）
@@ -44,28 +47,27 @@ INSERT INTO community (community_id, name, district, service_radius_km) VALUES
 (20,'金顶街社区','石景山区',3.0);
 
 -- 护工（20 条；8 号证书已过期、9 号离职，用于演示约束拦截）
-INSERT INTO caregiver (caregiver_id, name, agency, cert_type, cert_level, cert_expire, service_regions, on_duty, rating) VALUES
-(1,'王秀兰','安康护理服务有限公司','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'幸福社区,阳光社区','在岗',4.9),
-(2,'李建国','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 1 YEAR),'幸福社区,滨江社区','在岗',4.7),
-(3,'张桂英','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 500 DAY),'阳光社区,梧桐社区','在岗',4.6),
-(4,'刘晓芬','乐龄养老服务社','护士','护师', DATE_ADD(CURDATE(), INTERVAL 3 YEAR),'幸福社区,阳光社区,梧桐社区,滨江社区','在岗',5.0),
-(5,'陈志强','康源康复中心','康复师','初级', DATE_ADD(CURDATE(), INTERVAL 900 DAY),'梧桐社区,滨江社区','在岗',4.8),
-(6,'赵春梅','康源康复中心','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 1 YEAR),'幸福社区,梧桐社区','在岗',4.5),
-(7,'孙丽华','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 100 DAY),'阳光社区,滨江社区','在岗',4.4),
-(8,'周德海','乐龄养老服务社','养老护理员','四级', DATE_SUB(CURDATE(), INTERVAL 30 DAY),'幸福社区','在岗',4.2),
-(9,'吴美琴','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'阳光社区','离职',4.0),
-(10,'马桂香','安康护理服务有限公司','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'花园路社区,万寿路社区','在岗',4.7),
-(11,'周志明','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 400 DAY),'甘家口社区,月坛社区','在岗',4.3),
-(12,'郑丽娟','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 3 YEAR),'安贞社区,八里庄社区','在岗',4.5),
-(13,'冯国庆','乐龄养老服务社','护士','护士', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'东直门社区,和平里社区','在岗',4.8),
-(14,'蒋秀珍','康源康复中心','康复师','中级', DATE_ADD(CURDATE(), INTERVAL 700 DAY),'建国门社区,天坛社区','在岗',4.9),
-(15,'韩丽','康源康复中心','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 1 YEAR),'丰台桥南社区,方庄社区','在岗',4.4),
-(16,'董文','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 300 DAY),'石景山古城社区,鲁谷社区','在岗',4.2),
-(17,'苏芳','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 600 DAY),'永外社区,金顶街社区','在岗',4.1),
-(18,'沈国梁','康源康复中心','康复师','初级', DATE_ADD(CURDATE(), INTERVAL 800 DAY),'花园路社区,八里庄社区','在岗',4.6),
-(19,'姚桂芝','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 150 DAY),'方庄社区,月坛社区','在岗',4.0),
-(20,'曹秀兰','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'和平里社区,天坛社区','在岗',4.5);
-
+INSERT INTO caregiver (caregiver_id, name, agency, cert_type, cert_level, cert_expire, on_duty, rating) VALUES
+(1,'王秀兰','安康护理服务有限公司','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'在岗',4.9),
+(2,'李建国','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 1 YEAR),'在岗',4.7),
+(3,'张桂英','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 500 DAY),'在岗',4.6),
+(4,'刘晓芬','乐龄养老服务社','护士','护师', DATE_ADD(CURDATE(), INTERVAL 3 YEAR),'在岗',5.0),
+(5,'陈志强','康源康复中心','康复师','初级', DATE_ADD(CURDATE(), INTERVAL 900 DAY),'在岗',4.8),
+(6,'赵春梅','康源康复中心','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 1 YEAR),'在岗',4.5),
+(7,'孙丽华','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 100 DAY),'在岗',4.4),
+(8,'周德海','乐龄养老服务社','养老护理员','四级', DATE_SUB(CURDATE(), INTERVAL 30 DAY),'在岗',4.2),
+(9,'吴美琴','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'离职',4.0),
+(10,'马桂香','安康护理服务有限公司','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'在岗',4.7),
+(11,'周志明','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 400 DAY),'在岗',4.3),
+(12,'郑丽娟','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 3 YEAR),'在岗',4.5),
+(13,'冯国庆','乐龄养老服务社','护士','护士', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'在岗',4.8),
+(14,'蒋秀珍','康源康复中心','康复师','中级', DATE_ADD(CURDATE(), INTERVAL 700 DAY),'在岗',4.9),
+(15,'韩丽','康源康复中心','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 1 YEAR),'在岗',4.4),
+(16,'董文','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 300 DAY),'在岗',4.2),
+(17,'苏芳','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 600 DAY),'在岗',4.1),
+(18,'沈国梁','康源康复中心','康复师','初级', DATE_ADD(CURDATE(), INTERVAL 800 DAY),'在岗',4.6),
+(19,'姚桂芝','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 150 DAY),'在岗',4.0),
+(20,'曹秀兰','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 2 YEAR),'在岗',4.5);
 -- 老人（14 位，11/12 号档案暂停服务）
 INSERT INTO elder (elder_id, name, id_card, birth_date, gender, address, community_id, guardian_name, guardian_phone, special_tag, status) VALUES
 (1,'陈桂香','110108194503152245','1945-03-15','女','幸福社区3号楼2单元101',1,'陈明','13800000001','独居,高龄','正常'),
@@ -434,18 +436,18 @@ INSERT INTO emergency (event_id, elder_id, trigger_source, event_level, occur_ti
 --   派单 21-31 = 线3 原 17-27;工时引用同步重映射
 -- =====================================================================
 TRUNCATE work_hour;
-INSERT INTO caregiver (caregiver_id, name, agency, cert_type, cert_level, cert_expire, service_regions, on_duty, rating) VALUES
-(21,'马桂兰','安康护理服务有限公司','养老护理员','三级', DATE_ADD(CURDATE(), INTERVAL 12 DAY),'幸福社区,阳光社区','在岗',4.8),
-(22,'林建军','康源康复中心','康复师','中级', DATE_ADD(CURDATE(), INTERVAL 25 DAY),'梧桐社区,滨江社区','在岗',4.7),
-(23,'何秀英','乐龄养老服务社','家政服务员','高级', DATE_ADD(CURDATE(), INTERVAL 5 DAY),'幸福社区,梧桐社区','在岗',4.6),
-(24,'高明远','安康护理服务有限公司','护士','主管护师', DATE_ADD(CURDATE(), INTERVAL 400 DAY),'海淀片区,幸福社区','在岗',4.9),
-(25,'徐丽娜','康源康复中心','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 600 DAY),'阳光社区,滨江社区','在岗',4.5),
-(26,'宋志刚','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 320 DAY),'梧桐社区','在岗',4.3),
-(27,'唐玉珍','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 180 DAY),'幸福社区,阳光社区','在岗',4.6),
-(28,'董文博','康源康复中心','康复师','初级', DATE_ADD(CURDATE(), INTERVAL 720 DAY),'滨江社区','在岗',4.7),
-(29,'韩梅梅','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 210 DAY),'阳光社区,梧桐社区','在岗',4.4),
-(30,'曹建华','安康护理服务有限公司','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 510 DAY),'幸福社区','在岗',4.8),
-(31,'沈翠花','康源康复中心','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 150 DAY),'滨江社区,幸福社区','离职',4.1);
+INSERT INTO caregiver (caregiver_id, name, agency, cert_type, cert_level, cert_expire, on_duty, rating) VALUES
+(21,'马桂兰','安康护理服务有限公司','养老护理员','三级', DATE_ADD(CURDATE(), INTERVAL 12 DAY),'在岗',4.8),
+(22,'林建军','康源康复中心','康复师','中级', DATE_ADD(CURDATE(), INTERVAL 25 DAY),'在岗',4.7),
+(23,'何秀英','乐龄养老服务社','家政服务员','高级', DATE_ADD(CURDATE(), INTERVAL 5 DAY),'在岗',4.6),
+(24,'高明远','安康护理服务有限公司','护士','主管护师', DATE_ADD(CURDATE(), INTERVAL 400 DAY),'在岗',4.9),
+(25,'徐丽娜','康源康复中心','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 600 DAY),'在岗',4.5),
+(26,'宋志刚','乐龄养老服务社','家政服务员','中级', DATE_ADD(CURDATE(), INTERVAL 320 DAY),'在岗',4.3),
+(27,'唐玉珍','安康护理服务有限公司','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 180 DAY),'在岗',4.6),
+(28,'董文博','康源康复中心','康复师','初级', DATE_ADD(CURDATE(), INTERVAL 720 DAY),'在岗',4.7),
+(29,'韩梅梅','乐龄养老服务社','家政服务员','初级', DATE_ADD(CURDATE(), INTERVAL 210 DAY),'在岗',4.4),
+(30,'曹建华','安康护理服务有限公司','养老护理员','四级', DATE_ADD(CURDATE(), INTERVAL 510 DAY),'在岗',4.8),
+(31,'沈翠花','康源康复中心','养老护理员','五级', DATE_ADD(CURDATE(), INTERVAL 150 DAY),'离职',4.1);
 
 INSERT INTO service_order (order_id, elder_id, item_id, appoint_time, address, channel, amount, status, created_at) VALUES
 (23, 1, 1, DATE_SUB(NOW(), INTERVAL 14 DAY), '幸福社区3号楼2单元101', '家属端',     20.00, '已完成', DATE_SUB(NOW(), INTERVAL 16 DAY)),
@@ -507,16 +509,63 @@ CROSS JOIN (SELECT 0 n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT
 CROSS JOIN (SELECT '上午' shift UNION SELECT '下午') s
 WHERE cg.on_duty = '在岗' AND cg.caregiver_id >= 21;
 
--- 护工可承接服务项目种子数据 (24条，满足每表>=20条规范)
+-- 护工可承接服务项目种子数据（覆盖线2/线3/线5业务与测试用例所需资质）
 INSERT INTO caregiver_item (caregiver_id, item_id, cert_verified) VALUES
-(1, 1, 1), (1, 4, 1), (1, 6, 1),
+(1, 2, 1), (1, 4, 1), (1, 6, 1),
 (2, 3, 1), (2, 6, 1), (2, 7, 1),
-(4, 2, 1), (4, 6, 1),
+(4, 1, 1), (4, 2, 1), (4, 3, 1), (4, 6, 1),
 (5, 5, 1), (5, 7, 1),
-(6, 1, 1), (6, 4, 1),
+(6, 1, 1), (6, 4, 1), (6, 7, 1),
 (8, 1, 1), (8, 4, 1),
 (9, 2, 1), (9, 6, 1),
 (10, 1, 1), (10, 4, 1),
 (11, 5, 1), (11, 7, 1),
 (12, 1, 1), (12, 4, 1),
-(14, 1, 1), (16, 2, 1);
+(13, 2, 1), (13, 6, 1),
+(14, 1, 1), (14, 5, 1),
+(15, 1, 1), (15, 4, 1),
+(16, 2, 1), (16, 4, 1),
+(21, 1, 1), (22, 5, 1), (23, 4, 1), (25, 1, 1), (27, 2, 1);
+
+-- 护工可服务区域关联数据（严格对应 31 名护工的注册社区；24 号原"海淀片区"规范映射为花园路5/万寿路15/甘家口17）
+INSERT INTO caregiver_region (caregiver_id, community_id) VALUES
+(1,1),(1,2),
+(2,1),(2,4),
+(3,2),(3,3),
+(4,1),(4,2),(4,3),(4,4),
+(5,3),(5,4),
+(6,1),(6,3),
+(7,2),(7,4),
+(8,1),
+(9,2),
+(10,5),(10,15),
+(11,17),(11,7),
+(12,6),(12,16),
+(13,8),(13,9),
+(14,10),(14,18),
+(15,11),(15,12),
+(16,13),(16,14),
+(17,19),(17,20),
+(18,5),(18,16),
+(19,12),(19,7),
+(20,9),(20,18),
+(21,1),(21,2),
+(22,3),(22,4),
+(23,1),(23,3),
+(24,1),(24,5),(24,15),(24,17),
+(25,2),(25,4),
+(26,3),
+(27,1),(27,2),
+(28,4),
+(29,2),(29,3),
+(30,1),
+(31,4),(31,1);
+
+-- 同步护工初始档案累计有效工时，确保种子期总账与明细 100% 一致
+UPDATE caregiver cg
+SET cg.total_hours = COALESCE((
+  SELECT SUM(wh.valid_hours)
+    FROM work_hour wh
+   WHERE wh.caregiver_id = cg.caregiver_id
+     AND wh.review_status IN ('自动认定', '复核通过')
+), 0.00);

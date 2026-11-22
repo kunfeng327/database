@@ -23,15 +23,22 @@ CREATE TABLE caregiver (
   cert_type      ENUM('养老护理员','康复师','护士','家政服务员') NOT NULL COMMENT '证书类型',
   cert_level     VARCHAR(10) NULL COMMENT '证书等级',
   cert_expire    DATE NOT NULL COMMENT '证书有效期截止',
-  service_regions VARCHAR(100) NOT NULL COMMENT '可服务区域(社区名,逗号分隔)',
   on_duty        ENUM('在岗','离职') NOT NULL DEFAULT '在岗',
   rating         DECIMAL(2,1) NOT NULL DEFAULT 5.0 COMMENT '评分',
-  total_hours     DECIMAL(8,2)  NOT NULL DEFAULT 0.00 COMMENT '累计有效服务时长(小时)',
+  total_hours    DECIMAL(8,2)  NOT NULL DEFAULT 0.00 COMMENT '累计有效服务时长(小时)',
   CONSTRAINT chk_rating CHECK (rating BETWEEN 0 AND 5),
-  INDEX idx_caregiver_region (service_regions(20)),
   INDEX idx_caregiver_cert (cert_expire)
 );
 
+-- ------------------------- 2.1 护工可服务区域关联表（1NF→3NF规范化拆分） -------------------------
+CREATE TABLE caregiver_region (
+  caregiver_id INT NOT NULL COMMENT '护工编号',
+  community_id INT NOT NULL COMMENT '社区编号',
+  PRIMARY KEY (caregiver_id, community_id),
+  CONSTRAINT fk_creg_caregiver FOREIGN KEY (caregiver_id) REFERENCES caregiver(caregiver_id) ON DELETE CASCADE,
+  CONSTRAINT fk_creg_community FOREIGN KEY (community_id) REFERENCES community(community_id),
+  INDEX idx_creg_community (community_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='护工可服务区域(关联表,替代原逗号串)';
 -- ------------------------- 3 老人档案 -------------------------
 CREATE TABLE elder (
   elder_id       INT PRIMARY KEY AUTO_INCREMENT COMMENT '档案编号',
