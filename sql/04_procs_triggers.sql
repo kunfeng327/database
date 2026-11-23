@@ -9,6 +9,9 @@ DROP TRIGGER IF EXISTS tr_care_plan_before_update;
 DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
+DROP TRIGGER IF EXISTS tr_dispatch_after_update;
+DROP TRIGGER IF EXISTS tr_dispatch_check_item;
+DROP TRIGGER IF EXISTS tr_schedule_before_update;
 DROP TRIGGER IF EXISTS tr_work_hour_before_update;
 DROP TRIGGER IF EXISTS tr_vital_sign_before_insert;
 DROP TRIGGER IF EXISTS tr_emergency_before_update;
@@ -81,6 +84,8 @@ BEGIN
   DECLARE v_on_duty VARCHAR(10); DECLARE v_cert_expire DATE;
   DECLARE v_order_status VARCHAR(10);
   DECLARE v_open_rectifications INT;
+  DECLARE v_item_id INT;
+  DECLARE v_capable INT;
 
   SELECT status INTO v_order_status FROM service_order WHERE order_id = NEW.order_id;
   IF v_order_status NOT IN ('待派单','已派单') THEN
@@ -110,14 +115,27 @@ BEGIN
     JOIN service_order o ON o.order_id = NEW.order_id
    WHERE s.caregiver_id = NEW.caregiver_id
      AND s.work_date = DATE(o.appoint_time)
-     AND s.shift = (CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END);
+     AND s.shift = (CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END)
+   FOR UPDATE;
   IF v_booked IS NULL THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '派单失败：该护工在订单预约日期当天没有开放排班';
   END IF;
   IF v_booked >= v_capacity THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '派单失败：该护工当班已接满（已接单量=可接单量）';
   END IF;
-END$$
+
+  SELECT item_id INTO v_item_id
+    FROM service_order WHERE order_id = NEW.order_id;
+  SELECT COUNT(*) INTO v_capable
+    FROM caregiver_item
+   WHERE caregiver_id = NEW.caregiver_id
+     AND item_id = v_item_id
+     AND cert_verified = 1;
+  IF v_capable = 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = '派单失败：该护工未获得此服务项目的承接资质授权';
+  END IF;
+END$
 
 -- ---------------------------------------------------------------------
 -- 触发器2 派单成功后：排班表已接单量 +1（booked 自动维护）
@@ -133,7 +151,25 @@ BEGIN
    WHERE s.caregiver_id = NEW.caregiver_id
      AND s.work_date = DATE(o.appoint_time)
      AND s.shift = (CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END);
-END$$
+END$
+
+-- ---------------------------------------------------------------------
+-- 触发器2b 派单改为历史记录后：释放原排班余量
+-- ---------------------------------------------------------------------
+DELIMITER $
+CREATE TRIGGER tr_dispatch_after_update
+AFTER UPDATE ON dispatch
+FOR EACH ROW
+BEGIN
+  IF OLD.is_current = 1 AND NEW.is_current = 0 THEN
+    UPDATE schedule s
+      JOIN service_order o ON o.order_id = OLD.order_id
+       SET s.booked = GREATEST(s.booked - 1, 0)
+     WHERE s.caregiver_id = OLD.caregiver_id
+       AND s.work_date = DATE(o.appoint_time)
+       AND s.shift = (CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END);
+  END IF;
+END$
 
 -- ---------------------------------------------------------------------
 -- 触发器3 家属确认后：订单状态自动回写为"已完成"（订单-派单链路闭环）
@@ -257,32 +293,29 @@ BEGIN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = '排班冲突：该护工当日已存在重叠班次（全天与上午/下午互斥）';
     END IF;
-END$$
+END$
 
--- 2. 派单前校验护工是否具备对应服务项目承接资质 (caregiver_item)
-DROP TRIGGER IF EXISTS tr_dispatch_check_item$$
-CREATE TRIGGER tr_dispatch_check_item
-BEFORE INSERT ON dispatch
+-- 排班更新时同样拦截上午/下午/全天重叠，排除当前行自身
+CREATE TRIGGER tr_schedule_before_update
+BEFORE UPDATE ON schedule
 FOR EACH ROW
 BEGIN
-    DECLARE v_item_id INT;
-    DECLARE v_capable INT DEFAULT 0;
-
-    SELECT item_id INTO v_item_id
-      FROM service_order
-     WHERE order_id = NEW.order_id;
-
-    SELECT COUNT(*) INTO v_capable
-      FROM caregiver_item
-     WHERE caregiver_id = NEW.caregiver_id
-       AND item_id = v_item_id
-       AND cert_verified = 1;
-
-    IF v_capable = 0 THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = '派单失败：该护工未获得此服务项目的承接资质授权';
+    DECLARE v_conflict INT DEFAULT 0;
+    IF NOT (OLD.caregiver_id <=> NEW.caregiver_id)
+       OR NOT (OLD.work_date <=> NEW.work_date)
+       OR NOT (OLD.shift <=> NEW.shift) THEN
+        SELECT COUNT(*) INTO v_conflict
+          FROM schedule
+         WHERE schedule_id <> NEW.schedule_id
+           AND caregiver_id = NEW.caregiver_id
+           AND work_date = NEW.work_date
+           AND (NEW.shift = '全天' OR shift = '全天' OR shift = NEW.shift);
+        IF v_conflict > 0 THEN
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = '排班冲突：修改后与同日已有班次重叠';
+        END IF;
     END IF;
-END$$
+END$
 
 -- 3. 工时变更后按“计入状态”动态维护护工档案累计工时 total_hours（支持新增、改数与驳回扣减）
 DROP TRIGGER IF EXISTS tr_work_hour_after_update$$
