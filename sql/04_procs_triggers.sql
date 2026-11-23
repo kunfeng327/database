@@ -135,7 +135,7 @@ BEGIN
     SIGNAL SQLSTATE '45000'
       SET MESSAGE_TEXT = '派单失败：该护工未获得此服务项目的承接资质授权';
   END IF;
-END$
+END$$
 
 -- ---------------------------------------------------------------------
 -- 触发器2 派单成功后：排班表已接单量 +1（booked 自动维护）
@@ -151,12 +151,12 @@ BEGIN
    WHERE s.caregiver_id = NEW.caregiver_id
      AND s.work_date = DATE(o.appoint_time)
      AND s.shift = (CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END);
-END$
+END$$
 
 -- ---------------------------------------------------------------------
 -- 触发器2b 派单改为历史记录后：释放原排班余量
 -- ---------------------------------------------------------------------
-DELIMITER $
+DELIMITER $$
 CREATE TRIGGER tr_dispatch_after_update
 AFTER UPDATE ON dispatch
 FOR EACH ROW
@@ -169,7 +169,7 @@ BEGIN
        AND s.work_date = DATE(o.appoint_time)
        AND s.shift = (CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END);
   END IF;
-END$
+END$$
 
 -- ---------------------------------------------------------------------
 -- 触发器3 家属确认后：订单状态自动回写为"已完成"（订单-派单链路闭环）
@@ -293,7 +293,7 @@ BEGIN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = '排班冲突：该护工当日已存在重叠班次（全天与上午/下午互斥）';
     END IF;
-END$
+END$$
 
 -- 排班更新时同样拦截上午/下午/全天重叠，排除当前行自身
 CREATE TRIGGER tr_schedule_before_update
@@ -315,7 +315,7 @@ BEGIN
                 SET MESSAGE_TEXT = '排班冲突：修改后与同日已有班次重叠';
         END IF;
     END IF;
-END$
+END$$
 
 -- 3. 工时变更后按“计入状态”动态维护护工档案累计工时 total_hours（支持新增、改数与驳回扣减）
 DROP TRIGGER IF EXISTS tr_work_hour_after_update$$
