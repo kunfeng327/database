@@ -278,6 +278,11 @@ def transition_claim(cur, claim_id, action, reviewer):
                 WHERE claim_id=%s""",
             (reviewer, claim_id),
         )
+        cur.execute(
+            """INSERT INTO subsidy_claim_log (claim_id, from_status, to_status, operator)
+               VALUES (%s,%s,%s,%s)""",
+            (claim_id, "待审核", "街道已审", reviewer),
+        )
     elif action == "pass":
         if audit_status != "街道已审":
             raise Line5Error(f"当前审核状态为「{audit_status}」，不能执行终审通过")
@@ -286,6 +291,11 @@ def transition_claim(cur, claim_id, action, reviewer):
                   SET audit_status='通过', reviewer=%s, audited_at=NOW()
                 WHERE claim_id=%s""",
             (reviewer, claim_id),
+        )
+        cur.execute(
+            """INSERT INTO subsidy_claim_log (claim_id, from_status, to_status, operator)
+               VALUES (%s,%s,%s,%s)""",
+            (claim_id, "街道已审", "通过", reviewer),
         )
     elif action == "pay":
         if audit_status != "通过":
@@ -298,6 +308,11 @@ def transition_claim(cur, claim_id, action, reviewer):
                 WHERE claim_id=%s""",
             (claim_id,),
         )
+        cur.execute(
+            """INSERT INTO subsidy_claim_log (claim_id, from_status, to_status, operator)
+               VALUES (%s,%s,%s,%s)""",
+            (claim_id, "未拨付", "已拨付", reviewer),
+        )
     elif action == "reject":
         if pay_status == "已拨付":
             raise Line5Error("已拨付申报不能驳回")
@@ -308,6 +323,11 @@ def transition_claim(cur, claim_id, action, reviewer):
                   SET audit_status='驳回', reviewer=%s, audited_at=NOW()
                 WHERE claim_id=%s""",
             (reviewer, claim_id),
+        )
+        cur.execute(
+            """INSERT INTO subsidy_claim_log (claim_id, from_status, to_status, operator)
+               VALUES (%s,%s,%s,%s)""",
+            (claim_id, audit_status, "驳回", reviewer),
         )
     else:
         raise Line5Error("action 只能是 approve / pass / pay / reject")
