@@ -23,6 +23,7 @@ sys.path.insert(0, str(BACKEND))
 from db import DB_CONFIG  # noqa: E402
 from order_dao import (  # noqa: E402
     complete_dispatch,
+    OrderError,
     create_order,
     dispatch_order,
     reassign_dispatch,
@@ -125,6 +126,40 @@ class Line2IntegrationTest(unittest.TestCase):
                 history = cur.fetchone()
                 self.assertEqual(history["is_current"], 0)
                 self.assertEqual(history["reassign_reason"], "集成测试改派")
+        finally:
+            conn.close()
+
+    def test_reassign_rejects_completed_order(self):
+        order_id = self._new_order()
+        dispatch_id = self._dispatch(order_id)
+        conn = pymysql.connect(cursorclass=pymysql.cursors.DictCursor, **DB_CONFIG)
+        try:
+            with conn.cursor() as cur:
+                complete_dispatch(cur, dispatch_id, "先完成服务", "社区管理员", None)
+                with self.assertRaises(OrderError):
+                    reassign_dispatch(cur, dispatch_id, "不应允许改派")
+            conn.rollback()
+        finally:
+            conn.close()
+
+    def test_schedule_booked_matches_current_dispatches(self):
+        conn = pymysql.connect(cursorclass=pymysql.cursors.DictCursor, **DB_CONFIG)
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""SELECT s.schedule_id, s.booked,
+                                      COUNT(DISTINCT o.order_id) AS active_dispatch_count
+                                 FROM schedule s
+                                 LEFT JOIN dispatch d
+                                   ON d.caregiver_id=s.caregiver_id
+                                  AND d.is_current=1
+                                 LEFT JOIN service_order o
+                                   ON o.order_id=d.order_id
+                                  AND DATE(o.appoint_time)=s.work_date
+                                  AND s.shift=CASE WHEN TIME(o.appoint_time)<'12:00:00'
+                                                   THEN '上午' ELSE '下午' END
+                                GROUP BY s.schedule_id, s.booked
+                               HAVING s.booked <> COUNT(DISTINCT o.order_id)""")
+                self.assertEqual(cur.fetchall(), [])
         finally:
             conn.close()
 

@@ -5,6 +5,20 @@
 USE elder_care;
 SET NAMES utf8mb4;
 
+-- 线2 对账：结果应为 0 行，确认 schedule.booked 与当前派单数一致
+SELECT s.schedule_id, s.booked,
+       COUNT(DISTINCT o.order_id) AS active_dispatch_count
+FROM schedule s
+LEFT JOIN dispatch d
+  ON d.caregiver_id = s.caregiver_id
+ AND d.is_current = 1
+LEFT JOIN service_order o
+  ON o.order_id = d.order_id
+ AND DATE(o.appoint_time) = s.work_date
+ AND s.shift = CASE WHEN TIME(o.appoint_time) < '12:00:00' THEN '上午' ELSE '下午' END
+GROUP BY s.schedule_id, s.booked
+HAVING s.booked <> COUNT(DISTINCT o.order_id);
+
 -- 1. 申报追溯：补贴申报 → 订单 → 服务项目 → 派单护工
 SELECT cl.claim_id,
        cl.claim_period,

@@ -134,18 +134,21 @@ def complete_dispatch(cur, dispatch_id, note, role, caregiver_id):
 
 
 def reassign_dispatch(cur, dispatch_id, reason):
-    cur.execute("SELECT order_id FROM dispatch WHERE dispatch_id=%s AND is_current=1", dispatch_id)
+    cur.execute("""SELECT d.order_id, d.caregiver_id, o.status
+                    FROM dispatch d
+                    JOIN service_order o ON o.order_id = d.order_id
+                   WHERE d.dispatch_id=%s AND d.is_current=1
+                   FOR UPDATE""", dispatch_id)
     dispatch = cur.fetchone()
     if not dispatch:
         raise OrderError("派单不存在或已不是当前派单")
+    if dispatch["status"] not in ("待派单", "已派单", "服务中"):
+        raise OrderError(f"订单当前状态为「{dispatch['status']}」，不允许改派")
     cur.execute("UPDATE dispatch SET is_current=0,reassign_reason=%s WHERE dispatch_id=%s",
                 (reason or "未注明原因", dispatch_id))
-    cur.execute("UPDATE service_order SET status='待派单' WHERE order_id=%s AND status='已派单'",
+    cur.execute("""UPDATE service_order
+                      SET status='待派单'
+                    WHERE order_id=%s
+                      AND status IN ('待派单','已派单','服务中')""",
                 dispatch["order_id"])
-    cur.execute("""UPDATE schedule s JOIN service_order o ON o.order_id=%s
-                    SET s.booked=s.booked-1
-                    WHERE s.caregiver_id=(SELECT caregiver_id FROM dispatch WHERE dispatch_id=%s)
-                      AND s.work_date=DATE(o.appoint_time)
-                      AND s.shift=(CASE WHEN TIME(o.appoint_time)<'12:00:00' THEN '上午' ELSE '下午' END)""",
-                (dispatch["order_id"], dispatch_id))
     return {"order_id": dispatch["order_id"]}

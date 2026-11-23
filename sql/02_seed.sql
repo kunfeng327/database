@@ -7,9 +7,11 @@ SET NAMES utf8mb4;
 -- 线4 的体征/应急触发器同样在种子阶段删除，以便直接写入带指定异常标记/等级的测试数据
 DROP TRIGGER IF EXISTS tr_dispatch_before_insert;
 DROP TRIGGER IF EXISTS tr_dispatch_after_insert;
+DROP TRIGGER IF EXISTS tr_dispatch_after_update;
 DROP TRIGGER IF EXISTS tr_dispatch_after_confirm;
 DROP TRIGGER IF EXISTS tr_dispatch_check_item;
 DROP TRIGGER IF EXISTS tr_schedule_before_insert;
+DROP TRIGGER IF EXISTS tr_schedule_before_update;
 DROP TRIGGER IF EXISTS tr_work_hour_before_update;
 DROP TRIGGER IF EXISTS tr_work_hour_after_update;
 DROP TRIGGER IF EXISTS tr_vital_sign_before_insert;
